@@ -6,13 +6,31 @@
 #define CLIENT_BACKLOG 10
 #define CLIENT_BUFLEN 10240
 
+typedef enum {
+	p_open,
+	p_user,
+	p_idle,
+} t_protstate;
+
+typedef enum {
+	r_any,
+	r_guest,
+	r_user,
+	r_master,
+} t_rights;
+
 typedef struct _t_client {
 	struct _t_client *next;
+	int id;
+	int uid;
 	int close;
 	int sock;
 	struct sockaddr_in sin;
 	char ibuf[CLIENT_BUFLEN+1];
 	int ilen;
+	t_rights right;
+	t_protstate pstate;
+	void *pdata;
 } t_client;
 
 extern t_client *clients;

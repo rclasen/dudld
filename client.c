@@ -24,6 +24,7 @@
 
 t_client *clients = NULL;
 
+static int maxid = 0;
 static int lsocket = 0;
 
 /*
@@ -84,8 +85,13 @@ t_client *client_accept( fd_set *read )
 
 	// TODO: fcntl F_SETFD
 
+	c->id = ++maxid;
 	c->close = 0;
+	c->uid = 0;
 	c->ilen = 0;
+	c->right = r_any;
+	c->pstate = p_open;
+	c->pdata = NULL;
 
 	c->next = clients;
 	clients = c;
@@ -99,7 +105,7 @@ t_client *client_accept( fd_set *read )
  * this is necessary, to be able to close clients when walking the linear
  * list.
  */
-inline void client_close( t_client *c )
+void client_close( t_client *c )
 {
 	c->close++;
 }
@@ -110,6 +116,7 @@ inline void client_close( t_client *c )
 static void client_free( t_client *c )
 {
 	shutdown(c->sock, 2);
+	free(c->pdata);
 	free(c);
 }
 
@@ -129,10 +136,11 @@ void clients_clean( void )
 			t_client *s = c;
 
 			c = c->next;
-			if( l )
+			if( l ){
 				l->next = c;
-			else
+			} else {
 				clients = c;
+			}
 
 			client_free( s );
 
@@ -151,6 +159,9 @@ void clients_clean( void )
 int client_send( t_client *c, const char *buf )
 {
 	int len = strlen(buf);
+
+	if( ! len )
+		return 0;
 
 	if( c->close )
 		return -1;
