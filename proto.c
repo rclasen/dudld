@@ -1034,26 +1034,46 @@ CMD(cmd_trackalter, r_user, p_idle, arg_need )
 
 static void proto_bcast_filter( void )
 {
-	const char *f;
+	char buf[1024];
+	expr *e;
 
-	f = random_filter();
-	proto_bcast( r_guest, "650", "%s", f ? f : "" );
+	e = random_filter();
+	if( e )
+		expr_fmt( buf, 1024, e );
+
+	proto_bcast( r_guest, "650", "%s", e ? buf : "" );
 }
 
 
 CMD(cmd_filter, r_guest, p_idle, arg_none )
 {
-	const char *f;
+	char buf[1024];
+	expr *e;
 
+	e = random_filter();
+	if( e )
+		expr_fmt( buf, 1024, e );
+
+	RLAST( "250", "%s", e ? buf : "" );
 	(void)line;
-	f = random_filter();
-	RLAST( "250", "%s", f ? f : "" );
 }
 
 CMD(cmd_filterset, r_user, p_idle, arg_opt )
 {
-	if( random_setfilter(line)){
-		RLAST( "511", "invalid filter" );
+	expr *e;
+	char *msg;
+	int pos;
+
+	if( line && *line )
+		e = expr_parse_str( &pos, &msg, line );
+
+	if( pos >= 0 )
+		RLAST( "511", "error at pos %d in filter: %s",
+					pos, msg );
+
+	/* at least initialize with an empty filter */
+	if( random_setfilter(e)){
+		RLAST( "511", "failed to apply (correct) filter" );
 		return;
 	}
 

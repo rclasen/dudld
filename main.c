@@ -130,7 +130,23 @@ int main( int argc, char **argv )
 	player_setgap( opt_gap );
 	player_setrandom( opt_random );
 	proto_init();
-	random_setfilter( opt_filter );
+	
+	{
+		expr *e = NULL;
+		char *msg;
+		int pos;
+
+		if( opt_filter && *opt_filter )
+			e = expr_parse_str( &pos, &msg, opt_filter );
+
+		if( pos < 0 )
+			syslog( LOG_ERR, "startup filter failed at %d: %s",
+					pos, msg );
+
+		/* at least initialize with an empty filter */
+		random_setfilter( e );
+	}
+
 
 	syslog(LOG_INFO, "started" );
 	rv = loop();
