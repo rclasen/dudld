@@ -15,7 +15,9 @@ CFLAGS	:= -g -W -Wall -Wunused -Wmissing-prototypes \
 all: x-all
 
 
-SRCS	:= client.c proto.c player.c main.c
+SRCS	:= client.c proto.c \
+	user.c track.c queue.c \
+	opt.c player.c main.c
 OBJS	:= $(patsubst %.c,%.o,$(SRCS))
 
 LNK += xmserv
