@@ -18,32 +18,10 @@ expr *filter = NULL;
 
 t_random_func random_func_filter = NULL;
 
-int random_setfilter( expr *filt )
+static int fill_cache( expr *filt )
 {
 	PGresult *res;
 	char where[4096];
-
-	/* flush old filter */
-	res = db_query( "DROP TABLE mserv_cache" );
-	PQclear(res);
-	if( filter ){
-		expr_free( filter );
-		filter = NULL;
-	}
-
-	/* recreate empty cache table - now the filter may fail
-	 * and further queries are still vaild */
-	res = db_query( "CREATE TEMP TABLE mserv_cache ("
-				"id INTEGER,"
-				"lplay INTEGER,"
-				"filename VARCHAR"
-			")");
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK){
-		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
-		PQclear(res);
-		return 1;
-	}
-	PQclear(res);
 
 	*where = 0;
 	if( filt )
@@ -58,13 +36,54 @@ int random_setfilter( expr *filt )
 			filt && *where ? where : ""
 			);
 	if( ! res || PGRES_COMMAND_OK !=  PQresultStatus(res) ){
+		syslog( LOG_ERR, "fill_cache: %s", db_errstr() );
+		PQclear(res);
+		return -1;
+	}
+
+	PQclear(res);
+	return 0;
+}
+
+int random_setfilter( expr *filt )
+{
+	PGresult *res;
+
+	/* flush old filter */
+	res = db_query( "DROP TABLE mserv_cache" );
+	PQclear(res);
+	if( filter ){
+		expr_free( filter );
+		filter = NULL;
+	}
+
+	/* recreate empty cache table - now the filter may fail
+	 * and further queries are still vaild - but wont pick any results */
+	res = db_query( "CREATE TEMP TABLE mserv_cache ("
+				"id INTEGER,"
+				"lplay INTEGER,"
+				"filename VARCHAR"
+			")");
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK){
 		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
 		PQclear(res);
 		return 1;
 	}
 	PQclear(res);
 
+	/* try filling cache - retry with reset filter */
+	if( fill_cache( filt ) ){
+		if( ! filt )
+			goto clean1;
+
+		expr_free(filt);
+		filt = NULL;
+		if( fill_cache(NULL) )
+			goto clean1;
+	}
+
 	/* remember filter string */
+	// TODO: copy filter
 	filter = filt;
 
 	if( random_func_filter )
@@ -76,6 +95,10 @@ int random_setfilter( expr *filt )
 	PQclear(res);
 
 	return 0;
+
+clean1:
+	syslog( LOG_ERR, "setfilter: cannot fill cache table" );
+	return 1;
 }
 
 int random_cache_update( int id, int lplay )
