@@ -40,6 +40,8 @@
 #include "player.h"
 #include "proto.h"
 
+// TODO: escape tabs in output 
+
 typedef enum {
 	arg_none,
 	arg_opt,
@@ -251,6 +253,7 @@ CMD(cmd_pass, r_any, p_user, arg_need )
 		client->pstate = p_idle;
 		client->right = r_master;
 
+		syslog( LOG_INFO, "user %s logged in", (char*)client->pdata );
 		RLAST( "221", "successfully logged in" );
 		proto_bcast_login(client);
 	}
@@ -268,7 +271,7 @@ CMD(cmd_who, r_user, p_idle, arg_none )
 		if( c->close )
 			continue;
 
-		RLINE( "230", "%s", mkclient(client));
+		RLINE( "230", "%s", mkclient(c));
 	}
 	RLAST( "230", "");
 }
@@ -433,6 +436,14 @@ CMD(cmd_pause, r_user, p_idle, arg_none )
 }
 
 // TODO: cmd_status, r_guest }, // playstatus + track
+CMD(cmd_status, r_guest, p_idle, arg_none )
+{
+	(void)line;
+
+	RLAST( "243", "%d", player_status() );
+}
+
+// TODO: gap
 
 /************************************************************
  * commands: track 
@@ -540,7 +551,7 @@ CMD(cmd_filter, r_guest, p_idle, arg_none )
 	RLAST( "250", "%s", f ? f : "" );
 }
 
-CMD(cmd_filterset, r_user, p_idle, arg_need )
+CMD(cmd_filterset, r_user, p_idle, arg_opt )
 {
 
 	if( random_setfilter(line)){
@@ -607,13 +618,15 @@ static t_cmd proto_cmds[] = {
  */
 static void cmd( t_client *client, char *line )
 {
+	unsigned int len;
 	t_cmd *c;
-	int len;
 	char *s;
 
+	len = strcspn( line, " \t" );
 	for( c = proto_cmds; c && c->name; c++ ){
-		len = strlen(c->name);
-		if( 0 != strncasecmp(c->name, line,len ))
+		if( len != strlen(c->name) )
+			continue;
+		if( 0 != strncasecmp(c->name, line, len ))
 			continue;
 
 		switch( c->state ){
@@ -674,6 +687,25 @@ static void cmd( t_client *client, char *line )
 }
 
 
+/*
+ * initialize protocol for a newly connected client
+ */
+static void proto_newclient( t_client *client )
+{
+	RLAST( "220", "hello" );
+	syslog( LOG_DEBUG, "new connection %d from %s", client->id,
+			inet_ntoa(client->sin.sin_addr ));
+}
+
+/*
+ * cleanup proto when a client disconnected
+ */
+static void proto_delclient( t_client *client )
+{
+	syslog( LOG_DEBUG, "lost connection %d to %s", client->id,
+			inet_ntoa(client->sin.sin_addr ));
+	proto_bcast_logout( client );
+}
 /************************************************************
  * interface functions
  */
@@ -684,6 +716,9 @@ static void cmd( t_client *client, char *line )
 
 void proto_init( void )
 {
+	client_func_connect = proto_newclient;
+	client_func_disconnect = proto_delclient;
+
 	player_func_newtrack = proto_bcast_player_newtrack;
 	player_func_pause = proto_bcast_player_pause;
 	player_func_resume = proto_bcast_player_resume;
@@ -717,23 +752,4 @@ void proto_input( t_client *client )
 	} 
 }
 
-/*
- * initialize protocol for a newly connected client
- */
-void proto_newclient( t_client *client )
-{
-	RLAST( "220", "hello" );
-	syslog( LOG_DEBUG, "new connection %d from %s", client->id,
-			inet_ntoa(client->sin.sin_addr ));
-}
-
-/*
- * cleanup proto when a client disconnected
- */
-void proto_delclient( t_client *client )
-{
-	syslog( LOG_DEBUG, "lost connection %d to %s", client->id,
-			inet_ntoa(client->sin.sin_addr ));
-	proto_bcast_logout( client );
-}
 
