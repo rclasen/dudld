@@ -5,12 +5,9 @@
 
 typedef enum {
 	pl_stop,
-	/* all below states are substates of pl_play */
 	pl_play,
 	pl_pause,
-	pl_gap,
-	pl_gpause,
-} t_playstate;
+} t_playstatus;
 
 typedef enum {
 	PE_OK = 0,
@@ -29,7 +26,7 @@ extern t_player_func_update player_func_pause;
 extern t_player_func_update player_func_resume;
 extern t_player_func_update player_func_stop;
 
-t_playstate player_status( void );
+t_playstatus player_status( void );
 t_track *player_track( void );
 
 t_playerror player_start( void );
@@ -39,6 +36,6 @@ t_playerror player_prev( void );
 t_playerror player_pause( void );
 t_playerror player_resume( void );
 
-t_playerror player_check( void );
+void player_check( void );
 time_t player_wakeuptime( void );
 #endif

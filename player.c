@@ -15,54 +15,206 @@
 #include "opt.h"
 #include "track.h"
 #include "queue.h"
-#include "proto.h"
 #include "player.h"
 
-typedef enum {
-	c_none,
-	c_syserr,
-	c_ign,
-	c_pause,
-	c_term,
-	c_died,
-} t_childstat;
+static t_playstatus curstat = pl_stop;
 
-t_player_func_update player_func_newtrack = NULL;
-t_player_func_update player_func_pause = NULL;
+static int curpid = 0;
+static t_track *curtrack = NULL;
+
+static time_t nextstart = 0;
+static t_track *nexttrack = NULL;
+
+
+/* used by player_start: */
 t_player_func_update player_func_resume = NULL;
+/* used by starttrack: */
+t_player_func_update player_func_newtrack = NULL;
+/* used by update_status: */
+t_player_func_update player_func_pause = NULL;
 t_player_func_update player_func_stop = NULL;
 
-/* time to start next track at. Only valid in pl_gap */
-static time_t startat = 0;
-
-/* status of internal state machine. always use a switch() statement
- * without a default: tag to check this variable */
-static t_playstate state = pl_stop;
-
-/* currently playing track. only valid in pl_play or pl_pause state */
-static t_track *current = NULL;
-
-/* PID of currently running player. only valid in pl_play or pl_pause
- * state */
-static int playpid = 0;
 
 
-/************************************************************
- * internal functions
+
+/* 
+ * when no player pid is known, the old status is returned
+ * this means curstat is not changed within the gap.
+ *
+ * when the player got stopped, curstat becomes pl_pause
+ *
+ * when the player terminated curstat is set to pl_stop
+ * when the player died, wantstat is set to pl_stop, too
+ *
+ * when the player is gone, curstat is set to pl_stop
+ *
+ * you can call this function as often as you want ...
  */
+static t_playstatus update_status( t_playstatus *wantstat )
+{
+	int failed = 0;
+	int oldpid = curpid;
+	int pid;
+	int rv;
+	t_playstatus last;
 
-/*
- * TODO: check kill() usage
- * hmm, kill fails, when the child already terminated - legitimate or not
- * actions like _stop() currently assume that kill succeeds
- */
 
-// TODO: this player is far too complicated */
+	/* nothig to check - return */
+	if( curpid == 0 )
+		return curstat;
+
+	last = curstat;
+
+	/* several (bogus??) sigchilds might have queued up */
+	while( 0 < (pid = waitpid( -oldpid, &rv, WNOHANG | WUNTRACED) ) ){
+
+		/* so - what did I tell you about bogus? *g* */
+		if( pid != oldpid )
+			continue;
+
+
+		/* paused */
+		if( WIFSTOPPED(rv)){
+			curstat = pl_pause;
+
+			/* somebody else might have sent STOP, CONT, TERM
+			 * to the player - so there might still be a real
+			 * sigchild be outstanding. But we are finally
+			 * stopped anyways - so we can invoke the callback
+			 * later
+			 */
+
+			continue;
+		}
+
+		/* no pause - we got a sigchild for a terminated player */
+		
+		/* normal exit */
+		if( WIFEXITED(rv) ){
+			if( WEXITSTATUS(rv)){
+				syslog( LOG_ERR, "player returned %d, "
+						"stopping", WEXITSTATUS(rv));
+				failed ++;
+			}
+
+		/* terminated by signal */
+		} else if( WIFSIGNALED(rv) ){
+			switch( WTERMSIG(rv) ){
+			  /* ignore for debugger sessions */
+			  case SIGTRAP:
+				continue;
+
+			  /* we send SIGTERM and SIGKILL */
+			  case SIGTERM:
+			  case SIGKILL:
+				break;
+
+			  default:
+				syslog( LOG_ERR, "player got signal %d, "
+						"stopping", WTERMSIG(rv));
+				failed ++;
+			}
+
+		}
+
+		curpid = 0;
+		curstat = pl_stop;
+	} 
+	
+	if( pid < 0 ){
+		if( errno != ECHILD ) {
+			/* fatal waitpid failure - shouldn't happen */
+			syslog( LOG_CRIT, "fatal waitpid error: %m" );
+			exit( 1 );
+		}
+
+		/* no child found - we are definatly stopped */
+		if( curpid ){
+			syslog( LOG_NOTICE, "player pid not found" );
+			curstat = pl_stop;
+		}
+	}
+
+	/* when signals arrived our of order, a SIGSTOP might have
+	 * overwritten curstop */
+	if( failed ){
+		curstat = pl_stop;
+		*wantstat = pl_stop;
+	}
+
+	if( curstat == pl_stop ){
+		curpid = 0;
+		if( curtrack ){
+			if( ! failed ){
+				track_setlastplay(curtrack, time(NULL) );
+				track_save(curtrack);
+			}
+			track_free( curtrack );
+			curtrack = NULL;
+		}
+
+	}
+
+	/* send broadcasts for what is detectable from here */
+	if( last != curstat ){
+		if( curstat == pl_stop && curstat == *wantstat && 
+				player_func_stop )
+			(*player_func_stop)();
+
+		else if( curstat == pl_pause && player_func_pause )
+			(*player_func_pause)();
+	}
+
+	return curstat;
+}
+
+static t_playerror terminate( t_playstatus *wantstat )
+{
+	int i;
+
+	/* no pid - we must be in the gap - or already stopped */
+	if( !curpid ){
+		curstat = pl_stop;
+		return PE_OK;
+	}
+
+	for( i = 0; pl_stop != update_status(wantstat) && i < 5; ++i ){
+
+		if( i == 0 ){
+			/* try to kill the process itself */
+			kill( curpid, SIGTERM );
+			/* and wake it up in case it was stopped */
+			kill( -curpid, SIGCONT );
+
+		} else if( i == 1 ){
+			/* give it some time to terminate */
+			sleep(1);
+
+		} else if( i < 4 ){
+			/* did not terminate yet, try to kill again and
+			 * give it some time */
+			kill( -curpid, SIGCONT );
+			kill( -curpid, SIGTERM );
+			sleep(1);
+
+		} else {
+			/* ok, it's not nice to me, so I'm not, too. 
+			 * use the sledgehammer to terminate it */
+			kill( -curpid, SIGKILL );
+		}
+	}
+
+	if( curstat == pl_stop )
+		return PE_OK;
+
+	return PE_FAIL;
+}
+
 
 /*
  * get next track to play
  */
-static t_track *p_getnext( void )
+static t_track *getnext( void )
 {
 	t_track *t;
 
@@ -74,25 +226,32 @@ static t_track *p_getnext( void )
 	return t;
 }
 
-/*
- * start playing specified track
- */
-static t_playerror p_start( t_track *track )
+static t_playerror startplay( void )
 {
+	t_playstatus wantstat = pl_play;
 	int pid;
 
-	switch(state){
-		case pl_stop:
-		case pl_gap:
-			break;
-		case pl_play:
-		case pl_pause:
-		case pl_gpause:
-			return PE_BUSY;
-	}
+	update_status(&wantstat);
 
-	startat = 0;
-	
+	/* did update_status set wantstatus to stop? */
+	if( wantstat != pl_play )
+		return PE_FAIL;
+
+	/* only start new player. Caller must set state to stop when
+	 * starting from gap */
+	if( curstat != pl_stop )
+		return PE_BUSY;
+
+	nextstart = 0;
+
+	/* get next track when there is no pre-fetched one */
+	if( nexttrack == NULL )
+		nexttrack = getnext();
+
+	/* still no track? queue must be empty */
+	if( NULL == nexttrack )
+		return PE_NOTHING;
+
 	pid = fork();
 
 	/* fork failed */
@@ -124,8 +283,8 @@ static t_playerror p_start( t_track *track )
 		setsid();
 
 		syslog( LOG_DEBUG, "starting %s %s", opt_player, 
-				track->fname );
-		execlp( opt_player, opt_player, track->fname, NULL );
+				nexttrack->fname );
+		execlp( opt_player, opt_player, nexttrack->fname, NULL );
 
 		syslog( LOG_ERR, "exec of player failed: %m");
 		exit( -1 );
@@ -133,296 +292,21 @@ static t_playerror p_start( t_track *track )
 	}
 	
 	/* parent */
-	state = pl_play;
-	playpid = pid;
-	current = track;
+	curstat = pl_play;
+	curpid = pid;
+	curtrack = nexttrack;
 
 	if( player_func_newtrack )
 		(*player_func_newtrack)();
 
+	/* pre-fetch next track */
+	nexttrack = getnext();
+
+	/* we cannot tell, if the start worked - update_status has to deal
+	 * with this */
 	return PE_OK;
 }
 
-/*
- * check for terminated child
- * used by pause, stop and check
- *
- * return:
- *  c_none	no child terminated
- *  c_syserr	system error
- *  c_ign	child / request ignored
- *  c_pause	child paused
- *  c_term	child terminated propperly
- *  c_died	child died unexpectedly
- */
-static t_childstat p_checkchild( void )
-{
-	int pid;
-	int rv;
-	int unexpected = 0;
-
-	if( 0 > (pid = waitpid( playpid, &rv, WNOHANG | WUNTRACED ))){
-		if( errno == ECHILD )
-			return c_none;
-
-		return c_syserr;
-	}
-
-	/* nothing terminated */
-	if( pid == 0 )
-		return c_none;
-
-	/* although we asked only for the player, we got another 
-	 * child and ignore it */
-	if( playpid != pid ){
-		return c_ign;
-	}
-
-	/* paused */
-	if( WIFSTOPPED(rv)){
-		// TODO: use switch for state
-		if( state >= pl_play ){
-			state = pl_pause;
-			if( player_func_pause )
-				(*player_func_pause)();
-			return c_pause;
-		}
-
-		syslog( LOG_NOTICE, 
-				"huh? child paused, when none is running?" );
-		return c_ign;
-	}
-
-	/* normal exit */
-	if( WIFEXITED(rv) ){
-		if( WEXITSTATUS(rv)){
-			syslog( LOG_ERR, "player returned %d, stopping",
-					WEXITSTATUS(rv));
-			unexpected ++;
-		}
-
-	/* terminated by signal */
-	} else if( WIFSIGNALED(rv) ){
-		/* we send SIGTERM and SIGKILL */
-		switch( WTERMSIG(rv) ){
-		  case SIGTRAP:
-			return c_ign;
-
-		  case SIGTERM:
-		  case SIGKILL:
-			break;
-
-		  default:
-			syslog( LOG_ERR, "player got signal %d, stopping",
-					WTERMSIG(rv));
-			unexpected ++;
-		}
-
-	/* why did we get here ?? */
-	} else {
-		return c_died;
-	}
-
-	if( unexpected ){
-		if( player_func_stop )
-			(*player_func_stop)();
-
-	} else {
-		/* the player might have been killed to skip to another
-		 * track - do not send a _stop event */
-
-		if( current ){
-			track_setlastplay(current, time(NULL));
-			track_save( current );
-		}
-	}
-
-	current = NULL;
-	playpid = 0;
-	state = pl_stop;
-
-	return unexpected ? c_died : c_term;
-}
-
-/*
- * stop playing
- */
-static t_playerror p_stop( void )
-{
-	t_childstat l, r;
-	int i;
-
-	switch(state){
-		case pl_stop:
-			return PE_NOTHING;
-		case pl_gpause:
-		case pl_gap:
-			startat = 0;
-			state = pl_stop;
-			return PE_OK;
-		case pl_play:
-		case pl_pause:
-			break;
-	}
-
-	assert(playpid != 0);
-
-	// TODO: reap children before killing
-	if( 0 > kill(-playpid, SIGTERM ))
-		return PE_SYS;
-
-	/* wait for child to terminate */
-	l = c_none;
-	for( i = 5; i > 0; --i ){
-
-		while( c_none != (r = p_checkchild() )){
-			switch( r ){
-				case c_syserr:
-					return PE_SYS;
-				case c_ign:
-					continue;
-				case c_none: /* already dealt with */
-				case c_term:
-				case c_died:
-				case c_pause:
-			}
-
-			l = r;
-		}
-
-		switch( l ){
-			case c_syserr:
-				return PE_SYS;
-			case c_term:
-			case c_died:
-				return PE_OK;
-			case c_pause:
-				return PE_FAIL;
-			case c_ign:
-			case c_none:
-		}
-
-		if( i > 1 ){
-			sleep(1);
-
-			/* the child might be stopped - try to wake it up */
-			kill(-playpid, SIGCONT );
-			kill(-playpid, SIGTERM );
-		}
-	}
-
-	/* kill -TERM failed - try harder */
-	if( 0 > kill(-playpid, SIGKILL))
-		return PE_SYS;
-
-	r = p_checkchild();
-	switch( r ){
-		case c_syserr: 
-			return PE_SYS;
-		case c_term:
-		case c_died:
-			return PE_OK;
-		case c_pause:
-		case c_none:
-		case c_ign:
-			return PE_FAIL;
-	}
-
-	return PE_FAIL;
-}
-
-/*
- *  pause playing
- */
-static t_playerror p_pause( void )
-{
-	int i;
-	t_childstat l, r;
-
-	switch( state ){
-		case pl_stop:
-			return PE_NOTHING;
-		case pl_gap:
-			state = pl_gpause;
-			return PE_OK;
-		case pl_pause:
-		case pl_gpause:
-			return PE_BUSY;
-		case pl_play:
-			break;
-	}
-
-	assert(playpid != 0 );
-
-	// TODO: reap children before killing
-	if( 0 > kill( -playpid, SIGSTOP ))
-		return PE_SYS;
-
-	l = c_none;
-	for( i = 5; i > 0; --i ){
-		while( 0 != ( r = p_checkchild() )){
-			switch( l ){
-				case c_syserr: 
-					return PE_SYS;
-				case c_ign:
-					continue;
-				case c_term:
-				case c_died:
-				case c_none:
-				case c_pause:
-			}
-
-			l = r;
-		}
-
-		switch( l ){
-			case c_syserr: 
-				return PE_SYS;
-			case c_pause:
-				return PE_OK;
-			case c_term:
-			case c_died:
-				return PE_FAIL;
-			case c_none:
-			case c_ign:
-		}
-
-		if( i > 1 )
-			sleep(1);
-	}
-
-	return PE_FAIL;
-}
-
-/*
- * resume a paused player
- */
-static t_playerror p_resume( void )
-{
-	switch(state){
-		case pl_stop:
-		case pl_gap:
-		case pl_play:
-			return PE_NOTHING;
-		case pl_gpause:
-			p_stop();
-			return player_start();
-		case pl_pause:
-			break;
-	}
-
-	assert( playpid != 0 );
-
-	// TODO: reap children before killing
-	if( 0 > kill( -playpid, SIGCONT ))
-		return PE_SYS;
-
-	state = pl_play;
-	if( player_func_resume )
-		(*player_func_resume)();
-
-	return PE_OK;
-}
 
 
 /************************************************************
@@ -435,184 +319,145 @@ static t_playerror p_resume( void )
  */
 t_track *player_track( void )
 {
-	return current;
+	track_use(curtrack);
+	return curtrack;
 }
 
 /*
  * return current play status
  */
-t_playstate player_status( void )
+t_playstatus player_status( void )
 {
-	return state;
+	return curstat;
 }
 
-
-/*
- * resume playback or 
- * start playing next avail track and tell this to clients
- */
-t_playerror player_start( void )
-{
-	int r;
-	t_track *track;
-
-	switch( state ){
-		case pl_pause:
-		case pl_gpause:
-			return p_resume();
-		case pl_play:
-		case pl_gap:
-			return PE_BUSY;
-		case pl_stop:
-			break;
-	}
-
-	if( NULL == (track = p_getnext()))
-		return PE_NOTHING;
-
-	if( PE_OK != (r = p_start( track )))
-		return r;
-
-	return PE_OK;
-}
-
-/*
- * stop playing
- */
-t_playerror player_stop( void )
-{
-	int r;
-
-	if( PE_OK != (r = p_stop()))
-		return r;
-
-	if( player_func_stop )
-		(*player_func_stop)();
-
-	return PE_OK;
-}
-
-/*
- * abort currently playing track (if any)
- * and play next
- */
-t_playerror player_next( void )
-{
-	int r;
-
-	r = p_stop();
-	if( !( r == PE_OK || r == PE_NOTHING))
-		return r;
-
-	return player_start();
-}
-
-/*
- * abort currently playing track (if any)
- * and play previous
- */
-t_playerror player_prev( void )
-{
-	return PE_NOSUP;
-
-#ifdef todo_prev
-	r = p_stop();
-	if( !( r == PE_OK || r == PE_NOTHING))
-		return r;
-
-	if( NULL == (track = get_previous()))
-		return PE_NOTHING;
-
-	if( PE_OK != (r = p_start( track )))
-		return r;
-
-	return PE_OK;
-#endif
-}
-
-/*
- * pause playing
- */
-t_playerror player_pause( void )
-{
-	return p_pause();
-}
-
-/*
- * resume paused playing
- */
-t_playerror player_resume( void )
-{
-	return p_resume();
-}
-
-/* 
- * - invoke periodicaly and optionally after a sigchild
- */
-t_playerror player_check( void )
-{
-	t_childstat r, l;
-	time_t now;
-
-	l = c_none;
-	while( c_none != ( r = p_checkchild())){
-		switch( r ){
-			case c_syserr:
-				return PE_SYS;
-			case c_ign:
-				continue;
-			case c_none: /* already dealt with */
-			case c_term:
-			case c_died:
-			case c_pause:
-		}
-
-		l = r;
-	}
-
-	now = time(NULL);
-
-	switch( l ){
-		case c_syserr:
-			return PE_SYS;
-		case c_term:
-			/* schedule next track */
-			state = pl_gap;
-
-			/* startat is reset by p_start and p_stop */
-			startat = now;
-			if( opt_gap ){
-				startat += opt_gap;
-			}
-			break;
-
-		case c_died:
-			return PE_FAIL;
-
-		case c_none: 
-		case c_ign:
-		case c_pause:
-	}
-
-	/* play next track */
-	if( state == pl_gap && startat <= now ){
-		state = pl_stop;
-		return player_start();
-	}
-
-	return PE_OK;
-}
 
 /*
  * return the time of the next wakeup
  */
 time_t player_wakeuptime( void )
 {
-	if( state != pl_gap )
+	if( curpid )
 		return 0;
 
-	return startat;
+	return nextstart;
 }
 
+
+t_playerror player_pause( void )
+{
+	t_playstatus wantstat = pl_pause;
+	int i;
+
+	for( i = 0; pl_play == update_status(&wantstat) && i < 5; ++i ){
+		kill( -curpid, SIGSTOP );
+		
+		if( i > 0 && i < 4 )
+			sleep(1);
+	}
+
+	if( curstat == pl_stop )
+		return PE_NOTHING;
+
+	/* loop didn't run a single time - it wasn't playint */
+	if( i == 0 )
+		return PE_BUSY;
+
+	if( curstat != pl_pause )
+		return PE_FAIL;
+
+	return PE_OK;
+}
+
+t_playerror player_start( void )
+{
+	t_playstatus wantstat = pl_play;
+
+	if( pl_pause == update_status(&wantstat) ){
+		if( curpid ){
+			kill( -curpid, SIGCONT );
+			curstat = pl_play;
+
+			// TODO: detect, if the player resumed externally?
+			if( player_func_resume )
+				(*player_func_resume)();
+			return PE_OK;
+		}
+		curstat = pl_stop;
+	}
+
+	return startplay();
+}
+
+t_playerror player_next( void )
+{
+	t_playstatus wantstat = pl_play;
+
+	if( PE_OK != terminate( &wantstat) )
+		return PE_FAIL;
+
+	return startplay();
+}
+
+t_playerror player_prev( void )
+{
+#if TODO_prev
+	t_playstatus wantstat = pl_play;
+
+	if( PE_OK != terminate(&wantstat) )
+		return PE_FAIL;
+
+	track_free(nexttrack);
+	if( NULL == (nexttrack = get_prev())){
+		return PE_NOTHING;
+	}
+
+	return startplay();
+#else
+	return PE_NOSUP;
+#endif
+}
+
+
+t_playerror player_stop( void )
+{
+	t_playstatus wantstatus = pl_stop;
+
+	return terminate( &wantstatus );
+}
+
+void player_check( void )
+{
+	t_playstatus wantstat = curstat;
+	time_t now;
+
+	update_status(&wantstat);
+
+	/* we might have detected, that the player terminated or got
+	 * paused from somebody else */
+
+	/* is it time to start the next track? */
+	now = time(NULL);
+	if( nextstart && nextstart < now )
+		curstat = pl_stop;
+
+	if( curstat == pl_stop && wantstat == pl_play ){
+
+		if( ! nextstart )
+			nextstart = now + opt_gap;
+
+		if( nextstart <= now )
+			/* nextstart is reset to 0 by startplay() */
+			startplay();
+		else
+			curstat = pl_play;
+
+	/* player terminated although it is paused - this results in 
+	 * the same status as the gap before a track */
+	} else if( curstat == pl_stop && wantstat == pl_pause ){
+		curstat = pl_pause;
+
+	}
+}
 
 
