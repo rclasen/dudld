@@ -1584,7 +1584,7 @@ CMD(cmd_albumget, r_guest, p_idle, arg_need )
 }
 
 
-static void dump_album( t_client *client, const char *code, it_album *it )
+static void dump_albums( t_client *client, const char *code, it_album *it )
 {
 	char buf[BUFLENALBUM];
 	t_album *t;
@@ -1603,8 +1603,25 @@ CMD(cmd_albumlist, r_guest, p_idle, arg_none )
 	it_album *it;
 
 	(void)line;
-	it = album_list( );
-	dump_album( client, "281", it );
+	it = albums_list( );
+	dump_albums( client, "281", it );
+	it_album_done(it);
+}
+
+CMD(cmd_albumsartist, r_guest, p_idle, arg_need )
+{
+	char *end;
+	int id;
+	it_album *it;
+
+	id = strtol(line, &end, 10);
+	if( *end ){
+		RBADARG( "expecting only an artist ID");
+		return;
+	}
+
+	it = albums_artistid(id);
+	dump_albums( client, "285", it );
 	it_album_done(it);
 }
 
@@ -1612,8 +1629,8 @@ CMD(cmd_albumsearch, r_guest, p_idle, arg_need )
 {
 	it_album *it;
 
-	it = album_search( line );
-	dump_album( client, "282", it );
+	it = albums_search( line );
+	dump_albums( client, "282", it );
 	it_album_done(it);
 }
 

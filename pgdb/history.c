@@ -87,6 +87,7 @@ t_track *history_track( t_history *h)
 	return h->track;
 }
 
+// TODO: use view
 it_history *history_list( int num )
 {
 	return db_iterate( (db_convert)history_convert, 
@@ -105,6 +106,7 @@ it_history *history_list( int num )
 			num );
 }
 
+// TODO: use view
 it_history *history_tracklist( int trackid, int num )
 {
 	return db_iterate( (db_convert)history_convert,

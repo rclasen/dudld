@@ -257,7 +257,8 @@ it_track *tracks_artistid( int artistid )
 {
 	return db_iterate( (db_convert)track_convert, "SELECT * "
 			"FROM mserv_track "
-			"WHERE artist_id = %d", artistid );
+			"WHERE artist_id = %d "
+			"ORDER BY LOWER(album_name), album_pos", artistid );
 }
 
 
@@ -271,7 +272,9 @@ it_track *tracks_search( const char *substr )
 
 	it = db_iterate( (db_convert)track_convert, "SELECT * "
 			"FROM mserv_track "
-			"WHERE LOWER(title) LIKE LOWER('%%%s%%')", str );
+			"WHERE LOWER(title) LIKE LOWER('%%%s%%') "
+			"ORDER BY LOWER(album_artist_name), LOWER(album_name), album_pos", 
+			str );
 	free(str);
 	return it;
 }
@@ -285,7 +288,9 @@ it_track *tracks_searchf( expr *filter )
 
 	return db_iterate( (db_convert)track_convert, "SELECT * "
 			"FROM mserv_track t "
-			"WHERE %s", where );
+			"WHERE %s "
+			"ORDER BY LOWER(album_artist_name), LOWER(album_name), album_pos", 
+			where );
 }
 
 int tracks( void )

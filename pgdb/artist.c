@@ -135,7 +135,8 @@ t_artist *artist_get( int id )
 it_artist *artist_list( void )
 {
 	return db_iterate( (db_convert)artist_convert_title, "SELECT * "
-			"FROM mserv_artist");
+			"FROM mserv_artist "
+			"ORDER BY LOWER(artist_name)");
 }
 
 it_artist *artist_search( const char *substr )
@@ -148,7 +149,8 @@ it_artist *artist_search( const char *substr )
 
 	it = db_iterate( (db_convert)artist_convert_title, "SELECT * "
 			"FROM mserv_artist "
-			"WHERE LOWER(artist_name) LIKE LOWER('%%%s%%')", str );
+			"WHERE LOWER(artist_name) LIKE LOWER('%%%s%%') "
+			"ORDER BY LOWER(artist_name)", str );
 	free(str);
 	return it;
 }

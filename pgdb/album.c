@@ -136,13 +136,22 @@ t_album *album_get( int id )
 	return t;
 }
 
-it_album *album_list( void )
+it_album *albums_artistid( int artistid )
 {
 	return db_iterate( (db_convert)album_convert, "SELECT * "
-			"FROM mserv_album");
+			"FROM mserv_album "
+			"WHERE album_artist_id = %d "
+			"ORDER BY LOWER(album_name)", artistid);
 }
 
-it_album *album_search( const char *substr )
+it_album *albums_list( void )
+{
+	return db_iterate( (db_convert)album_convert, "SELECT * "
+			"FROM mserv_album "
+			"ORDER BY LOWER(album_artist_name), LOWER(album_name)");
+}
+
+it_album *albums_search( const char *substr )
 {
 	char *str;
 	it_db *it;
@@ -152,7 +161,8 @@ it_album *album_search( const char *substr )
 
 	it = db_iterate( (db_convert)album_convert, "SELECT * "
 			"FROM mserv_album "
-			"WHERE LOWER(album_name) LIKE LOWER('%%%s%%')", str );
+			"WHERE LOWER(album_name) LIKE LOWER('%%%s%%') "
+			"ORDER BY LOWER(album_artist_name), LOWER(album_name)", str );
 	free(str);
 	return it;
 }

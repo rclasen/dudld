@@ -20,8 +20,9 @@ void album_free( t_album *t );
 
 t_album *album_get( int id );
 
-it_album *album_list( void );
-it_album *album_search( const char *substr );
+it_album *albums_list( void );
+it_album *albums_artistid( int artistid );
+it_album *albums_search( const char *substr );
 
 int album_setname( t_album *t, const char *name );
 int album_setartist( t_album *t, int artistid );

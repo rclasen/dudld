@@ -115,7 +115,7 @@ it_tag *tags_list( void )
 	return db_iterate( (db_convert)tag_convert, 
 			"SELECT id, name, cmnt "
 			"FROM mserv_tag "
-			"ORDER BY name" );
+			"ORDER BY LOWER(name)" );
 }
 
 int tag_add( const char *name )
@@ -261,7 +261,7 @@ it_tag *track_tags( int tid )
 				"INNER JOIN stor_file t "
 				"ON tt.file_id = t.id "
 			"WHERE t.id = %d "
-			"ORDER BY tg.name", tid );
+			"ORDER BY LOWER(tg.name)", tid );
 }
 
 int track_tagged( int tid, int id )

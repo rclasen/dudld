@@ -207,7 +207,7 @@ int user_id( const char *name )
 it_user *users_list( void )
 {
 	return db_iterate( (db_convert)user_convert, "SELECT * "
-			"FROM mserv_user ORDER BY name" );
+			"FROM mserv_user ORDER BY LOWER(name)" );
 }
 
 int user_setright( t_user *u, t_rights right )
