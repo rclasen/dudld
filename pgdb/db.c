@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
+#include <ctype.h>
 
 #include <opt.h>
 #include <pgdb/db.h>
@@ -148,7 +149,16 @@ int pgbool( PGresult *res, int tup, int field )
 
 char *pgstring( PGresult *res, int tup, int field )
 {
-	return strdup(PQgetvalue( res, tup, field ));
+	char *c, *e;
+
+	if( NULL == (c = strdup(PQgetvalue( res, tup, field ))))
+		return NULL;
+
+	e = c + strlen(e);
+	while( --e > c && isspace(*e))
+		*e = 0;
+
+	return c;
 }
 
 
