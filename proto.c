@@ -1067,9 +1067,11 @@ CMD(cmd_filterset, r_user, p_idle, arg_opt )
 	if( line && *line )
 		e = expr_parse_str( &pos, &msg, line );
 
-	if( pos >= 0 )
+	if( pos >= 0 ){
 		RLAST( "511", "error at pos %d in filter: %s",
 					pos, msg );
+		return;
+	}
 
 	/* at least initialize with an empty filter */
 	if( random_setfilter(e)){
