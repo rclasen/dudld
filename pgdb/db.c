@@ -87,8 +87,12 @@ _it_db *db_iterate( char *query, db_convert func )
 	if( NULL == func )
 		return NULL;
 
-	if( NULL == (res = db_query( query )))
+	res = db_query( query );
+	if( res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK ){
+		syslog( LOG_ERR, "query failed: %s", PQerrorMessage(dbcon));
+		PQclear(res);
 		return NULL;
+	}
 
 	if( NULL == (it = malloc(sizeof(_it_db)))){
 		PQclear(res);
