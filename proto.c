@@ -1062,17 +1062,16 @@ CMD(cmd_filter, r_guest, p_idle, arg_none )
 
 CMD(cmd_filterset, r_user, p_idle, arg_opt )
 {
-	expr *e;
+	expr *e = NULL;
 	char *msg;
 	int pos;
 
-	if( line && *line )
-		e = expr_parse_str( &pos, &msg, line );
-
-	if( pos >= 0 ){
-		RLAST( "511", "error at pos %d in filter: %s",
+	if( line && *line ){
+		if( NULL == (e = expr_parse_str( &pos, &msg, line ))){
+			RLAST( "511", "error at pos %d in filter: %s",
 					pos, msg );
-		return;
+			return;
+		}
 	}
 
 	/* at least initialize with an empty filter */
