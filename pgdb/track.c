@@ -183,6 +183,31 @@ int track_save( t_track *t )
 	return 0;
 }
 
+int track_id( int album_id, int num )
+{
+	PGresult *res;
+	int f;
+	int id;
+
+	res = db_query( "SELECT id FROM mus_title "
+			"WHERE album_id = %d AND nr = %d", 
+			album_id, num );
+	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
+		syslog( LOG_ERR, "track_id: %s", db_errstr());
+		PQclear(res);
+		return -1;
+	}
+
+	if( PQntuples(res) <= 0  ||  0 > (f = PQfnumber(res,"id" ))){
+		PQclear(res);
+		return -1;
+	}
+
+	id = pgint(res,0,f);
+	PQclear(res);
+
+	return id;
+}
 
 t_track *track_get( int id )
 {
@@ -194,8 +219,7 @@ t_track *track_get( int id )
 
 	res = db_query( "SELECT * FROM mserv_track WHERE id = %d", id );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
-		syslog( LOG_ERR, "track_get: %s",
-				db_errstr());
+		syslog( LOG_ERR, "track_get: %s", db_errstr());
 		PQclear(res);
 		return NULL;
 	}
