@@ -6,6 +6,21 @@
 #include "parsebuf.h"
 
 typedef enum {
+	vt_num,
+	vt_string,
+	vt_list,
+} valtype;
+
+typedef struct s_value {
+	valtype type;
+	union {
+		int num;
+		char *string;
+		struct s_value **list;
+	} val;
+} value;
+
+typedef enum {
 	vo_none,
 	vo_eq,
 	vo_lt,
@@ -20,7 +35,7 @@ typedef enum {
 typedef struct {
 	char *name;
 	valop op;
-	char *val;
+	value *val;
 } valtest;
 
 typedef enum {

@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
+#include <string.h>
 
 #include "parseexpr.h"
 
@@ -16,6 +18,11 @@ typedef struct {
 /************************************************************
  * low-level token reader
  */
+
+static inline void parse_error( parse_stat *i, char *msg )
+{
+	if( ! i->msg ) i->msg = msg;
+}
 
 /* find next non-whitespace char */
 static int parse_nonspace( parse_stat *i )
@@ -35,10 +42,15 @@ static char *_parse_alloc(
 		int (*filter)( parse_stat * ))
 {
 	int c;
-	char *str = NULL;
-	int avail = 0;
+	char *str;
+	int avail = 5;
 	int used = 0;
 
+	if( NULL == (str = malloc(5))){ 
+		parse_error(i, strerror(errno));
+		return NULL;
+	}
+	*str = 0;
 	
 	while( EOF != (c = (*filter)(i) )){
 		if( used >= avail ){
@@ -46,6 +58,7 @@ static char *_parse_alloc(
 			avail += 100;
 			if( NULL == (new = realloc(str, avail +1) )){
 				free(str);
+				parse_error(i, strerror(errno));
 				return NULL;
 			}
 			str = new;
@@ -83,16 +96,29 @@ static char *parse_name( parse_stat *i )
 	return _parse_alloc( i, _filter_name );
 }
 
+static int parse_num( parse_stat *i )
+{
+	int c;
+	int num = 0;
+
+	while( isdigit( c = parse_nonspace(i))){
+		PI_DONE(i->in);
+		num *= 10;
+		num += c - '0'; 
+	}
+	PI_UNDO(i->in);
+
+	return num;
+}
 
 static int _filter_string( parse_stat *i )
 {
 	int c = PI_NEXT(i->in);
 	int e;
 
-	PI_DONE(i->in);
-	// TODO: do not swallow terminating "
 	switch(c){
 	  case '\\':
+		PI_DONE(i->in);
 
 		e = PI_NEXT(i->in);
 		switch(e){
@@ -102,6 +128,7 @@ static int _filter_string( parse_stat *i )
 			return e;
 
 		  case EOF:
+			parse_error(i, "EOF while expecting escaped char");
 			PI_DONE(i->in);
 			return c;
 
@@ -110,7 +137,11 @@ static int _filter_string( parse_stat *i )
 		return c;
 
 	  case '"':
+		PI_UNDO(i->in);
 		return EOF;
+
+	  default:
+		PI_DONE(i->in);
 
 	}
 
@@ -120,19 +151,167 @@ static int _filter_string( parse_stat *i )
 static char *parse_string( parse_stat *i )
 {
 	int c = parse_nonspace(i);
+	char *str;
 
-	if( c == '"' ){
+	if( c == EOF ){
 		PI_DONE(i->in);
-		return _parse_alloc( i, _filter_string );
+		return NULL;
 	}
 
-	// TODO: bother on missing terminating "
-
-	if( c == EOF )
-		PI_DONE(i->in);
-	else
+	if( c != '"' ){
 		PI_UNDO(i->in);
+		return NULL;
+	}
 
+	PI_DONE(i->in);
+	if( NULL == (str = _parse_alloc( i, _filter_string )))
+		return NULL;
+
+	if( '"' != (c = PI_NEXT(i->in))){
+		parse_error(i, "missing string termination" );
+		free(str);
+		return NULL;
+	}
+
+	return str;
+}
+
+/************************************************************
+ * value parsing
+ */
+
+static void value_free( value *v )
+{
+	value **p;
+
+	switch(v->type){
+	  case vt_num:
+		  break;
+
+	  case vt_string:
+		  free(v->val.string);
+		  break;
+
+	  case vt_list:
+		  if( ! v->val.list ) break;
+		  for( p = v->val.list; *p; ++p )
+			  free(*p);
+		  free(v->val.list);
+		  break;
+	}
+	free(v);
+}
+
+static int value_fmt( char *buf, size_t len, value *v )
+{
+	size_t used = 0;
+	value **p;
+
+	switch(v->type){
+	  case vt_num:
+		  used += snprintf( buf+used, len-used, "%d",v->val.num );
+		  break;
+
+	  case vt_string:
+		  used += snprintf( buf+used, len-used, "\"%s\"",
+				  v->val.string );
+		  break;
+
+	  case vt_list:
+		  for( p = v->val.list; *p; ++p ){
+			  if( p != v->val.list ){
+				  used += snprintf( buf+used, len-used, ", ");
+				  if( used > len ) return used;
+			  }
+
+			  used += value_fmt( buf+used, len-used, *p );
+			  if( used > len ) return used;
+		  }
+		  break;
+	}
+	return used;
+}
+
+/* parse either string or integer */
+static value *parse_value( parse_stat *i )
+{
+	value *v;
+	int c;
+
+	c = parse_nonspace(i);
+	PI_UNDO(i->in);
+
+	if( c == EOF ){
+		parse_error(i, "expecting a value" );
+		goto clean1;
+	}
+
+	if( NULL == (v = malloc(sizeof(value)))){
+		parse_error(i, strerror(errno));
+		goto clean1;
+	}
+
+	if( c == '"' ){
+		v->type = vt_string;
+		if( NULL == (v->val.string = parse_string(i)))
+			goto clean2;
+
+	} else if( isdigit(c) ){
+		v->type = vt_num;
+		v->val.num = parse_num(i);
+
+	} else {
+		parse_error( i, "invalid value" );
+		goto clean2;
+	}
+
+	return v;
+
+clean2:
+	free(v);
+clean1:
+	return NULL;
+}
+
+static value *parse_vallist( parse_stat *i )
+{
+	value *l;
+	int used = 0;
+	int avail = 0;
+
+	if( NULL == (l = malloc(sizeof(value)))){
+		parse_error(i, strerror(errno));
+		goto clean1;
+	}
+	l->type = vt_list;
+	l->val.list = NULL;
+
+	do {
+		if( used >= avail ){
+			value **new;
+
+			avail+=5;
+			if( NULL == (new = realloc(l->val.list, (avail+1) *
+							sizeof(value*)))){
+				parse_error(i, strerror(errno));
+				goto clean2;
+			}
+			l->val.list = new;
+		}
+
+		if( NULL == (l->val.list[used++] = parse_value(i))){
+			parse_error(i, "missing value" );
+			goto clean2;
+		}
+		l->val.list[used] = NULL;
+
+	} while( ',' == parse_nonspace(i));
+	PI_UNDO(i->in);
+
+	return l;
+clean2:
+	value_free(l);
+clean1:
 	return NULL;
 }
 
@@ -176,31 +355,39 @@ static valop parse_valop( parse_stat *i )
 
 		  return vo_lt;
 
-#if 0
 	  case 'i':
 	  case 'I':
-		  n = PI_NEXT(i);
+		  n = PI_NEXT(i->in);
 		  if( n == 'n' || n == 'N' ){
 			  PI_DONE(i->in);
 			  return vo_in;
 		  }
-#endif
+
+	  case EOF:
+		  PI_DONE(i->in);
+		  parse_error( i, "EOF instead of value operator");
+		  return vo_none;
 	}
 	PI_UNDO(i->in);
 	return vo_none;
 }
+
 
 static valtest *parse_valtest( parse_stat *i )
 {
 	valtest *vt;
 	int numeric = 0;
 
-	if( NULL == (vt = malloc(sizeof(valtest))))
+	if( NULL == (vt = malloc(sizeof(valtest)))){
+		parse_error(i, strerror(errno));
 		goto clean1;
+	}
 
 	/* get the name */
-	if( NULL == (vt->name = parse_name(i)))
+	if( NULL == (vt->name = parse_name(i))){
+		parse_error(i, "expecting a field name" );
 		goto clean2;
+	}
 
 	if( 0 == strcmp( vt->name, "year" )){
 		numeric++;
@@ -213,7 +400,7 @@ static valtest *parse_valtest( parse_stat *i )
 	} else if( 0 == strcmp( vt->name, "title" )){
 	} else if( 0 == strcmp( vt->name, "album" )){
 	} else {
-		i->msg = "unknown field";
+		parse_error( i, "unknown field" );
 		goto clean3;
 	}
 
@@ -223,9 +410,7 @@ static valtest *parse_valtest( parse_stat *i )
 	switch(vt->op){
 	  case vo_none:
 	  case vo_max:
-		i->msg = PI_EOF(i->in) ? 
-			"EOF instead of value operator" :
-			"invalid value operator";
+		parse_error( i, "invalid value operator");
 	  	goto clean3;
 
 	  case vo_lt:
@@ -233,29 +418,35 @@ static valtest *parse_valtest( parse_stat *i )
 	  case vo_gt:
 	  case vo_ge:
 		if( ! numeric ){
-			i->msg = "invalid operation for string value";
+			parse_error( i, "invalid operation for string value" );
 			goto clean3;
 		}
+		vt->val = parse_value(i);
+		break;
 
 	  case vo_eq:
+		vt->val = parse_value(i);
+		break;
+
 	  case vo_in:
+		vt->val = parse_vallist(i);
+		break;
 	}
 
-	/* get value(s) */
-#if 0
-	if( vt->op == vo_in ){
-		vt->val = numeric ? parse_num_list(i) : parse_string_list;
-	} else {
-		vt->val = numeric ? parse_num(i) : parse_string(i);
-	}
-#endif
-	vt->val = parse_string(i);
 	if( vt->val == NULL ){
+		parse_error(i, "no value specified" );
 		goto clean3;
+	}
+
+	if( numeric && vt->val->type != vt_num ){
+		parse_error(i, "need a numeric value" );
+		goto clean4;
 	}
 
 	return vt;
 
+clean4:
+	value_free(vt->val);
 clean3:
 	free(vt->name);
 clean2:
@@ -267,7 +458,7 @@ clean1:
 static void valtest_free( valtest *vt )
 {
 	free(vt->name);
-	free(vt->val);
+	value_free(vt->val);
 	free(vt);
 }
 
@@ -283,8 +474,13 @@ static char *valop_name[vo_max] = {
 
 static int valtest_fmt( char *buf, size_t len, valtest *vt )
 {
-	return snprintf( buf, len, "%s %s \"%s\"", 
-			vt->name, valop_name[vt->op], vt->val );
+	size_t used = 0;
+	
+	used += snprintf( buf+used, len-used, "%s %s ", 
+			vt->name, valop_name[vt->op] );
+	if( used > len ) return used;
+	used += value_fmt( buf+used, len-used, vt->val );
+	return used;
 }
 	
 
@@ -300,8 +496,10 @@ static expr *parse_expr_val( parse_stat *i )
 {
 	expr *e;
 
-	if( NULL == (e = malloc(sizeof(expr))))
+	if( NULL == (e = malloc(sizeof(expr)))){
+		parse_error(i,strerror(errno));
 		goto clean1;
+	}
 	e->op = op_self;
 
 	if( NULL == (e->data.val = parse_valtest(i)))
@@ -319,13 +517,16 @@ static expr *parse_expr_not( parse_stat *i)
 {
 	expr *e;
 
-	if( NULL == (e = malloc(sizeof(expr))))
+	if( NULL == (e = malloc(sizeof(expr)))){
+		parse_error(i,strerror(errno));
 		goto clean1;
+	}
 	e->op = op_not;
 
-	if( NULL == (*e->data.expr = parse_one_expr(i)))
+	if( NULL == (*e->data.expr = parse_one_expr(i))){
+		parse_error(i, "expecting an expression" );
 		goto clean2;
-
+	}
 	return e;
 
 clean2:
@@ -344,10 +545,13 @@ static expr *parse_one_expr( parse_stat *i )
 
 		DTOKEN( "( - open brace" );
 		PI_DONE(i->in);
-		if( NULL == (e = parse_expr(i)))
+		if( NULL == (e = parse_expr(i))){
+			parse_error(i, "expecting an expression" );
 			return NULL;
+		}
 
 		if( ')' != parse_nonspace(i) ){
+			parse_error(i, "missing close brace" );
 			expr_free(e);
 			return NULL;
 		}
@@ -357,7 +561,7 @@ static expr *parse_one_expr( parse_stat *i )
 		return e;
 
 	} else if( c == ')' ){
-		i->msg = "unexpected close brace";
+		parse_error( i, "unexpected close brace" );
 		PI_DONE(i->in);
 		return NULL;
 
@@ -405,7 +609,7 @@ expr *parse_expr( parse_stat *i )
 
 	if( op_none == (op = parse_operator(i))) {
 		if( ! PI_EOF(i->in)){
-			i->msg = "invalid operator";
+			parse_error( i, "invalid operator" );
 			goto clean2;
 		}
 		return a;
@@ -414,12 +618,14 @@ expr *parse_expr( parse_stat *i )
 	DTOKEN( "&| combination" );
 
 	if( NULL == (b = parse_one_expr(i))) {
-		i->msg = "expecting another expression for &|";
+		parse_error( i, "expecting another expression for &|" );
 		goto clean2;
 	}
 
-	if( NULL == (e = malloc(sizeof(expr))))
+	if( NULL == (e = malloc(sizeof(expr)))){
+		parse_error(i,strerror(errno));
 		goto clean3;
+	}
 
 	e->op = op;
 	e->data.expr[0] = a;
