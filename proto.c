@@ -960,6 +960,26 @@ CMD(cmd_tracksearch, r_guest, p_idle, arg_need )
 	it_track_done(it);
 }
 
+CMD(cmd_tracksearchf, r_user, p_idle, arg_need )
+{
+	expr *e = NULL;
+	char *msg;
+	int pos;
+	it_track *it;
+
+	if( NULL == (e = expr_parse_str( &pos, &msg, line ))){
+		RLAST( "511", "error at pos %d in filter: %s", pos, msg );
+		return;
+	}
+
+	it = tracks_searchf( e );
+	dump_tracks( client, "211", it );
+	it_track_done(it);
+
+	expr_free(e);
+}
+
+
 CMD(cmd_tracksalbum, r_guest, p_idle, arg_need )
 {
 	char *end;
@@ -1915,7 +1935,8 @@ static void cmd( t_client *client, char *line )
  */
 static void proto_newclient( t_client *client )
 {
-	RLAST( "220", "hello" );
+	// TODO: make greeting versioned
+	RLAST( "220", "dudld" );
 	syslog( LOG_DEBUG, "con #%d: new connection from %s", client->id,
 			inet_ntoa(client->sin.sin_addr ));
 }
