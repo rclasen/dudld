@@ -313,6 +313,9 @@ static t_playerror startplay( void )
  */
 t_track *player_track( void )
 {
+	if( ! curtrack )
+		return NULL;
+
 	track_use(curtrack);
 	return curtrack;
 }
