@@ -143,6 +143,7 @@ static t_playstatus update_status( t_playstatus *wantstat )
 	if( failed ){
 		curstat = pl_stop;
 		*wantstat = pl_stop;
+		nextstart = 0;
 	}
 
 	if( curstat == pl_stop ){
@@ -393,6 +394,7 @@ t_playerror player_pause( void )
 	t_playstatus wantstat = pl_pause;
 	int i;
 
+	nextstart = 0;
 	for( i = 0; pl_play == update_status(&wantstat) && i < 5; ++i ){
 		kill( -curpid, SIGSTOP );
 		
@@ -471,6 +473,7 @@ t_playerror player_stop( void )
 {
 	t_playstatus wantstatus = pl_stop;
 
+	nextstart = 0;
 	if( curstat == pl_stop )
 		return PE_NOTHING;
 
@@ -486,6 +489,9 @@ void player_check( void )
 
 	/* we might have detected, that the player terminated or got
 	 * paused from somebody else */
+
+	if( wantstat != pl_play )
+		nextstart = 0;
 
 	/* is it time to start the next track? */
 	now = time(NULL);
