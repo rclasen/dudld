@@ -7,6 +7,7 @@
 #define CLIENT_BUFLEN 10240
 
 typedef enum {
+	p_any, /* as allowed level for commands */
 	p_open,
 	p_user,
 	p_idle,
