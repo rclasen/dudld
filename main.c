@@ -114,7 +114,7 @@ int main( int argc, char **argv )
 	(void) argv;
 	// TODO: getopt
 
-	openlog( "xmserv", LOG_PID, LOG_DAEMON );
+	openlog( "dudld", LOG_PID, LOG_DAEMON );
 	// TODO: setlogmask( LOG_UPTO(LOG_INFO) );
 
 	// TODO: use sigaction

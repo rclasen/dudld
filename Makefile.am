@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS=foreign
 CFLAGS=-g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
 
 SUBDIRS=commondb @DBDIR@
-DIST_SUBDIRS=pgdb
+DIST_SUBDIRS=$(SUBDIRS) pgdb
 
 sbin_PROGRAMS=dudld
 
@@ -20,7 +20,6 @@ dudld_SOURCES= client.c \
 	opt.h \
 	player.h \
 	proto.h \
-	random.h \
 	sleep.h
 
 proto.o: cmd.list
