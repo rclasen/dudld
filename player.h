@@ -25,6 +25,7 @@ extern t_player_func_update player_func_newtrack;
 extern t_player_func_update player_func_pause;
 extern t_player_func_update player_func_resume;
 extern t_player_func_update player_func_stop;
+extern t_player_func_update player_func_random;
 
 t_playstatus player_status( void );
 t_track *player_track( void );

@@ -34,6 +34,8 @@ t_player_func_update player_func_newtrack = NULL;
 /* used by update_status: */
 t_player_func_update player_func_pause = NULL;
 t_player_func_update player_func_stop = NULL;
+/* used by player_random */
+t_player_func_update player_func_random = NULL;
 
 
 /* 
@@ -346,7 +348,10 @@ int player_random( void )
 
 t_playerror player_setrandom( int r )
 {
-	do_random = r;
+	do_random = r ? 1 : 0;
+	if( player_func_random )
+		(*player_func_random)();
+
 	return PE_OK;
 }
 
