@@ -13,6 +13,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,14 +44,18 @@ int clients_init( int port )
 	if( 0 > (lsocket = socket( AF_INET, SOCK_STREAM, prot->p_proto )))
 		return -1;
 
+	/* re-use a previos socket */
 	reuse = 1; 
 	if( 0 > setsockopt( lsocket, SOL_SOCKET, SO_REUSEADDR, 
 			(void *) &reuse, sizeof(reuse)) ){
 		return -1;
 	}
 
-	// TODO: fcntl F_SETFD
-	
+	/* close socket on exec() */
+	if( 0> fcntl( lsocket, F_SETFD, 1 ))
+		return -1;
+
+	/* and bind to wanted port */
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = INADDR_ANY;
@@ -83,7 +88,9 @@ t_client *client_accept( fd_set *read )
 		return NULL;
 	}
 
-	// TODO: fcntl F_SETFD
+	/* close socket on exec */
+	/* TODO: warn about F_SETFD failures */
+	fcntl( c->sock, F_SETFD, 1 );
 
 	c->id = ++maxid;
 	c->close = 0;
