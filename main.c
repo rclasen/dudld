@@ -1,6 +1,10 @@
 
-#include <stdio.h>
+#include <sys/types.h>
+#include <sys/time.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <syslog.h>
 #include <signal.h>
 #include <time.h>
@@ -110,6 +114,7 @@ int main( int argc, char **argv )
 
 	// TODO: use sigaction
 	signal( SIGCHLD, sig_child );
+	signal( SIGPIPE, SIG_IGN );
 
 	if( clients_init( 4445 ) ){
 		perror( "clients_init()" );
