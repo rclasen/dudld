@@ -128,8 +128,14 @@ int main( int argc, char **argv )
 		{ "port", required_argument, NULL, 'p' },
 	};
 
-	progname = argv[0];
+	progname = strrchr( argv[0], '/' );
+	if( NULL != progname ){
+		progname++;
+	} else {
+		progname = argv[0];
+	}
 	pid = getpid();
+
 	while( -1 != ( c = getopt_long( argc, argv, "hfdp:",
 					lopts, NULL ))){
 
