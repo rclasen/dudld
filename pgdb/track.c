@@ -1,4 +1,3 @@
-#define _GNU_SOURCE 1
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -238,7 +237,7 @@ int track_save( t_track *t )
 	if( len > SBUFLEN || len < 0 )
 		return 1;
 
-	res = db_query( buffer );
+	res = db_query( "%s", buffer );
 
 	if( ! res || PGRES_COMMAND_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "track_save: %s", db_errstr());
@@ -252,17 +251,10 @@ int track_save( t_track *t )
 
 t_track *track_get( int id )
 {
-	char *query = NULL;
 	PGresult *res;
 	t_track *t;
 
-	asprintf( &query, TRACK_QUERY "AND t.id = %d", id );
-	if( NULL == query )
-		return NULL;
-
-	res = db_query( query );
-	free(query);
-
+	res = db_query( TRACK_QUERY "AND t.id = %d", id );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "track_get: %s",
 				db_errstr());
@@ -278,55 +270,29 @@ t_track *track_get( int id )
 
 it_track *tracks_albumid( int albumid )
 {
-	char *query = NULL;
-	it_db *it;
-
-	asprintf( &query, TRACK_QUERY "AND album_id = %d "
-			"ORDER BY nr", albumid );
-	if( query == NULL )
-		return NULL;
-
-	it = db_iterate( query, (db_convert)track_convert );
-	free(query);
-
-	return it;
+	return db_iterate( (db_convert)track_convert, TRACK_QUERY 
+			"AND album_id = %d ORDER BY nr", albumid );
 }
 
 
 it_track *tracks_artistid( int artistid )
 {
-	char *query = NULL;
-	it_db *it;
-
-	asprintf( &query, TRACK_QUERY "AND t.artist_id = %d", artistid );
-	if( query == NULL )
-		return NULL;
-
-	it = db_iterate( query, (db_convert)track_convert );
-	free(query);
-
-	return it;
+	return db_iterate( (db_convert)track_convert, 
+			TRACK_QUERY "AND t.artist_id = %d", artistid );
 }
 
 
 it_track *tracks_search( const char *substr )
 {
 	char *str;
-	char *query = NULL;
 	it_db *it;
 
 	if( NULL == (str = db_escape( substr )))
 		return NULL;
 
-	asprintf( &query, TRACK_QUERY "AND "
-			"LOWER(t.title) LIKE LOWER('%%%s%%')", str );
+	it = db_iterate( (db_convert)track_convert, TRACK_QUERY 
+			"AND LOWER(t.title) LIKE LOWER('%%%s%%')", str );
 	free(str);
-	if( NULL == query )
-		return NULL;
-
-	it = db_iterate( query, (db_convert)track_convert );
-	free(query);
-
 	return it;
 }
 
@@ -352,7 +318,6 @@ int tracks( void )
 // TODO: set filter asynchronously???
 int random_setfilter( const char *filt )
 {
-	char *query = NULL;
 	PGresult *res;
 	char *n;
 
@@ -377,17 +342,12 @@ int random_setfilter( const char *filt )
 	filter = n;
 
 	/* fill cache - if possible */
-	asprintf( &query, "INSERT INTO " CACHE_TAB " "
+	res = db_query( "INSERT INTO " CACHE_TAB " "
 			TRACK_QCACHE "%s%s%s",
 			filt && *filt ? "AND (" : "",
 			filt && *filt ? filt : "",
 			filt && *filt ? ")" : ""
 			);
-	if( NULL == query )
-		return 1;
-
-	res = db_query( query );
-	free( query );
 	if( ! res || PGRES_COMMAND_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
 		PQclear(res);
@@ -429,42 +389,21 @@ const char *random_filter( void )
 	return filter;
 }
 
-static char *random_query( int num )
-{
-	char *query = NULL;
-
-	asprintf( &query, CACHE_QUERY "ORDER BY lastplay LIMIT %d", num );
-	return query;
-}
-
 it_track *random_top( int num )
 {
-	it_db *it;
-	char *query;
-
-	if( NULL == (query = random_query(num)) )
-		return NULL;
-
-	it = db_iterate( query, (db_convert)track_convert );
-	free(query);
-
-	return it;
+	return db_iterate( (db_convert)track_convert,
+			CACHE_QUERY "ORDER BY lastplay LIMIT %d", num );
 }
 
 t_track *random_fetch( void )
 {
-	char *query;
 	PGresult *res;
 	int num;
 	t_track *t;
 
 	/* get first tracks matching filter */
-	if( NULL == (query = random_query(RANDOM_LIMIT)) )
-		return NULL;
-
-	res = db_query( query );
-	free( query );
-
+	res = db_query( CACHE_QUERY "ORDER BY lastplay LIMIT %d", 
+			RANDOM_LIMIT );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "random_fetch: %s", db_errstr());
 		PQclear(res);

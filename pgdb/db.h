@@ -15,8 +15,8 @@ typedef struct {
 
 const char *db_errstr( void );
 
-PGresult *db_query( char *query );
-_it_db *db_iterate( char *query, db_convert func );
+PGresult *db_query( char *query, ... );
+_it_db *db_iterate( db_convert func, char *query, ... );
 
 char *db_escape( const char *in );
 

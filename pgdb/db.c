@@ -3,12 +3,14 @@
 #include <string.h>
 #include <syslog.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #include <opt.h>
 #include <pgdb/db.h>
 
 static PGconn *dbcon = NULL;
 
+#define BUFLENQUERY 2048
 
 static int addopt( char *buffer, const char *opt, const char *val )
 {
@@ -55,13 +57,23 @@ const char *db_errstr( void )
 /*
  * wrapper to reconnect to database, when connection was lost
  */
-PGresult *db_query( char *query )
+
+static PGresult *db_vquery( char *query, va_list ap )
 {
+	char buf[BUFLENQUERY];
+	int n;
 	PGresult *res = NULL;
+
+	n = vsnprintf( buf, BUFLENQUERY, query, ap );
+	if( n < 0 || n > BUFLENQUERY ){
+		syslog( LOG_ERR, "query buffer too small, "
+				"increase BUFLENQUERY" );
+		return NULL;
+	}
 
 	/* we have a connecteio? try the query */
 	if( dbcon ){
-		res = PQexec( dbcon, query );
+		res = PQexec( dbcon, buf );
 		if( res != NULL && PQresultStatus(res) == PGRES_FATAL_ERROR){
 			PQclear( res );
 			res = NULL;
@@ -76,18 +88,34 @@ PGresult *db_query( char *query )
 	if( db_conn() )
 		return NULL;
 
-	return PQexec( dbcon, query );
+	return PQexec( dbcon, buf );
 }
 
-_it_db *db_iterate( char *query, db_convert func )
+PGresult *db_query( char *query, ... )
 {
+	PGresult *res;
+	va_list ap;
+
+	va_start(ap,query);
+	res = db_vquery( query, ap );
+	va_end( ap );
+
+	return res;
+}
+
+_it_db *db_iterate( db_convert func, char *query, ... )
+{
+	va_list ap;
 	PGresult *res = NULL;
 	_it_db *it;
 
 	if( NULL == func )
 		return NULL;
 
-	res = db_query( query );
+	va_start(ap,query);
+	res = db_vquery( query, ap );
+	va_end( ap );
+
 	if( res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK ){
 		syslog( LOG_ERR, "query failed: %s", PQerrorMessage(dbcon));
 		PQclear(res);

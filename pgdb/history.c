@@ -1,5 +1,4 @@
 
-#define _GNU_SOURCE 1
 #include <stdlib.h>
 #include <syslog.h>
 
@@ -9,17 +8,10 @@
 
 int history_add( t_track *track, int uid )
 {
-	char *q;
 	PGresult *res;
 
-	asprintf( &q, "INSERT INTO mserv_hist(title_id, user_id) "
+	res = db_query( "INSERT INTO mserv_hist(title_id, user_id) "
 			"VALUES( %d, %d )", track->id, uid );
-	if( q == NULL )
-		return 1;
-
-	res = db_query( q );
-	free(q);
-
 	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "history_add: %s", db_errstr() );
 		PQclear(res);
@@ -112,33 +104,15 @@ t_track *history_track( t_history *h)
 
 it_history *history_list( int num )
 {
-	char *query = NULL;
-	it_db *it;
-
-	asprintf( &query, HIST_QUERY HIST_ORDER "LIMIT %d", num );
-	if( query == NULL )
-		return NULL;
-
-	it = db_iterate( query, (db_convert)history_convert );
-	free(query);
-
-	return it;
+	return db_iterate( (db_convert)history_convert,
+			HIST_QUERY HIST_ORDER "LIMIT %d", num );
 }
 
 it_history *history_tracklist( int trackid, int num )
 {
-	char *query = NULL;
-	it_db *it;
-
-	asprintf( &query, HIST_QUERY "WHERE title_id = %d "
+	return db_iterate( (db_convert)history_convert,
+			HIST_QUERY "WHERE title_id = %d "
 			HIST_ORDER "LIMIT %d", 
 			trackid, num );
-	if( query == NULL )
-		return NULL;
-
-	it = db_iterate( query, (db_convert)history_convert );
-	free(query);
-
-	return it;
 }
 
