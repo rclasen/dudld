@@ -8,7 +8,7 @@ DIST_SUBDIRS=$(SUBDIRS) pgdb
 sbin_PROGRAMS=dudld
 
 dudld_LDADD= commondb/libcommon.a @DBDIR@/libdudldb.a
-dudld_LDFLAGS=-lpq
+dudld_LDFLAGS=-lpq -lncc
 dudld_SOURCES= client.c \
 	main.c \
 	opt.c \

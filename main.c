@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 
 #include <sys/types.h>
 #include <sys/time.h>
@@ -9,6 +10,9 @@
 #include <signal.h>
 #include <time.h>
 #include <errno.h>
+#include <getopt.h>
+
+#include <libncc/pidfile.h>
 
 #include "client.h"
 #include "proto.h"
@@ -17,6 +21,7 @@
 #include "sleep.h"
 #include "opt.h"
 
+char *progname = NULL;
 int check_child = 0;
 
 static void sig_child( int sig )
@@ -101,30 +106,91 @@ static int loop( void )
 	}
 }
 
-// TODO: sighandler
 // TODO: config file
-// TODO: daemoniue
-// TODO: pidfile
+// TODO: sighup handler
+
+static void usage( void );
 
 int main( int argc, char **argv )
 {
+	pid_t pid;
+	char *pidfile = "/var/run/dudld/dudld.pid";
+	int foreground = 0;
+	int debug = 0;
+	int port = 4445;
+	int c;
+	int needhelp = 0;
 	int rv;
+	struct option lopts[] = {
+		{ "help", no_argument, NULL, 'h' },
+		{ "foreground", no_argument, NULL, 'f' },
+		{ "debug", no_argument, NULL, 'd' },
+		{ "port", required_argument, NULL, 'p' },
+	};
 
-	(void) argc;
-	(void) argv;
-	// TODO: getopt
+	progname = argv[0];
+	pid = getpid();
+	while( -1 != ( c = getopt_long( argc, argv, "hfdp:",
+					lopts, NULL ))){
 
-	openlog( "dudld", LOG_PID, LOG_DAEMON );
-	// TODO: setlogmask( LOG_UPTO(LOG_INFO) );
+		switch(c){
+		  case 'h':
+			  usage();
+			  exit(0);
+			  break;
+
+		  case 'f':
+			  foreground++;
+			  break;
+
+		  case 'd':
+			  debug++;
+			  break;
+
+		  case 'p':
+			  port = atoi(optarg);
+			  break;
+
+		  default:
+			  needhelp++;
+			  break;
+		}
+	}
+	if( needhelp ){
+		fprintf( stderr, "use --help for usage information\n" );
+		exit( 1 );
+	}
+
+	openlog( progname, LOG_PID | LOG_PERROR, LOG_DAEMON );
+	if( ! debug )
+		setlogmask( LOG_UPTO(LOG_INFO) );
+
+
+	if( pidfile_flock(pidfile)){
+		syslog( LOG_ERR, "cannot create pidfile: %m");
+		exit(1);
+	}
 
 	// TODO: use sigaction
 	signal( SIGCHLD, sig_child );
 	signal( SIGPIPE, SIG_IGN );
 
-	if( clients_init( 4445 ) ){
+	if( clients_init( port ) ){
 		perror( "clients_init()" );
 		return 1;
 	}
+
+	if( !foreground && daemon(0,0) == -1 ){
+		syslog( LOG_ERR, "cannot daemonize: %m" );
+		exit( 1 );
+	}
+	/* our pid changed - update pidfile */
+	if( pidfile_ftake(pidfile, pid) ){
+		syslog( LOG_ERR, "cannot update pidfile: %m" );
+		exit(1);
+	}
+
+	syslog(LOG_INFO, "initializing" );
 
 	//player_init();
 	player_setgap( opt_gap );
@@ -148,11 +214,22 @@ int main( int argc, char **argv )
 	}
 
 
-	syslog(LOG_INFO, "started" );
+	syslog(LOG_INFO, "waiting" );
 	rv = loop();
 
 	syslog(LOG_INFO, "terminating" );
 	clients_done();
+	pidfile_funlock(pidfile);
 	return rv;
 }
 
+static void usage( void )
+{
+	printf( "usage: %s [opt]\n", progname );
+	printf(
+		" -h --help          show this message\n"
+		" -f --foreground    do not detach\n"
+		" -d --debug         be more verbose\n"
+		" -p --port <port>   set port to listen on\n"
+	      );
+}
