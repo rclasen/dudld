@@ -132,6 +132,7 @@ int main( int argc, char **argv )
 		{ "foreground", no_argument, NULL, 'f' },
 		{ "debug", no_argument, NULL, 'd' },
 		{ "port", required_argument, NULL, 'p' },
+		{ "pidfile", required_argument, NULL, 'i' },
 	};
 
 	progname = strrchr( argv[0], '/' );
@@ -142,7 +143,7 @@ int main( int argc, char **argv )
 	}
 	pid = getpid();
 
-	while( -1 != ( c = getopt_long( argc, argv, "hfdp:",
+	while( -1 != ( c = getopt_long( argc, argv, "hfdp:i:",
 					lopts, NULL ))){
 
 		switch(c){
@@ -161,6 +162,10 @@ int main( int argc, char **argv )
 
 		  case 'p':
 			  port = atoi(optarg);
+			  break;
+
+		  case 'i':
+			  pidfile = optarg;
 			  break;
 
 		  default:
