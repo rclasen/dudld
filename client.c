@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
+#include <syslog.h>
 
 #include "client.h"
 
@@ -89,15 +90,15 @@ t_client *client_accept( fd_set *read )
 	}
 
 	/* close socket on exec */
-	/* TODO: warn about F_SETFD failures */
-	fcntl( c->sock, F_SETFD, 1 );
+	if( 0 > fcntl( c->sock, F_SETFD, 1 ))
+		syslog( LOG_NOTICE, "setting close-on-exec flag failed: %m");
 
 	c->id = ++maxid;
 	c->close = 0;
 	c->uid = 0;
 	c->ilen = 0;
-	c->right = r_any;
-	c->pstate = p_open;
+	c->right = r_user; // TODO: right = r_any;
+	c->pstate = p_idle; // TODO: pstate = p_open;
 	c->pdata = NULL;
 
 	c->next = clients;
@@ -232,6 +233,8 @@ char *client_getline( t_client *c )
 	if( NULL == (n = strpbrk( s, "\n\r" ))){
 		// TODO: handle too long lines more gracefully
 		if( c->ilen >= CLIENT_BUFLEN ){
+			syslog( LOG_WARNING, 
+					"line too long, disconnecting client");
 			client_send(c, "ERROR: line too long\n");
 			client_close(c);
 		}
