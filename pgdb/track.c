@@ -7,42 +7,81 @@
 #include <pgdb/db.h>
 #include <pgdb/track.h>
 
-#define TRACK_SELECT	" "\
-	"t.id, "\
-	"t.album_id, " \
-	"t.nr, "\
-	"date_part('epoch',f.duration) AS dur, "\
-	"date_part('epoch',t.lastplay) AS lplay, "\
-	"t.title, "\
-	"t.artist_id, "\
-	"u.collection, "\
-	"u.colnum, "\
-	"f.dir, "\
-	"f.fname "
-#if 0
-#define TRACK_FROM	" "\
-        "mus_title t "\
-                "INNER JOIN ( "\
-                        "stor_file f "\
-                                "INNER JOIN stor_unit u "\
-                                "ON f.unitid = u.id "\
-                ") "\
-                "ON t.id = f.titleid "
-#else
-#define TRACK_FROM	" "\
-        "( "\
-                "mus_title t  "\
-                        "INNER JOIN stor_file f  "\
-                        "ON t.id = f.titleid "\
-                ")  "\
-                "INNER JOIN stor_unit u  "\
-                "ON f.unitid = u.id "
-#endif
 
-/* this speeds up queries enormously: */
-#define TRACK_WHERE	" "\
-	"f.titleid NOTNULL "\
-	"AND NOT f.broken "
+
+
+t_random_func random_func_filter = NULL;
+
+
+
+
+// TODO: use something real for filter
+static char *filter = NULL;
+
+
+#define RANDOM_LIMIT 1000
+
+#define TRACK_TAB "mus_title"
+#define CACHE_TAB "mserv_cache"
+
+#define TRACK_COMMON	" "\
+	"FROM "\
+		"( "\
+			"mus_title t  "\
+				"INNER JOIN stor_file f  "\
+				"ON t.id = f.titleid "\
+			")  "\
+			"INNER JOIN stor_unit u  "\
+			"ON f.unitid = u.id " \
+	"WHERE "\
+		"f.titleid NOTNULL "\
+		"AND NOT f.broken "
+
+#define TRACK_QUERY \
+	"SELECT "\
+		"t.id,"\
+		"t.album_id,"\
+		"t.nr,"\
+		"date_part('epoch',f.duration) AS dur,"\
+		"date_part('epoch',t.lastplay) AS lplay,"\
+		"t.title,"\
+		"t.artist_id,"\
+		"stor_filename(u.collection,u.colnum,f.dir,f.fname) "\
+			"AS filename " \
+	TRACK_COMMON 
+
+#define TRACK_QCACHE \
+	"SELECT "\
+		"t.id,"\
+		"f.duration,"\
+		"stor_filename(u.collection,u.colnum,f.dir,f.fname) "\
+			"AS filename "\
+	TRACK_COMMON
+
+#define CACHE_CREATE "CREATE TEMP TABLE " CACHE_TAB " ("\
+	"id INTEGER,"\
+	"duration TIME,"\
+	"filename VARCHAR"\
+	")"
+
+#define CACHE_QUERY \
+	"SELECT "\
+		"t.id,"\
+		"t.album_id," \
+		"t.nr,"\
+		"date_part('epoch',c.duration) AS dur,"\
+		"date_part('epoch',t.lastplay) AS lplay,"\
+		"t.title,"\
+		"t.artist_id,"\
+		"c.filename "\
+	"FROM "\
+		"mus_title t "\
+			"INNER JOIN mserv_cache c "\
+			"USING(id) "
+
+
+
+
 
 #define GETFIELD(var,field,gofail) \
 	if( -1 == (var = PQfnumber(res, field ))){\
@@ -50,18 +89,8 @@
 		goto gofail; \
 	}
 
-
-// TODO: use something real for filter
-// TODO: use temp table for caching filter results
-static char *filter = NULL;
-
-t_random_func random_func_filter = NULL;
-
 static t_track *track_convert( PGresult *res, int tup )
 {
-	const char *dir, *fname;
-	char *col;
-	int colnum;
 	t_track *t;
 	int f;
 
@@ -99,34 +128,18 @@ static t_track *track_convert( PGresult *res, int tup )
 	if( -1 != (f = PQfnumber( res, "dur" )))
 		t->duration = pgint(res, tup, f);
 
-	GETFIELD(f,"colnum", clean1 );
-	colnum = pgint(res, tup, f );
+	GETFIELD(f,"filename", clean1 );
+	if( NULL == (t->fname = pgstring(res, tup, f)))
+		goto clean1;
 
-	GETFIELD(f,"dir", clean1 );
-	dir = PQgetvalue(res, tup, f );
-
-	GETFIELD(f,"fname", clean1 );
-	fname = PQgetvalue(res, tup, f );
-
-	GETFIELD(f,"collection", clean1 );
-	col = pgstring(res, tup, f );
-
-	t->fname = NULL;
-	asprintf( &t->fname, "%s%04d/%s/%s", col, colnum, dir, fname );
-	if( NULL ==  t->fname )
-		goto clean2;
-
-	GETFIELD(f,"title", clean3 );
+	GETFIELD(f,"title", clean2 );
 	if( NULL == (t->title = pgstring(res, tup, f)))
-		goto clean3;
+		goto clean2;
 
 	return t;
 
-clean3:
-	free(t->fname);
-
 clean2:
-	free(col);
+	free(t->fname);
 
 clean1:
 	free(t);
@@ -203,7 +216,7 @@ int track_save( t_track *t )
 	if( ! t->modified.any )
 		return 0;
 
-	len = snprintf( buffer, SBUFLEN, "UPDATE mus_title SET ");
+	len = snprintf( buffer, SBUFLEN, "UPDATE " TRACK_TAB " SET ");
 	if( len > SBUFLEN || len < 0 )
 		return 1;
 
@@ -259,10 +272,7 @@ t_track *track_get( int id )
 	PGresult *res;
 	t_track *t;
 
-	asprintf( &query, "SELECT" TRACK_SELECT 
-			"FROM" TRACK_FROM 
-			"WHERE " TRACK_WHERE 
-				" AND t.id = %d", id );
+	asprintf( &query, TRACK_QUERY "AND t.id = %d", id );
 	if( NULL == query )
 		return NULL;
 
@@ -287,11 +297,8 @@ it_track *tracks_albumid( int albumid )
 	char *query = NULL;
 	it_db *it;
 
-	asprintf( &query, "SELECT" TRACK_SELECT 
-			"FROM" TRACK_FROM 
-			"WHERE " TRACK_WHERE 
-				" AND t.album_id = %d "
-			"ORDER BY t.nr", albumid );
+	asprintf( &query, TRACK_QUERY "AND album_id = %d "
+			"ORDER BY nr", albumid );
 	if( query == NULL )
 		return NULL;
 
@@ -307,10 +314,7 @@ it_track *tracks_artistid( int artistid )
 	char *query = NULL;
 	it_db *it;
 
-	asprintf( &query, "SELECT" TRACK_SELECT 
-			"FROM" TRACK_FROM 
-			"WHERE " TRACK_WHERE 
-				" AND t.artist_id = %d", artistid );
+	asprintf( &query, TRACK_QUERY "AND t.artist_id = %d", artistid );
 	if( query == NULL )
 		return NULL;
 
@@ -330,9 +334,7 @@ it_track *tracks_search( const char *substr )
 	if( NULL == (str = db_escape( substr )))
 		return NULL;
 
-	asprintf( &query, "SELECT" TRACK_SELECT 
-			"FROM" TRACK_FROM 
-			"WHERE " TRACK_WHERE " AND "
+	asprintf( &query, TRACK_QUERY "AND "
 			"LOWER(t.title) LIKE LOWER('%%%s%%')", str );
 	free(str);
 	if( NULL == query )
@@ -344,19 +346,106 @@ it_track *tracks_search( const char *substr )
 	return it;
 }
 
-static char *random_query( int num, const char *filt )
+int tracks( void )
+{
+	PGresult *res;
+	int num;
+
+	res = db_query( "SELECT count(*) FROM " TRACK_TAB );
+	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
+		PQclear(res);
+		return -1;
+	}
+
+	num = pgint(res, 0, 0 );
+	PQclear(res);
+
+	return num;
+}
+
+// TODO: dangerous to use the filter unchecked as query
+// TODO: set filter asynchronously???
+int random_setfilter( const char *filt )
+{
+	char *query = NULL;
+	PGresult *res;
+	char *n;
+
+	/* flush cache table */
+	res = db_query( "DROP TABLE " CACHE_TAB );
+	PQclear(res);
+
+	/* recreate empty cache table - now the filter may fail
+	 * and further queries are still vaild */
+	res = db_query( CACHE_CREATE );
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK){
+		PQclear(res);
+		return 1;
+	}
+	PQclear(res);
+
+	/* remember filter string */
+	if( NULL == (n=strdup(filt)))
+		return 1;
+	free( filter );
+	filter = n;
+
+	/* fill cache - if possible */
+	asprintf( &query, "INSERT INTO " CACHE_TAB " "
+			TRACK_QCACHE "%s%s%s",
+			filt && *filt ? "AND (" : "",
+			filt && *filt ? filt : "",
+			filt && *filt ? ")" : ""
+			);
+	if( NULL == query )
+		return 1;
+
+	res = db_query( query );
+	free( query );
+	if( ! res || PGRES_COMMAND_OK !=  PQresultStatus(res) ){
+		PQclear(res);
+		return 1;
+	}
+	PQclear(res);
+
+	if( random_func_filter )
+		(*random_func_filter)();
+
+	/* try to create index for cache table */
+	res = db_query( "CREATE INDEX mserv_cache_idx "
+			"ON mserv_cache(id)" );
+	PQclear(res);
+
+	return 0;
+}
+
+int random_filterstat( void )
+{
+	PGresult *res;
+	int num;
+
+	res = db_query( "SELECT count(*) FROM " CACHE_TAB );
+	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
+		PQclear(res);
+		return -1;
+	}
+
+	num = pgint(res, 0, 0 );
+	PQclear(res);
+
+	return num;
+}
+
+const char *random_filter( void )
+{
+	return filter;
+}
+
+static char *random_query( int num )
 {
 	char *query = NULL;
 
-	asprintf( &query, "SELECT" TRACK_SELECT 
-			"FROM" TRACK_FROM 
-			"WHERE " TRACK_WHERE 
-			" %s %s "
-			"ORDER BY t.lastplay "
-			"LIMIT %d", 
-			filt ? "AND" : "", 
-			filt ? filt : "", 
-			num );
+	asprintf( &query, CACHE_QUERY "ORDER BY lastplay LIMIT %d", num );
 	return query;
 }
 
@@ -365,7 +454,7 @@ it_track *random_top( int num )
 	it_db *it;
 	char *query;
 
-	if( NULL == (query = random_query(num, filter)) )
+	if( NULL == (query = random_query(num)) )
 		return NULL;
 
 	it = db_iterate( query, (db_convert)track_convert );
@@ -374,51 +463,6 @@ it_track *random_top( int num )
 	return it;
 }
 
-
-// TODO: dangerous to use the filter unchecked as query
-int random_setfilter( const char *filt )
-{
-	char *query;
-	PGresult *res;
-	char *n;
-
-	if( ! filt || !*filt ){
-		free(filter);
-		filter = NULL;
-
-		if( random_func_filter )
-			(*random_func_filter)();
-		return 0;
-	}
-
-	if( NULL == (query = random_query(1,filt)) )
-		return 1;
-
-	res = db_query( query );
-	free( query );
-
-	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
-		PQclear(res);
-		return 1;
-	}
-
-	if( NULL == (n=strdup(filt)))
-		return 1;
-
-	free( filter );
-	filter = n;
-
-	if( random_func_filter )
-		(*random_func_filter)();
-	return 0;
-}
-
-const char *random_filter( void )
-{
-	return filter;
-}
-
-
 t_track *random_fetch( void )
 {
 	char *query;
@@ -426,9 +470,8 @@ t_track *random_fetch( void )
 	int num;
 	t_track *t;
 
-	/* get first 1000 tracks matching filter */
-
-	if( NULL == (query = random_query(1000,filter)) )
+	/* get first tracks matching filter */
+	if( NULL == (query = random_query(RANDOM_LIMIT)) )
 		return NULL;
 
 	res = db_query( query );
