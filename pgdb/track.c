@@ -1,8 +1,14 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/param.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <syslog.h>
 
+#include <opt.h>
 #include <pgdb/db.h>
 #include <pgdb/track.h>
 
@@ -213,6 +219,9 @@ t_track *track_get( int id )
 	PGresult *res;
 	t_track *t;
 
+	// TODO: for a single track it is faster to query all three tables
+	// seperately
+
 	res = db_query( TRACK_QUERY "AND t.id = %d", id );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "track_get: %s",
@@ -273,4 +282,28 @@ int tracks( void )
 	return num;
 }
 
+int track_exists( t_track *t )
+{
+	char buf[MAXPATHLEN];
+	PGresult *res;
+	int fd;
+
+	/* try to open the file - the easiest way to see, if it is
+	 * readable */
+	snprintf( buf, MAXPATHLEN, "%s/%s", opt_path_tracks, t->fname );
+	if( 0 > (fd = open( buf, O_RDONLY ))){
+
+		res = db_query( "UPDATE mus_title SET available = false "
+				"WHERE trackid = %d", t->id );
+
+		if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK )
+			syslog( LOG_ERR, "track_exists: %s", db_errstr() );
+
+		PQclear(res);
+		return 0;
+	}
+	
+	close(fd);
+	return 1;
+}
 
