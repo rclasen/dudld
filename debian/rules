@@ -79,7 +79,7 @@ binary-arch: build install
 #	dh_installemacsen
 #	dh_installpam
 #	dh_installmime
-	dh_installinit
+	dh_installinit defaults 21 19
 	dh_installcron
 	dh_installman
 	dh_installinfo
