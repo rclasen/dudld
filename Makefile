@@ -28,7 +28,7 @@ OBJ	:=
 
 ifeq ($(DBDIR),pgdb)
 src		:=  db.c user.c track.c random.c history.c queue.c \
-		tag.c
+		tag.c album.c artist.c # filter.c
 SRC_db		:= $(patsubst %,$(DBDIR)/%,$(src))
 OBJ_db		:= $(patsubst %.c,%.o,$(SRC_db))
 LIBS		+= -lpq
