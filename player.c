@@ -218,14 +218,20 @@ static t_playerror terminate( t_playstatus *wantstat )
  */
 static t_track *getnext( void )
 {
+	t_queue *q;
 	t_track *t;
 
-	if( NULL == (t = queue_fetch() ))
-		if( ! do_random || NULL == ( t = random_fetch() ))
-			return NULL;
-
 	// TODO: use stat() to verify existance
-	return t;
+	if( NULL != (q = queue_fetch())){
+		t = queue_track(q);
+		queue_free(q);
+		return t;
+	}
+
+	if( ! do_random )
+		return NULL;
+
+	return random_fetch();
 }
 
 static t_playerror startplay( void )
