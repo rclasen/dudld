@@ -22,11 +22,12 @@
  * x2z: Connection
  * x3z: users
  * x4z: player
- * x5z: queue
+ * x5z: queue/filter
  * x6z: database
  *
  */
 
+#define _GNU_SOURCE 1
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -147,12 +148,17 @@ static char *mkclient( t_client *c )
 /* make a reply string from track data */
 static char *mktrack( t_track *t )
 {
-	static char buffer[10];
-	int r;
+	char *buffer;
 
-	r = snprintf( buffer, 10, "%d", t->id );
-	if( r < 0  || r > 10 )
-		return NULL;
+	asprintf( &buffer, "%d\t%d\t%d\t%s\t%d\t%d\t%d", 
+			t->id,
+			t->albumid,
+			t->albumnr,
+			t->title,
+			t->artistid,
+			t->duration,
+			t->lastplay
+			);
 
 	return buffer;
 }
@@ -336,9 +342,12 @@ CMD(cmd_kick)
 static void proto_bcast_player_newtrack( void )
 {
 	t_track *track;
+	char *buf;
 
 	track = player_track();
-	proto_bcast( r_guest, "640", "%s", mktrack(track) );
+	buf = mktrack(track);
+	proto_bcast( r_guest, "640", "%s", buf );
+	free(buf);
 }
 
 static void proto_bcast_player_stop( void )
@@ -472,6 +481,176 @@ CMD(cmd_pause)
 }
 
 
+/************************************************************
+ * commands: track 
+ */
+
+
+CMD(cmd_trackget)
+{
+	char *buf;
+	int id;
+	t_track *t;
+
+	IDLE;
+	RARGS;
+
+	id = strtol(line, &buf, 10);
+	if( *buf ){
+		RBADARG( "expecting only a track ID");
+		return;
+	}
+
+	if( ! (t = track_get( id ))){
+		RLAST("510", "no such track" );
+		return;
+	}
+
+	buf = mktrack(t);
+	RLAST( "210", "%s", buf );
+}
+
+static void dump_tracks( t_client *client, const char *code, it_track *it )
+{
+	t_track *t;
+	char *buf;
+
+	for( t = it_track_begin(it); t; t = it_track_next(it) ){
+		if( NULL == (buf = mktrack(t)))
+			break;
+
+		RLINE(code,"%s", buf );
+		free(buf);
+	}
+	it_track_done(it);
+
+	RLAST(code, "" );
+}
+
+CMD(cmd_tracksearch)
+{
+	it_track *it;
+
+	IDLE;
+	RARGS;
+
+	it = tracks_search(line);
+	dump_tracks( client, "211", it );
+}
+
+CMD(cmd_tracksalbum)
+{
+	char *end;
+	int id;
+	it_track *it;
+
+	IDLE;
+	RARGS;
+
+	id = strtol(line, &end, 10);
+	if( *end ){
+		RBADARG( "expecting only an album ID");
+		return;
+	}
+
+	it = tracks_albumid(id);
+	dump_tracks( client, "212", it );
+}
+
+CMD(cmd_tracksartist)
+{
+	char *end;
+	int id;
+	it_track *it;
+
+	IDLE;
+	RARGS;
+
+	id = strtol(line, &end, 10);
+	if( *end ){
+		RBADARG( "expecting only an artist ID");
+		return;
+	}
+
+	it = tracks_artistid(id);
+	dump_tracks( client, "213", it );
+}
+
+CMD(cmd_trackalter)
+{
+	IDLE;
+	RARGS;
+	// TODO: do something
+}
+
+/************************************************************
+ * commands: random 
+ */
+
+static void proto_bcast_filter( void )
+{
+	const char *f;
+
+	f = random_filter();
+	proto_bcast( r_guest, "650", "%s", f ? f : "" );
+}
+
+
+CMD(cmd_filter)
+{
+	const char *f;
+
+	IDLE;
+	RNOARGS;
+
+	f = random_filter();
+	RLAST( "250", "%s", f ? f : "" );
+}
+
+CMD(cmd_filterset)
+{
+	IDLE;
+
+	if( random_setfilter(line)){
+		RLAST( "510", "invalid filter" );
+		return;
+	}
+
+	RLAST( "251", "filter changed" );
+}
+
+CMD(cmd_randomtop)
+{
+	it_track *it;
+	t_track *t;
+	int num;
+	char *buf;
+
+	IDLE;
+
+	if( *line ){
+		num = strtol(line, &buf, 10);
+		if( *buf ){
+			RBADARG( "expecting only a number");
+			return;
+		}
+	} else {
+		num = 20;
+	}
+
+	it = random_top(num);
+	for( t = it_track_begin(it); t; t = it_track_next(it) ){
+		if( NULL == (buf = mktrack(t)))
+			break;
+
+		RLINE("252","%s", buf );
+		free(buf);
+	}
+	it_track_done(it);
+
+	RLAST("252", "" );
+}
+
 
 /************************************************************
  * command array
@@ -492,7 +671,7 @@ static t_cmd proto_cmds[] = {
 	{ "USER", cmd_user, r_any },
 	{ "PASS", cmd_pass, r_any },
 	//{ "USERS", cmd_users, r_user },
-	//{ "USERGETID", cmd_usergetid, r_user },
+	//{ "USERGET", cmd_userget, r_user },
 	{ "WHO", cmd_who, r_user },
 	{ "KICK", cmd_kick, r_master },
 
@@ -501,7 +680,19 @@ static t_cmd proto_cmds[] = {
 	{ "NEXT", cmd_next, r_user },
 	{ "PREV", cmd_prev, r_user },
 	{ "PAUSE", cmd_pause, r_user },
+	//{ "STATUS", cmd_status, r_guest }, // playstatus + track
 
+	{ "TRACKGET", cmd_trackget, r_guest },
+	{ "TRACKSEARCH", cmd_tracksearch, r_guest },
+	{ "TRACKSALBUM", cmd_tracksalbum, r_guest },
+	{ "TRACKSARTIST", cmd_tracksartist, r_guest },
+	{ "TRACKALTER", cmd_trackalter, r_user },
+
+	{ "FILTER", cmd_filter, r_guest },
+	{ "FILTERSET", cmd_filterset, r_user },
+	{ "RANDOMTOP", cmd_randomtop, r_user },
+	//{ "RANDOM", cmd_random, r_user },
+	
 	{ NULL, NULL, 0 }
 };
 
@@ -551,6 +742,8 @@ void proto_init( void )
 	player_func_pause = proto_bcast_player_pause;
 	player_func_resume = proto_bcast_player_resume;
 	player_func_stop = proto_bcast_player_stop;
+
+	random_func_filter = proto_bcast_filter;
 }
 
 
