@@ -33,6 +33,9 @@ int history_add( t_track *track, int uid )
 
 void history_free( t_history *h)
 {
+	if( !h )
+		return;
+
 	track_free(h->_track);
 	free(h);
 }
