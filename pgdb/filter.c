@@ -4,6 +4,7 @@
 #include "dudldb.h"
 #include "filter.h"
 
+
 static int sql_value( char *buf, size_t len, value *v )
 {
 	size_t used = 0;
@@ -201,11 +202,11 @@ int sql_expr( char *buf, size_t len, expr *e )
 	  case op_and:
 		  used += snprintf( buf+used, len-used, "( " );
 		  if( used > len ) return used;
-		  used += expr_fmt( buf+used, len-used, e->data.expr[0] );
+		  used += sql_expr( buf+used, len-used, e->data.expr[0] );
 		  if( used > len ) return used;
 		  used += snprintf( buf+used, len-used, " )AND( " );
 		  if( used > len ) return used;
-		  used += expr_fmt( buf+used, len-used, e->data.expr[1] );
+		  used += sql_expr( buf+used, len-used, e->data.expr[1] );
 		  if( used > len ) return used;
 		  used += snprintf( buf+used, len-used, " )" );
 		  break;
@@ -213,11 +214,11 @@ int sql_expr( char *buf, size_t len, expr *e )
 	  case op_or:
 		  used += snprintf( buf+used, len-used, "( " );
 		  if( used > len ) return used;
-		  used += expr_fmt( buf+used, len-used, e->data.expr[0] );
+		  used += sql_expr( buf+used, len-used, e->data.expr[0] );
 		  if( used > len ) return used;
 		  used += snprintf( buf+used, len-used, " )OR( " );
 		  if( used > len ) return used;
-		  used += expr_fmt( buf+used, len-used, e->data.expr[1] );
+		  used += sql_expr( buf+used, len-used, e->data.expr[1] );
 		  if( used > len ) return used;
 		  used += snprintf( buf+used, len-used, " )" );
 		  break;
