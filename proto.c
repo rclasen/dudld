@@ -355,15 +355,34 @@ static void proto_bcast_player_resume( void )
 	proto_bcast( r_guest, "643", "resumed" );
 }
 
-#define RPMISC(r)	\
-	if( r == PE_SYS ){ \
-		RLAST("540", "player error: %s", STRERR); \
-		return; \
-	}\
-	if( r != PE_OK ){ \
-		RLAST( "541", "player error" ); \
-		return; \
-	} \
+static void reply_player( t_client *client, int r )
+{
+	switch(r){ 
+		case PE_OK: 
+			break; 
+
+		case PE_NOTHING:
+			RLAST("541", "nothing to do" );
+			return;
+
+		case PE_BUSY:
+			RLAST("541", "already doing this" );
+			return;
+
+		case PE_NOSUP:
+			RLAST("541", "not supported" );
+			return;
+
+		case PE_SYS:
+			RLAST("540", "player error: %s", STRERR);
+			return;
+
+		default:
+			RLAST( "541", "player error" );
+			return;
+	}
+}
+#define RPMISC(x)	reply_player(client,x)
 
 
 CMD(cmd_play)
@@ -375,18 +394,12 @@ CMD(cmd_play)
 
 	r = player_start();
 
-	if( r == PE_NOTHING ){
-		RLAST( "541", "nothing to play" );
-		return;
-	}
-
-	if( r == PE_BUSY ){
-		RLAST( "541", "already playing" );
+	if( r == PE_OK ){
+		RLAST( "240", "playing" );
 		return;
 	}
 
 	RPMISC(r);
-	RLAST( "240", "playing" );
 }
 
 CMD(cmd_stop)
@@ -398,13 +411,12 @@ CMD(cmd_stop)
 
 	r = player_stop();
 
-	if( r == PE_NOTHING ){
-		RLAST( "541", "nothing playing" );
+	if( r == PE_OK ){
+		RLAST( "241", "stopped" );
 		return;
 	}
 
 	RPMISC(r);
-	RLAST( "241", "stopped" );
 }
 
 CMD(cmd_next)
@@ -416,13 +428,12 @@ CMD(cmd_next)
 
 	r = player_next();
 
-	if( r == PE_NOTHING  ){
-		RLAST( "541", "nothing to play" );
+	if( r == PE_OK  ){
+		RLAST( "240", "playing" );
 		return;
 	}
 
 	RPMISC(r);
-	RLAST( "240", "playing" );
 }
 
 CMD(cmd_prev)
@@ -434,13 +445,12 @@ CMD(cmd_prev)
 
 	r = player_prev();
 
-	if( r == PE_NOTHING ){
-		RLAST( "541", "nothing to play" );
+	if( r == PE_OK ){
+		RLAST( "240", "playing" );
 		return;
 	}
 
 	RPMISC(r);
-	RLAST( "240", "playing" );
 }
 
 CMD(cmd_pause)
@@ -452,18 +462,12 @@ CMD(cmd_pause)
 
 	r = player_pause();
 
-	if( r == PE_NOTHING ){
-		RLAST( "541", "nothing playing" );
-		return;
-	}
-
-	if( r == PE_BUSY ){
-		RLAST( "541", "already paused" );
+	if( r == PE_OK ){
+		RLAST( "242", "paused" );
 		return;
 	}
 
 	RPMISC(r);
-	RLAST( "242", "paused" );
 }
 
 
