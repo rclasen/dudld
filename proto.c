@@ -913,19 +913,14 @@ CMD(cmd_historytrack, r_guest, p_idle, arg_need )
 
 static void proto_bcast_queue_fetch( t_queue *q )
 {
-	proto_bcast( r_guest, "660", "%d", q->id );
+	char buf[BUFLENTRACK];
+	proto_bcast( r_guest, "660", "%s", mkqueue(buf,BUFLENTRACK,q) );
 }
 
-static void proto_bcast_queue_add( int qid )
+static void proto_bcast_queue_add( t_queue *q )
 {
 	char buf[BUFLENTRACK];
-	t_queue *q;
-
-	if( NULL == (q = queue_get( qid )))
-		return;
-
 	proto_bcast( r_guest, "661", "%s", mkqueue(buf,BUFLENTRACK,q) );
-	queue_free(q);
 }
 
 static void proto_bcast_queue_del( t_queue *q )

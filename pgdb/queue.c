@@ -6,7 +6,7 @@
 #include <pgdb/queue.h>
 
 t_queue_func_clear queue_func_clear = NULL;
-t_queue_func_add queue_func_add = NULL;
+t_queue_func_fetch queue_func_add = NULL;
 t_queue_func_fetch queue_func_del = NULL;
 t_queue_func_fetch queue_func_fetch = NULL;
 
@@ -189,8 +189,13 @@ int queue_add( int trackid, int uid )
 
 	PQclear(res);
 
-	if( queue_func_add )
-		(*queue_func_add)(qid);
+	if( queue_func_add ){
+		t_queue *q = queue_get(qid);
+		if( q != NULL ){
+			(*queue_func_add)(q);
+			queue_free(q);
+		}
+	}
 
 	return qid;
 }

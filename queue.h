@@ -13,12 +13,10 @@ typedef struct _t_queue {
 } t_queue;
 
 typedef void (*t_queue_func_clear)( void );
-typedef void (*t_queue_func_add)( int queueid );
-typedef void (*t_queue_func_del)( int queueid );
 typedef void (*t_queue_func_fetch)( t_queue *q );
 
 extern t_queue_func_clear queue_func_clear;
-extern t_queue_func_add queue_func_add;
+extern t_queue_func_fetch queue_func_add;
 extern t_queue_func_fetch queue_func_del;
 extern t_queue_func_fetch queue_func_fetch;
 
