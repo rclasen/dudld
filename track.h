@@ -25,6 +25,8 @@ typedef struct _t_track {
 	} modified;
 } t_track;
 
+typedef void (*t_random_func)( void );
+
 /* TODO: do not assume the db.h iterator for tracks */
 #define it_track it_db
 #define it_track_begin(x)	((t_track*)it_db_begin(x))
@@ -54,5 +56,7 @@ int random_setfilter( const char *filt );
 const char *random_filter( void );
 it_track *random_top( int num );
 t_track *random_fetch( void );
+
+extern t_random_func random_func_filter;
 
 #endif

@@ -1,5 +1,4 @@
 #define _GNU_SOURCE 1
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -14,7 +13,7 @@
 	"t.nr, "\
 	"date_part('epoch',f.duration) AS dur, "\
 	"t.random, "\
-	"date_part('epoc',t.lastplay) AS lplay, "\
+	"date_part('epoch',t.lastplay) AS lplay, "\
 	"t.title, "\
 	"t.artist_id, "\
 	"u.collection, "\
@@ -53,11 +52,15 @@
 
 
 // TODO: use something real for filter
+// TODO: use temp table for caching filter results
 static char *filter = NULL;
+
+t_random_func random_func_filter = NULL;
 
 static t_track *track_convert( PGresult *res, int tup )
 {
-	const char *col, *dir, *fname;
+	const char *dir, *fname;
+	char *col;
 	int colnum;
 	t_track *t;
 	int f;
@@ -100,9 +103,6 @@ static t_track *track_convert( PGresult *res, int tup )
 	if( -1 != (f = PQfnumber( res, "random" )))
 		t->random = pgbool( res, tup, f);
 
-	GETFIELD(f,"collection", clean1 );
-	col = PQgetvalue(res, tup, f );
-
 	GETFIELD(f,"colnum", clean1 );
 	colnum = pgint(res, tup, f );
 
@@ -112,19 +112,25 @@ static t_track *track_convert( PGresult *res, int tup )
 	GETFIELD(f,"fname", clean1 );
 	fname = PQgetvalue(res, tup, f );
 
-	t->fname = NULL;
-	asprintf( &t->fname, "%s%04d/%s%s", col, colnum, dir, fname );
-	if( NULL ==  t->fname )
-		goto clean1;
+	GETFIELD(f,"collection", clean1 );
+	col = pgstring(res, tup, f );
 
-	GETFIELD(f,"title", clean2 );
-	if( NULL == (t->title = pgstring(res, tup, f)))
+	t->fname = NULL;
+	asprintf( &t->fname, "%s%04d/%s/%s", col, colnum, dir, fname );
+	if( NULL ==  t->fname )
 		goto clean2;
+
+	GETFIELD(f,"title", clean3 );
+	if( NULL == (t->title = pgstring(res, tup, f)))
+		goto clean3;
 
 	return t;
 
-clean2:
+clean3:
 	free(t->fname);
+
+clean2:
+	free(col);
 
 clean1:
 	free(t);
@@ -388,12 +394,21 @@ it_track *random_top( int num )
 }
 
 
-// TODO: dangerous to pass the filter unchecked
+// TODO: dangerous to use the filter unchecked as query
 int random_setfilter( const char *filt )
 {
 	char *query;
 	PGresult *res;
 	char *n;
+
+	if( ! filt || !*filt ){
+		free(filter);
+		filter = NULL;
+
+		if( random_func_filter )
+			(*random_func_filter)();
+		return 0;
+	}
 
 	if( NULL == (query = random_query(1,filt)) )
 		return 1;
@@ -412,6 +427,8 @@ int random_setfilter( const char *filt )
 	free( filter );
 	filter = n;
 
+	if( random_func_filter )
+		(*random_func_filter)();
 	return 0;
 }
 
