@@ -624,7 +624,16 @@ CMD(cmd_random, r_guest, p_idle, arg_none )
 
 CMD(cmd_randomset, r_user, p_idle, arg_need )
 {
-	player_setrandom( 0 == strcasecmp(line, "on") );
+	int r;
+	char *end;
+
+	r = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid bool" );
+		return;
+	}
+			
+	player_setrandom( r );
 	RLAST( "247", "random adjusted" );
 }
 
