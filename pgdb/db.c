@@ -74,17 +74,15 @@ static PGresult *db_vquery( char *query, va_list ap )
 	/* we have a connecteio? try the query */
 	if( dbcon ){
 		res = PQexec( dbcon, buf );
-		if( res != NULL && PQresultStatus(res) == PGRES_FATAL_ERROR){
-			PQclear( res );
-			res = NULL;
-		}
 	}
 
-	/* first query succeeded */
-	if( res != NULL )
+	if( PQstatus(dbcon) == CONNECTION_OK )
 		return res;
 
 	/* reconnect and retry */
+	PQclear( res );
+	res = NULL;
+
 	if( db_conn() )
 		return NULL;
 
