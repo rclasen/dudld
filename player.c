@@ -366,8 +366,11 @@ int player_random( void )
 
 t_playerror player_setrandom( int r )
 {
+	int old = do_random;
+
 	do_random = r ? 1 : 0;
-	if( player_func_random )
+
+	if( old != do_random && player_func_random )
 		(*player_func_random)();
 
 	return PE_OK;
