@@ -19,27 +19,53 @@ DBDIR		:= pgdb
 all: x-all
 
 
-SRCS		:= client.c proto.c \
-		opt.c player.c main.c
+LNK	:=
+SRC	:=
+OBJ	:=
+
+############################################################
+# db
 
 ifeq ($(DBDIR),pgdb)
-DBSRCS		:= user.c track.c queue.c db.c
-SRCS		+= $(patsubst %,$(DBDIR)/%,$(DBSRCS))
+src		:= user.c track.c queue.c db.c
+SRC_db		:= $(patsubst %,$(DBDIR)/%,$(src))
+OBJ_db		:= $(patsubst %.c,%.o,$(SRC_db))
 LIBS		+= -lpq
+SRC += $(SRC_db)
+OBJ += $(OBJ_db)
 endif
 
-OBJS		:= $(patsubst %.c,%.o,$(SRCS))
 
+############################################################
+# xmserv
+
+SRC_xmserv	:= client.c proto.c \
+		opt.c player.c main.c
+OBJ_xmserv	:= $(patsubst %.c,%.o,$(SRC_xmserv))
 LNK += xmserv
-xmserv: $(OBJS)
+SRC += $(SRC_xmserv)
+OBJ += $(OBJ_xmserv)
+xmserv: $(OBJ_xmserv) $(OBJ_db)
 
 
+############################################################
+# testdb
+
+SRC_testdb	:= testdb.c 
+OBJ_testdb	:= $(patsubst %.c,%.o,$(SRC_testdb))
+LNK += testdb
+SRC += $(SRC_testdb)
+OBJ += $(OBJ_testdb)
+testdb: $(OBJ_testdb) $(OBJ_db) opt.o
 
 
+############################################################
 
 x-all: $(LNK)
 
-include $(OBJS:.o=.d)
+DEPS	:= $(OBJ:.o=.d)
+include $(DEPS)
+
 %.d: %.c
 	@echo mkdep $<
 	@$(CC) $(DEPFLAGS) -M -MG $< | \
@@ -53,11 +79,11 @@ $(LNK):
 	$(LD) $(LDFLADS) -o $@ $^ $(LIBS)
 
 todo:
-	@grep -i todo $(SRCS)
+	@grep -i todo $(SRC)
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJ)
 	rm -f $(LNK)
-	rm -f .depend
+	rm -f $(DEPS)
 
 
