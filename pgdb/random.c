@@ -104,36 +104,42 @@ clean:
 
 static int sql_tag( char *buf, size_t len, valtest *vt )
 {
+	value *eqlist[2] = { NULL, NULL };
+	value **list = NULL;
 	size_t used = 0;
+
 
 	switch( vt->op ){
 	  case vo_eq:
-		  used += snprintf( buf+used, len-used, "mserv_tagged(id," );
-		  if( used > len ) return used;
-		  used += sql_value( buf+used, len-used, vt->val );
-		  if( used > len ) return used;
-		  used += snprintf( buf+used, len-used, ")" );
+		  eqlist[0] = vt->val;
+		  list = eqlist;
 		  break;
 
 	  case vo_in:
-		  used += snprintf( buf+used, len-used, 
-				  "EXISTS( SELECT file_id "
-				  "FROM mserv_filetag ft "
-				  "WHERE "
-				   	"t.id = ft.file_id AND "
-					"ft.tag_id IN ("
-					);
-		  if( used > len ) return used;
-		  used += sql_taglist( buf+used, len-used, vt->val->val.list );
-		  if( used > len ) return used;
-		 
-		  used += snprintf( buf+used, len-used, "))" );
+		  list = vt->val->val.list;
 		  break;
 
 	  default:
 		break;
 
 	}
+
+	if( ! list )
+		return 0;
+
+	used += snprintf( buf+used, len-used, 
+			"EXISTS( SELECT file_id "
+			"FROM mserv_filetag ft "
+			"WHERE "
+				"t.id = ft.file_id AND "
+				"ft.tag_id IN ("
+				);
+	if( used > len ) return used;
+
+	used += sql_taglist( buf+used, len-used, list );
+	if( used > len ) return used;
+
+	used += snprintf( buf+used, len-used, "))" );
 	return used;
 }
 
