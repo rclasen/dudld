@@ -239,62 +239,24 @@ static int mktab( char *buffer, int len, const char *fmt, ... )
 	return r;
 }
 
+static inline int mkuser( char *buf, int len, t_user *u )
+{
+	if( ! u )
+		return mktab(buf, len, "dsd", 0, "UNKNOWN", p_any );
+
+	return mktab(buf, len, "dsd", u->id, u->name, u->right );
+}
+
 /* make a reply string from client data */
-static inline int mkclient( char *buffer, int len, t_client *c )
+static inline int mkclient( char *buf, int len, t_client *c )
 {
-	return mktab( buffer, len, "dds",
-			c->id, c->user->id, inet_ntoa(c->sin.sin_addr));
-}
-
-/* make a reply string from track data */
-static inline int mktrack( char *buffer, int len, t_track *t )
-{
-	return mktab( buffer, len, "dddsdd", 
-				t->id, 
-				t->album->id, 
-				t->albumnr, 
-				t->title, 
-				t->artist->id, 
-				t->duration);
-}
-
-static inline int mkhistory( char *buf, int len, t_history *h )
-{
-	t_track *t;
 	int used;
+	
+	used = mktab( buf, len, "ds",
+			c->id, inet_ntoa(c->sin.sin_addr));
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mkuser( buf+used, len-used, c->user );
 
-	t = history_track( h );
-	used = mktab( buf, len, "dddddsdd",
-				h->user->id,
-				h->played,
-				t->id,
-				t->album->id, 
-				t->albumnr, 
-				t->title, 
-				t->artist->id, 
-				t->duration
-				);
-	track_free(t);
-	return len;
-}
-
-static inline int mkqueue( char *buf, int len, t_queue *q )
-{
-	t_track *t;
-	int used;
-
-	t = queue_track(q);
-	used = mktab(buf, len, "ddddddsdd",
-				q->id,
-				q->user->id,
-				q->queued,
-				t->id,
-				t->album->id, 
-				t->albumnr, 
-				t->title, 
-				t->artist->id, 
-				t->duration);
-	track_free(t);
 	return used;
 }
 
@@ -303,32 +265,63 @@ static inline int mktag( char *buf, int len, t_tag *t )
 	return mktab(buf, len, "dss", t->id, t->name, t->desc );
 }
 
-static inline int mkuser( char *buf, int len, t_user *u )
-{
-	return mktab(buf, len, "dsd", u->id, u->name, u->right );
-}
-
-static inline int mkalbum( char *buf, int len, t_album *a )
-{
-	return mktab(buf, len, "dsd", a->id, a->album, a->artist->id );
-}
-
 static inline int mkartist( char *buf, int len, t_artist *a )
 {
 	return mktab(buf, len, "ds", a->id, a->artist );
 }
 
-static inline int mknewtrack( char *buf, int len, t_track *t )
+static inline int mkalbum( char *buf, int len, t_album *a )
 {
-	int used = 0;
-	*buf = 0;
+	int used;
+	
+	used = mktab(buf, len, "ds", a->id, a->album );
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mkartist( buf+used, len-used, a->artist );
 
-	used = mktrack(buf, len, t );
+	return used;
+}
+
+static inline int mktrack( char *buf, int len, t_track *t )
+{
+	int used;
+	
+	used = mktab( buf, len, "ddsd", 
+				t->id, 
+				t->albumnr, 
+				t->title, 
+				t->duration);
 	if(len > used++ ){ buf[used-1] = '\t'; }
 	used += mkartist( buf+used, len-used, t->artist );
 	if(len > used++ ){ buf[used-1] = '\t'; }
 	used += mkalbum( buf+used, len-used, t->album );
 
+	return used;
+}
+
+static inline int mkhistory( char *buf, int len, t_history *h )
+{
+	int used;
+
+	used = mktab( buf, len, "d",
+				h->played);
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mkuser( buf+used, len-used, h->user );
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mktrack( buf+used, len-used, h->track );
+	return used;
+}
+
+static inline int mkqueue( char *buf, int len, t_queue *q )
+{
+	int used;
+
+	used = mktab(buf, len, "dd",
+				q->id,
+				q->queued);
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mkuser( buf+used, len-used, q->user );
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mktrack( buf+used, len-used, q->track );
 	return used;
 }
 
@@ -651,7 +644,7 @@ static void proto_bcast_player_newtrack( void )
 	t_track *track;
 
 	track = player_track();
-	mknewtrack(buf, BUFLENTRACK, track);
+	mktrack(buf, BUFLENTRACK, track);
 	proto_bcast( r_guest, "640", "%s", buf ); 
 	track_free(track);
 }
