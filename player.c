@@ -222,17 +222,27 @@ static t_track *getnext( void )
 	t_queue *q;
 	t_track *t;
 
-	// TODO: use stat() to verify existance
-	if( NULL != (q = queue_fetch())){
+	while( NULL != (q = queue_fetch())){
 		t = queue_track(q);
 		queue_free(q);
-		return t;
+
+		if( track_exists(t) )
+			return t;
+
+		track_free(t);
 	}
 
 	if( ! do_random )
 		return NULL;
 
-	return random_fetch();
+	while( NULL != (t = random_fetch())){
+		if( track_exists(t) )
+			return t;
+
+		track_free(t);
+	}
+
+	return NULL;
 }
 
 static t_playerror startplay( void )
