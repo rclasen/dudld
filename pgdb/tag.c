@@ -80,28 +80,33 @@ t_tag *tag_get( int id )
 	return t;
 }
 
-t_tag *tag_getname( const char *name )
+int tag_id( const char *name )
 {
 	PGresult *res;
-	t_tag *t;
+	int id;
 	char *esc;
 
 	if( NULL == (esc = db_escape(name)))
-		return NULL;
+		return -1;
 
-	res = db_query( "SELECT id, name, cmnt FROM mserv_tag "
+	res = db_query( "SELECT id FROM mserv_tag "
 			"WHERE name = '%s'", esc);
 	free(esc);
 	if( ! res || PQresultStatus(res) != PGRES_TUPLES_OK ){
-		syslog( LOG_ERR, "tag_getname: %s", db_errstr());
+		syslog( LOG_ERR, "tag_id: %s", db_errstr());
 		PQclear(res);
-		return NULL;
+		return -1;
 	}
 
-	t = tag_convert(res, 0 );
+	if( PQntuples(res) != 1 ){
+		PQclear(res);
+		return -1;
+	}
+
+	id = pgint( res, 0, 0);
 	PQclear(res);
 
-	return t;
+	return id;
 }
 
 

@@ -149,7 +149,7 @@ t_user *user_get( int uid )
 	return u;
 }
 
-int user_getname( const char *name )
+int user_id( const char *name )
 {
 	PGresult *res;
 	int uid;
@@ -161,7 +161,7 @@ int user_getname( const char *name )
 	res = db_query( "SELECT id FROM mserv_user WHERE name = '%s'", esc );
 	free(esc);
 	if( !res || PQresultStatus(res) != PGRES_TUPLES_OK ){
-		syslog( LOG_ERR, "user_getname: %s", db_errstr());
+		syslog( LOG_ERR, "user_id: %s", db_errstr());
 		PQclear(res);
 		return -1;
 	}

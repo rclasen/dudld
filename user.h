@@ -23,7 +23,7 @@ int user_add( const char *name, t_rights right, const char *pass );
 int user_del( int uid );
 
 t_user *user_get( int uid );
-int user_getname( const char *name );
+int user_id( const char *name );
 int user_ok( t_user *u, const char *pass );
 
 it_user *users_list( void );

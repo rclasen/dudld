@@ -22,7 +22,7 @@ extern t_tag_func tag_func_del;
 void tag_free( t_tag *t );
 
 t_tag *tag_get( int id );
-t_tag *tag_getname( const char *name );
+int tag_id( const char *name );
 
 it_tag *tags_list( void );
 
