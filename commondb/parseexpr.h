@@ -32,8 +32,19 @@ typedef enum {
 	vo_max,
 } valop;
 
+typedef enum {
+	vf_dur,
+	vf_lplay,
+	vf_tag,
+	vf_artist,
+	vf_title,
+	vf_album,
+
+	vf_max,
+} valfield;
+
 typedef struct {
-	char *name;
+	valfield field;
 	valop op;
 	value *val;
 } valtest;
@@ -55,6 +66,8 @@ typedef struct s_expr {
 } expr;
 	
 expr *expr_parse( int *line, int *col, char **msg, parser_input *i );
+expr *expr_parse_str( int *col, char **msg, char *i );
+
 int expr_fmt( char *buf, size_t len, expr *e );
 void expr_free( expr *e );
 

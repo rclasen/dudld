@@ -376,6 +376,7 @@ static valop parse_valop( parse_stat *i )
 static valtest *parse_valtest( parse_stat *i )
 {
 	valtest *vt;
+	char *name;
 	int numeric = 0;
 
 	if( NULL == (vt = malloc(sizeof(valtest)))){
@@ -384,25 +385,32 @@ static valtest *parse_valtest( parse_stat *i )
 	}
 
 	/* get the name */
-	if( NULL == (vt->name = parse_name(i))){
+	if( NULL == (name = parse_name(i))){
 		parse_error(i, "expecting a field name" );
 		goto clean2;
 	}
 
-	if( 0 == strcmp( vt->name, "year" )){
+	// TODO: use valfield_name array
+	if( 0 == strcmp( name, "duration" )){
+		vt->field = vf_dur;
 		numeric++;
-	} else if( 0 == strcmp( vt->name, "duration" )){
+	} else if( 0 == strcmp( name, "lastplay" )){
+		vt->field = vf_lplay;
 		numeric++;
-	} else if( 0 == strcmp( vt->name, "lastplay" )){
-		numeric++;
-	} else if( 0 == strcmp( vt->name, "genre" )){
-	} else if( 0 == strcmp( vt->name, "artist" )){
-	} else if( 0 == strcmp( vt->name, "title" )){
-	} else if( 0 == strcmp( vt->name, "album" )){
+	} else if( 0 == strcmp( name, "tag" )){
+		vt->field = vf_tag;
+	} else if( 0 == strcmp( name, "artist" )){
+		vt->field = vf_artist;
+	} else if( 0 == strcmp( name, "title" )){
+		vt->field = vf_title;
+	} else if( 0 == strcmp( name, "album" )){
+		vt->field = vf_album;
 	} else {
 		parse_error( i, "unknown field" );
-		goto clean3;
+		free(name);
+		goto clean2;
 	}
+	free(name);
 
 
 	/* get operator */
@@ -411,7 +419,7 @@ static valtest *parse_valtest( parse_stat *i )
 	  case vo_none:
 	  case vo_max:
 		parse_error( i, "invalid value operator");
-	  	goto clean3;
+	  	goto clean2;
 
 	  case vo_lt:
 	  case vo_le:
@@ -419,7 +427,7 @@ static valtest *parse_valtest( parse_stat *i )
 	  case vo_ge:
 		if( ! numeric ){
 			parse_error( i, "invalid operation for string value" );
-			goto clean3;
+			goto clean2;
 		}
 		vt->val = parse_value(i);
 		break;
@@ -435,20 +443,18 @@ static valtest *parse_valtest( parse_stat *i )
 
 	if( vt->val == NULL ){
 		parse_error(i, "no value specified" );
-		goto clean3;
+		goto clean2;
 	}
 
 	if( numeric && vt->val->type != vt_num ){
 		parse_error(i, "need a numeric value" );
-		goto clean4;
+		goto clean3;
 	}
 
 	return vt;
 
-clean4:
-	value_free(vt->val);
 clean3:
-	free(vt->name);
+	value_free(vt->val);
 clean2:
 	free(vt);
 clean1:
@@ -457,10 +463,18 @@ clean1:
 
 static void valtest_free( valtest *vt )
 {
-	free(vt->name);
 	value_free(vt->val);
 	free(vt);
 }
+
+static char *valfield_name[vf_max] = {
+	"duration",
+	"lastplay",
+	"tag",
+	"artist",
+	"title",
+	"album"
+};
 
 static char *valop_name[vo_max] = {
 	"",
@@ -477,7 +491,7 @@ static int valtest_fmt( char *buf, size_t len, valtest *vt )
 	size_t used = 0;
 	
 	used += snprintf( buf+used, len-used, "%s %s ", 
-			vt->name, valop_name[vt->op] );
+			valfield_name[vt->field], valop_name[vt->op] );
 	if( used > len ) return used;
 	used += value_fmt( buf+used, len-used, vt->val );
 	return used;
@@ -661,6 +675,18 @@ expr *expr_parse( int *line, int *col, char **msg, parser_input *i )
 	if( col ) *col = e ? -1 : PI_COL(i);
 	if( msg ) *msg = e ? NULL : st.msg;
 	return e;
+}
+
+expr *expr_parse_str( int *col, char **msg, char *i )
+{
+	parser_input *pi;
+
+	if( NULL == (pi = pi_str_new(i))){
+		if( msg ) *msg = strerror(errno);
+		return NULL;
+	}
+
+	return expr_parse( NULL, col, msg, pi );
 }
 
 int expr_fmt( char *buf, size_t len, expr *e )
