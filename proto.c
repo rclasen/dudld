@@ -36,6 +36,7 @@
 #include <errno.h>
 
 #include "user.h"
+#include "history.h"
 #include "player.h"
 #include "proto.h"
 
@@ -244,6 +245,29 @@ static inline char *mktrack( char *buffer, int len, t_track *t )
 
 	return buffer;
 }
+
+static inline char *mkhistory( char *buf, int len, t_history *h )
+{
+	t_track *t;
+
+	t = history_track( h );
+	if( len < mktab( buf, len, "ddddsddd",
+				h->uid,
+				t->id,
+				t->albumid, 
+				t->albumnr, 
+				t->title, 
+				t->artistid, 
+				t->duration,
+				h->played)){
+		track_free(t);
+		return NULL;
+	}
+
+	track_free(t);
+	return buf;
+}
+
 
 // TODO: this file is too large. Split out cmds
 
@@ -738,6 +762,75 @@ CMD(cmd_randomtop, r_guest, p_idle, arg_opt )
 
 	it = random_top(num);
 	dump_tracks( client, "252", it );
+}
+
+
+/************************************************************
+ * history
+ */
+
+static void dump_history( t_client *client, const char *code, it_history *it )
+{
+	char buf[BUFLENTRACK];
+	t_history *t;
+
+	for( t = it_history_begin(it); t; t = it_history_next(it) ){
+		RLINE(code,"%s", mkhistory(buf, BUFLENTRACK, t) );
+		history_free(t);
+	}
+	it_history_done(it);
+
+	RLAST(code, "" );
+}
+
+CMD(cmd_history, r_any, p_any, arg_opt )
+{
+	int num = 20;
+	char *end;
+	it_history *it;
+
+	if( *line ){
+		num = strtol( line, &end, 10 );
+		if( *end ){
+			RBADARG( "expecting a number" );
+			return;
+		}
+	}
+
+	it = history_list( num );
+	dump_history( client, "260", it );
+}
+
+CMD(cmd_historytrack, r_any, p_any, arg_need )
+{
+	int id;
+	int num = 20;
+	char *end1;
+	char *end2;
+	it_history *it;
+
+	/* first get the mandatory title id */
+	id = strtol( line, &end1, 10 );
+	if( end1 == line ){
+		RBADARG( "expecting a title ID" );
+		return;
+	}
+
+	/* skip the seperating whitespaces */
+	while( *end1 && isspace(*end1) )
+		end1++;
+
+	/* and optionally get the number of entries to display */
+	if( *end1 ){
+		num = strtol( end1, &end2, 10 );
+		if( end1 == end2 ){
+			RBADARG( "expecting a number" );
+			return;
+		}
+	}
+
+	it = history_tracklist( id, num );
+	dump_history( client, "260", it );
 }
 
 

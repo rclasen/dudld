@@ -15,6 +15,7 @@
 #include "opt.h"
 #include "track.h"
 #include "queue.h"
+#include "history.h"
 #include "player.h"
 
 static t_playstatus curstat = pl_stop;
@@ -147,8 +148,8 @@ static t_playstatus update_status( t_playstatus *wantstat )
 		curpid = 0;
 		if( curtrack ){
 			if( ! failed ){
-				track_setlastplay(curtrack, time(NULL) );
-				track_save(curtrack);
+				// TODO: pass queue user id to history 
+				history_add(curtrack, 0 );
 			}
 			track_free( curtrack );
 			curtrack = NULL;

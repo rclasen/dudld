@@ -27,7 +27,7 @@ OBJ	:=
 # db
 
 ifeq ($(DBDIR),pgdb)
-src		:= user.c track.c queue.c db.c
+src		:= user.c track.c history.c queue.c db.c
 SRC_db		:= $(patsubst %,$(DBDIR)/%,$(src))
 OBJ_db		:= $(patsubst %.c,%.o,$(SRC_db))
 LIBS		+= -lpq
