@@ -1,25 +1,76 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <syslog.h>
+#include <signal.h>
+#include <time.h>
+#include <errno.h>
 
 #include "client.h"
 #include "proto.h"
+#include "player.h"
 
-static void loop( void )
+int check_child = 0;
+
+static void sig_child( int sig )
+{
+	check_child++;
+	signal( sig, sig_child );
+}
+
+static void earliest( time_t *a, time_t b )
+{
+	if( b && b > *a )
+		*a = b;
+}
+
+static int loop( void )
 {
 	fd_set fdread;
 	int maxfd;
-	int ret;
+	time_t wakeup;
+	struct timeval tv, *tvp;
 	t_client *client;
 
 	while(1){
+		/* handle flag set by SIGCHLD handler */
+		if( check_child ){
+			if( PE_OK != player_check() ){
+				syslog( LOG_WARNING, "player_check failed" );
+			}
+
+			check_child = 0;
+		}
+
+		/* initialize fdsets for select */
 		FD_ZERO( &fdread );
 		maxfd = 0;
 		clients_fdset( &maxfd, &fdread );
 		maxfd++;
 
-		ret = select( maxfd, &fdread, NULL, NULL, NULL );
-		// TODO: check select()
+		/* set timeout for select */
+		tvp = NULL;
+		wakeup = 0;
+		earliest( &wakeup, player_wakeuptime() );
+		// TODO: check other scheduled events
+		if( wakeup ){
+			tv.tv_sec = time(NULL) - wakeup;
+			tv.tv_usec = 0;
+			tvp = &tv;
+		}
+
+		if( 0 > select( maxfd, &fdread, NULL, NULL, tvp )){
+			if( errno != EINTR ){
+				syslog( LOG_CRIT, "select failed: %m" );
+				return 1;
+			}
+
+			/* 
+			 * we got a signal - maybe sigchild. 
+			 * as fdsets are invalid anyways, we restart again
+			 */
+			continue;
+		}
 
 		for( client = clients; client; client = client->next ){
 			if( client->close )
@@ -54,9 +105,17 @@ static void loop( void )
 
 int main( int argc, char **argv )
 {
+	int rv;
+
 	(void) argc;
 	(void) argv;
 	// TODO: getopt
+
+	openlog( "xmserv", LOG_PID, LOG_DAEMON );
+	// TODO: setlogmask( LOG_UPTO(LOG_INFO) );
+
+	// TODO: use sigaction
+	signal( SIGCHLD, sig_child );
 
 	if( clients_init( 4445 ) ){
 		perror( "clients_init()" );
@@ -66,9 +125,11 @@ int main( int argc, char **argv )
 	//player_init();
 	proto_init();
 
-	loop();
+	syslog(LOG_INFO, "started" );
+	rv = loop();
 
+	syslog(LOG_INFO, "terminating" );
 	clients_done();
-	return 0;
+	return rv;
 }
 
