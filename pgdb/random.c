@@ -57,7 +57,7 @@ int random_setfilter( const char *filt )
 	/* fill cache - if possible */
 	res = db_query( "INSERT INTO mserv_cache "
 			"SELECT id, lplay, filename "
-			"FROM mserv_track "
+			"FROM mserv_track t "
 			"%s%s",
 			filt && *filt ? "WHERE " : "",
 			filt && *filt ? filt : ""
