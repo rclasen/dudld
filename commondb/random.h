@@ -2,12 +2,13 @@
 #define _RANDOM_H
 
 #include "track.h"
+#include "parseexpr.h"
 
 typedef void (*t_random_func)( void );
 
-int random_setfilter( const char *filt );
+int random_setfilter( expr *filt );
 int random_filterstat( void );
-const char *random_filter( void );
+expr *random_filter( void );
 it_track *random_top( int num );
 t_track *random_fetch( void );
 
