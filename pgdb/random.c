@@ -28,7 +28,7 @@ static int fill_cache( expr *filt )
 		sql_expr(where, 4096, filt);
 
 	/* fill cache - if possible */
-	res = db_query( "INSERT INTO mserv_cache "
+	res = db_query( "INSERT INTO juke_cache "
 			"SELECT id, lplay, filename "
 			"FROM mserv_track t "
 			"%s%s",
@@ -50,8 +50,10 @@ int random_setfilter( expr *filt )
 	PGresult *res;
 
 	/* flush old filter */
-	res = db_query( "DROP TABLE mserv_cache" );
-	PQclear(res);
+	if( db_table_exists( "juke_cache" ) ){
+		res = db_query( "DROP TABLE juke_cache" );
+		PQclear(res);
+	}
 	if( filter ){
 		expr_free( filter );
 		filter = NULL;
@@ -59,7 +61,7 @@ int random_setfilter( expr *filt )
 
 	/* recreate empty cache table - now the filter may fail
 	 * and further queries are still vaild - but wont pick any results */
-	res = db_query( "CREATE TEMP TABLE mserv_cache ("
+	res = db_query( "CREATE TEMP TABLE juke_cache ("
 				"id INTEGER,"
 				"lplay INTEGER,"
 				"filename VARCHAR"
@@ -90,8 +92,8 @@ int random_setfilter( expr *filt )
 		(*random_func_filter)();
 
 	/* try to create index for cache table */
-	res = db_query( "CREATE INDEX mserv_cache_idx "
-			"ON mserv_cache(id)" );
+	res = db_query( "CREATE INDEX juke_cache_idx "
+			"ON juke_cache(id)" );
 	PQclear(res);
 
 	return 0;
@@ -105,7 +107,7 @@ int random_cache_update( int id, int lplay )
 {
 	PGresult *res;
 
-	res = db_query( "UPDATE mserv_cache SET lplay = %d WHERE id = %d",
+	res = db_query( "UPDATE juke_cache SET lplay = %d WHERE id = %d",
 			lplay, id );
 	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "random_cache_update: %s", db_errstr());
@@ -123,7 +125,7 @@ int random_filterstat( void )
 	PGresult *res;
 	int num;
 
-	res = db_query( "SELECT count(*) FROM mserv_cache" );
+	res = db_query( "SELECT count(*) FROM juke_cache" );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "filterstat: %s", db_errstr() );
 		PQclear(res);
@@ -155,7 +157,7 @@ it_track *random_top( int num )
 				"c.filename "
 			"FROM "
 				"( SELECT * "
-					"FROM mserv_cache "
+					"FROM juke_cache "
 					"ORDER by lplay "
 					"LIMIT %d "
 				") AS c "
@@ -179,7 +181,7 @@ t_track *random_fetch( void )
 		num = 1;
 
 	/* get first tracks matching filter */
-	res = db_query( "SELECT id FROM mserv_cache "
+	res = db_query( "SELECT id FROM juke_cache "
 			"ORDER BY lplay LIMIT %d", num );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "random_fetch: %s", db_errstr());
