@@ -229,7 +229,7 @@ int queue_del( int queueid, int uid )
 
 	PQclear(res);
 
-	if(queue_func_del){
+	if(queue_func_del && q){
 		(*queue_func_del)( q );
 		queue_free(q);
 	}
