@@ -34,7 +34,7 @@ void history_free( t_history *h)
 
 #define GETFIELD(var,field,gofail) \
 	if( -1 == (var = PQfnumber(res, field ))){\
-		syslog( LOG_ERR, "missing track data: %s", field ); \
+		syslog( LOG_ERR, "missing history data: %s", field ); \
 		goto gofail; \
 	}
 
