@@ -22,8 +22,8 @@ static t_playstatus curstat = pl_stop;
 static int curpid = 0;
 static t_track *curtrack = NULL;
 
+static int gap = 0;
 static time_t nextstart = 0;
-
 
 /* used by player_start: */
 t_player_func_update player_func_resume = NULL;
@@ -323,6 +323,16 @@ t_playstatus player_status( void )
 	return curstat;
 }
 
+int player_gap( void )
+{
+	return gap;
+}
+
+t_playerror player_setgap( int g )
+{
+	gap = g;
+	return PE_OK;
+}
 
 /*
  * return the time of the next wakeup
@@ -449,7 +459,7 @@ void player_check( void )
 	/* we want to play */
 	if( wantstat == pl_play ){
 		if( ! nextstart )
-			nextstart = now + opt_gap;
+			nextstart = now + gap;
 
 		if( nextstart > now ){
 			curstat = pl_play;

@@ -28,6 +28,8 @@ extern t_player_func_update player_func_stop;
 
 t_playstatus player_status( void );
 t_track *player_track( void );
+int player_gap( void );
+t_playerror player_setgap( int gap );
 
 t_playerror player_start( void );
 t_playerror player_stop( void );
