@@ -23,10 +23,17 @@
 
 char *progname = NULL;
 int check_child = 0;
+int terminate = 0;
 
 static void sig_child( int sig )
 {
 	check_child++;
+	signal( sig, sig_child );
+}
+
+static void sig_term( int sig )
+{
+	terminate++;
 	signal( sig, sig_child );
 }
 
@@ -36,7 +43,7 @@ static void earliest( time_t *a, time_t b )
 		*a = b;
 }
 
-static int loop( void )
+static void loop( void )
 {
 	fd_set fdread;
 	int maxfd;
@@ -44,7 +51,7 @@ static int loop( void )
 	struct timeval tv, *tvp;
 	t_client *client;
 
-	while(1){
+	while( !terminate ){
 		/* handle flag set by SIGCHLD handler */
 		if( check_child ){
 			player_check();
@@ -79,7 +86,7 @@ static int loop( void )
 		if( 0 > select( maxfd, &fdread, NULL, NULL, tvp )){
 			if( errno != EINTR ){
 				syslog( LOG_CRIT, "select failed: %m" );
-				return 1;
+				exit( 1 );
 			}
 
 			/* 
@@ -107,7 +114,7 @@ static int loop( void )
 }
 
 // TODO: config file
-// TODO: sighup handler
+// TODO: sighup handler - reread config
 
 static void usage( void );
 
@@ -120,7 +127,6 @@ int main( int argc, char **argv )
 	int port = 4445;
 	int c;
 	int needhelp = 0;
-	int rv;
 	struct option lopts[] = {
 		{ "help", no_argument, NULL, 'h' },
 		{ "foreground", no_argument, NULL, 'f' },
@@ -178,11 +184,13 @@ int main( int argc, char **argv )
 	}
 
 	// TODO: use sigaction
+	signal( SIGTERM, sig_term );
+	signal( SIGINT, sig_term );
 	signal( SIGCHLD, sig_child );
 	signal( SIGPIPE, SIG_IGN );
 
 	if( clients_init( port ) ){
-		perror( "clients_init()" );
+		syslog( LOG_ERR, "clients_init(): %m" );
 		return 1;
 	}
 
@@ -198,6 +206,7 @@ int main( int argc, char **argv )
 
 	syslog(LOG_INFO, "initializing" );
 
+	db_init();
 	//player_init();
 	player_setgap( opt_gap );
 	player_setrandom( opt_random );
@@ -223,12 +232,14 @@ int main( int argc, char **argv )
 
 
 	syslog(LOG_INFO, "waiting" );
-	rv = loop();
+	loop();
 
 	syslog(LOG_INFO, "terminating" );
+	player_stop();
 	clients_done();
+	db_done();
 	pidfile_funlock(pidfile);
-	return rv;
+	return 0;
 }
 
 static void usage( void )
