@@ -210,7 +210,7 @@ int queue_del( int queueid, int uid )
 
 	if( uid ){
 		res = db_query( "DELETE FROM mserv_queue "
-				"WHERE id = %d and uid = %d", 
+				"WHERE id = %d and user_id = %d", 
 				queueid, uid );
 	} else {
 		res = db_query( "DELETE FROM mserv_queue WHERE id = %d", 
