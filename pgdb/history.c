@@ -86,19 +86,39 @@ t_track *history_track( t_history *h)
 // TODO: history_*list() are *SLOW*
 it_history *history_list( int num )
 {
-	return db_iterate( (db_convert)history_convert, "SELECT * "
-			"FROM mserv_xhist "
-			"ORDER BY played DESC "
-			"LIMIT %d", num );
+	return db_iterate( (db_convert)history_convert, 
+			"SELECT "
+				"t.*,"
+        			"time2unix(h.added) AS played,"
+				"h.user_id "
+			"FROM "
+				"( SELECT * FROM mserv_hist "
+					"ORDER BY added DESC "
+					"LIMIT %d "
+				") AS h "
+					"INNER JOIN mserv_track t "
+					"ON t.id = h.file_id "
+			"ORDER BY h.added ", 
+			num );
 }
 
 it_history *history_tracklist( int trackid, int num )
 {
-	return db_iterate( (db_convert)history_convert, "SELECT * "
-			"FROM mserv_xhist "
-			"WHERE id = %d "
-			"ORDER BY played DESC "
-			"LIMIT %d", 
+	return db_iterate( (db_convert)history_convert,
+			"SELECT "
+				"t.*,"
+        			"time2unix(h.added) AS played,"
+				"h.user_id "
+			"FROM "
+				"( SELECT * FROM mserv_hist "
+					"WHERE id = %d "
+					"ORDER BY added DESC "
+					"LIMIT %d "
+				") AS h "
+					"INNER JOIN mserv_track t "
+					"ON t.id = h.file_id "
+			"ORDER BY h.added ",
+					
 			trackid, num );
 }
 

@@ -16,27 +16,6 @@ static char *filter = NULL;
 
 #define RANDOM_LIMIT 1000
 
-#define CACHE_QUERY \
-	"SELECT "\
-		"t.id,"\
-		"t.album_id,"\
-		"t.album_pos,"\
-		"time2unix(t.duration) AS dur,"\
-		"c.lplay,"\
-		"t.title,"\
-		"t.artist_id,"\
-		"c.filename "\
-	"FROM "\
-		"(SELECT * "\
-			"FROM mserv_cache "\
-			"ORDER by lplay "\
-			"LIMIT %d "\
-		") AS c "\
-			"INNER JOIN stor_file t "\
-			"ON t.id = c.id "\
-		"WHERE "\
-			"t.title NOTNULL "
-
 
 
 
@@ -143,14 +122,33 @@ const char *random_filter( void )
 
 it_track *random_top( int num )
 {
-	return db_iterate( (db_convert)track_convert, CACHE_QUERY, num );
+	return db_iterate( (db_convert)track_convert, 
+			"SELECT "
+				"t.id,"
+				"t.album_id,"
+				"t.album_pos,"
+				"time2unix(t.duration) AS dur,"
+				"c.lplay,"
+				"t.title,"
+				"t.artist_id,"
+				"c.filename "
+			"FROM "
+				"( SELECT * "
+					"FROM mserv_cache "
+					"ORDER by lplay "
+					"LIMIT %d "
+				") AS c "
+					"INNER JOIN stor_file t "
+					"ON t.id = c.id "
+			"WHERE "
+				"t.title NOTNULL ", num );
 }
 
 t_track *random_fetch( void )
 {
 	PGresult *res;
 	int num;
-	t_track *t;
+	int id;
 
 	num = random_filterstat() / 3;
 	if( num > RANDOM_LIMIT )
@@ -160,7 +158,8 @@ t_track *random_fetch( void )
 		num = 1;
 
 	/* get first tracks matching filter */
-	res = db_query( CACHE_QUERY, num );
+	res = db_query( "SELECT id FROM mserv_cache "
+			"ORDER BY lplay LIMIT %d", num );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "random_fetch: %s", db_errstr());
 		PQclear(res);
@@ -190,10 +189,11 @@ t_track *random_fetch( void )
 	syslog( LOG_DEBUG, "random: picking %d from top %d", num, 
 			PQntuples(res));
 
-	t = track_convert( res, num );
+	id = pgint( res, num, 0 );
 	PQclear(res);
 
-	return t;
+
+	return track_get( id );
 }
 
 
