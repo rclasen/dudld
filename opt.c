@@ -3,7 +3,7 @@ int opt_gap = 0;
 int opt_random = 1;
 char *opt_filter = "! tag IN \"doppelt\", \"bad\",\"junk\",\"norandom\" & "
 	"tag IN \"metal\",\"rock\",\"indie\"";
-char *opt_player = "/home/bj/.mserv/player";
+char *opt_player = "/usr/local/lib/dudld/player";
 char *opt_path_tracks = "/pub/fun/mp3/CD";
 
 char *opt_db_host = "";
