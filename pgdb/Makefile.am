@@ -1,5 +1,5 @@
 
-CFLAGS=-I..-g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
+CFLAGS=-I.. -g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
 
 
 noinst_LIBRARIES=libdudldb.a
