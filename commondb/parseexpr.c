@@ -8,7 +8,11 @@
 
 #include "parseexpr.h"
 
-#define DTOKEN(x)	fprintf(stderr,"found token: %s\n",x )
+#ifdef DEBUG
+#define DTOKEN(x)	syslog(LOG_DEBUG,"found token: %s\n",x )
+#else
+#define DTOKEN(x)	{}
+#endif
 
 typedef struct {
 	parser_input *in;
