@@ -267,7 +267,7 @@ int track_exists( t_track *t )
 	if( 0 > (fd = open( buf, O_RDONLY ))){
 
 		res = db_query( "UPDATE mus_title SET available = false "
-				"WHERE trackid = %d", t->id );
+				"WHERE id = %d", t->id );
 
 		if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK )
 			syslog( LOG_ERR, "track_exists: %s", db_errstr() );
