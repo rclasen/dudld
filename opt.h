@@ -2,7 +2,13 @@
 #define _OPT_H
 
 extern int opt_gap;
-extern  char *opt_player;
+extern char *opt_player;
+
+extern char *opt_db_host;
+extern char *opt_db_port;
+extern char *opt_db_name;
+extern char *opt_db_user;
+extern char *opt_db_pass;
 
 #endif
 
