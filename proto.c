@@ -144,7 +144,7 @@ static void proto_bcast( t_rights right, const char *code,
 		if( c->close )
 			continue;
 
-		if( c->right < right )
+		if( ( c->user ? c->user->right : r_any ) < right )
 			continue;
 
 		proto_vline( c, 1, code, fmt, ap );
@@ -243,7 +243,7 @@ static int mktab( char *buffer, int len, const char *fmt, ... )
 static inline int mkclient( char *buffer, int len, t_client *c )
 {
 	return mktab( buffer, len, "dds",
-			c->id, c->uid, inet_ntoa(c->sin.sin_addr));
+			c->id, c->user->id, inet_ntoa(c->sin.sin_addr));
 }
 
 /* make a reply string from track data */
@@ -251,10 +251,10 @@ static inline int mktrack( char *buffer, int len, t_track *t )
 {
 	return mktab( buffer, len, "dddsdd", 
 				t->id, 
-				t->albumid, 
+				t->album->id, 
 				t->albumnr, 
 				t->title, 
-				t->artistid, 
+				t->artist->id, 
 				t->duration);
 }
 
@@ -265,13 +265,13 @@ static inline int mkhistory( char *buf, int len, t_history *h )
 
 	t = history_track( h );
 	used = mktab( buf, len, "dddddsdd",
-				h->uid,
+				h->user->id,
 				h->played,
 				t->id,
-				t->albumid, 
+				t->album->id, 
 				t->albumnr, 
 				t->title, 
-				t->artistid, 
+				t->artist->id, 
 				t->duration
 				);
 	track_free(t);
@@ -286,13 +286,13 @@ static inline int mkqueue( char *buf, int len, t_queue *q )
 	t = queue_track(q);
 	used = mktab(buf, len, "ddddddsdd",
 				q->id,
-				q->uid,
+				q->user->id,
 				q->queued,
 				t->id,
-				t->albumid, 
+				t->album->id, 
 				t->albumnr, 
 				t->title, 
-				t->artistid, 
+				t->artist->id, 
 				t->duration);
 	track_free(t);
 	return used;
@@ -310,7 +310,7 @@ static inline int mkuser( char *buf, int len, t_user *u )
 
 static inline int mkalbum( char *buf, int len, t_album *a )
 {
-	return mktab(buf, len, "dsd", a->id, a->album, a->artistid );
+	return mktab(buf, len, "dsd", a->id, a->album, a->artist->id );
 }
 
 static inline int mkartist( char *buf, int len, t_artist *a )
@@ -321,28 +321,13 @@ static inline int mkartist( char *buf, int len, t_artist *a )
 static inline int mknewtrack( char *buf, int len, t_track *t )
 {
 	int used = 0;
-	t_album *album;
-	t_artist *artist;
-
 	*buf = 0;
-
-	if( NULL == (album = album_get( t->albumid )))
-		return len+1;
-
-	if( NULL == (artist = artist_get( t->artistid))){
-		album_free(album);
-		return len+1;
-	}
-
 
 	used = mktrack(buf, len, t );
 	if(len > used++ ){ buf[used-1] = '\t'; }
-	used += mkartist( buf+used, len-used, artist );
+	used += mkartist( buf+used, len-used, t->artist );
 	if(len > used++ ){ buf[used-1] = '\t'; }
-	used += mkalbum( buf+used, len-used, album );
-
-	album_free(album);
-	artist_free(artist);
+	used += mkalbum( buf+used, len-used, t->album );
 
 	return used;
 }
@@ -416,6 +401,9 @@ static void proto_bcast_logout( t_client *client )
 
 CMD(cmd_user, r_any, p_open, arg_need )
 {
+	if( client->pdata )
+		free(client->pdata);
+
 	client->pdata = strdup( line );
 	client->pstate = p_user;
 
@@ -424,43 +412,34 @@ CMD(cmd_user, r_any, p_open, arg_need )
 
 CMD(cmd_pass, r_any, p_user, arg_need )
 {
-	int uid;
-	t_user *u;
-	int allowed;
-
-	if( 0 > ( uid = user_id( client->pdata )))
+	if( NULL == ( client->user = user_getn( client->pdata )))
 		goto clean1;
 
-	if( NULL == ( u = user_get( uid )))
+	if( ! user_ok( client->user, line ))
 		goto clean2;
 
-	if( ! (allowed = user_ok( u, line )))
-		goto clean3;
-
-	client->uid = u->id;
 	client->pstate = p_idle;
-	client->right = u->right;
 
 	syslog( LOG_INFO, "con #%d: user %s logged in", 
-			client->id, (char*)client->pdata );
+			client->id, client->user->name );
 	RLAST( "221", "successfully logged in" );
 	proto_bcast_login(client);
 
+	goto final;
 
-clean3:
-	user_free(u);
 clean2:
-	free( client->pdata );
-	client->pdata = NULL;
-
-	if( allowed ) return;
+	user_free(client->user);
+	client->user = NULL;
 
 clean1:
 	client->pstate = p_open;
-	client->right = r_any;
-	client->uid = 0;
+
 	syslog( LOG_NOTICE, "con #%d: login failed", client->id );
 	RLAST("521", "login failed" );
+
+final:
+	free( client->pdata );
+	client->pdata = NULL;
 }
 
 CMD(cmd_clientlist, r_user, p_idle, arg_none )
@@ -493,7 +472,7 @@ CMD(cmd_clientcloseuser, r_master, p_idle, arg_need )
 	}
 
 	for( c = clients; c; c = c->next ){
-		if( c->uid == uid ){
+		if( c->user->id == uid ){
 			proto_rlast( c, "632", "kicked" );
 			client_close( c );
 
@@ -1272,7 +1251,7 @@ CMD(cmd_queueadd, r_user, p_idle, arg_need)
 		return;
 	}
 
-	if( -1 == (qid = queue_add(id, client->uid))){
+	if( -1 == (qid = queue_add(id, client->user->id))){
 		RLAST( "561", "failed to add track to queue" );
 		return;
 	}
@@ -1292,8 +1271,8 @@ CMD(cmd_queuedel, r_user, p_idle, arg_need)
 		return;
 	}
 
-	uid = client->uid;
-	if( client->right == r_master )
+	uid = client->user->id;
+	if( client->user->right == r_master )
 		uid = 0;
 
 	if( queue_del( id, uid )){
@@ -1847,7 +1826,7 @@ static void cmd_help( t_client *client, char *line )
 		if( client->pstate != c->state && c->state != p_any )
 			continue;
 		
-		if( client->right < c->right )
+		if( ( client->user ? client->user->right : r_any ) < c->right )
 			continue;
 
 		RLINE("219", c->name );
@@ -1897,7 +1876,7 @@ static void cmd( t_client *client, char *line )
 				return;
 		}
 
-		if( c->right > client->right ){
+		if( c->right > (client->user ? client->user->right : r_any)){
 			RLAST( "520", "permission denied");
 			return;
 		}

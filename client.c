@@ -98,15 +98,9 @@ t_client *client_accept( fd_set *read )
 
 	c->id = ++maxid;
 	c->close = 0;
-	c->uid = 0;
+	c->user = NULL;
 	c->ilen = 0;
-#if 1
-	c->right = r_any;
 	c->pstate = p_open;
-#else
-	c->right = r_user;
-	c->pstate = p_idle;
-#endif
 	c->pdata = NULL;
 
 	c->next = clients;
@@ -135,6 +129,7 @@ void client_close( t_client *c )
 static void client_free( t_client *c )
 {
 	shutdown(c->sock, 2);
+	user_free(c->user);
 	free(c->pdata);
 	free(c);
 }

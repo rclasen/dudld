@@ -19,6 +19,7 @@ t_queue_func_fetch queue_func_fetch = NULL;
 static t_queue *queue_convert( PGresult *res, int tup )
 {
 	t_queue *q;
+	int uid;
 	int f;
 
 	if( ! res )
@@ -36,23 +37,29 @@ static t_queue *queue_convert( PGresult *res, int tup )
 	q->id = pgint(res, tup, f);
 
 	GETFIELD(f,"user_id", clean1 );
-	q->uid = pgint(res, tup, f);
+	uid = pgint(res, tup, f);
 
 	GETFIELD(f,"queued", clean1 );
 	q->queued = pgint(res, tup, f );
 
+	if( NULL == ( q->user = user_get(uid)))
+		goto clean1;
+
 	/* when there is a file_id, fetch this track seperately */
 	if( -1 != (f = PQfnumber(res,"file_id"))){
-		q->_track = track_get(pgint(res,tup,f));
+		q->track = track_get(pgint(res,tup,f));
 
 	/* otherwise try to get the data from current result */
 	} else {
-		q->_track = track_convert( res, tup );
+		q->track = track_convert( res, tup );
 	}
-	if( NULL == q->_track )
-		goto clean1;
+	if( NULL == q->track )
+		goto clean2;
 
 	return q;
+
+clean2:
+	user_free(q->user);
 
 clean1:
 	free(q);
@@ -68,7 +75,7 @@ void queue_free( t_queue *q )
 	if( -- q->_refs > 0 )
 		return;
 
-	track_free(q->_track);
+	track_free(q->track);
 	free(q);
 }
 
@@ -85,8 +92,8 @@ t_track *queue_track( t_queue *q )
 	if( ! q )
 		return NULL;
 
-	track_use(q->_track);
-	return q->_track;
+	track_use(q->track);
+	return q->track;
 }
 
 t_queue *queue_get( int id )

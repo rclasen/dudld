@@ -2,12 +2,12 @@
 #define _ALBUM_H
 
 #include "dudldb.h"
+#include "artist.h"
 
 typedef struct _t_album {
 	int id;
 	char *album;
-	int artistid;
-	// TODO: include artist details in t_album
+	t_artist *artist;
 } t_album;
 
 #define it_album it_db

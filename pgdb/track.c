@@ -12,6 +12,8 @@
 #include <opt.h>
 #include "dudldb.h"
 #include "track.h"
+#include "artist.h"
+#include "album.h"
 #include "filter.h"
 
 
@@ -47,14 +49,8 @@ t_track *track_convert( PGresult *res, int tup )
 	GETFIELD(f,"id", clean1 );
 	t->id = pgint(res, tup, f );
 
-	GETFIELD(f,"album_id", clean1 );
-	t->albumid = pgint(res, tup, f);
-
 	GETFIELD(f,"album_pos", clean1 );
 	t->albumnr = pgint(res, tup, f);
-
-	GETFIELD(f,"artist_id", clean1 );
-	t->artistid = pgint(res, tup, f);
 
 	t->lastplay = 0;
 	if( -1 != (f = PQfnumber( res, "lplay" )))
@@ -72,7 +68,19 @@ t_track *track_convert( PGresult *res, int tup )
 	if( NULL == (t->title = pgstring(res, tup, f)))
 		goto clean2;
 
+	if( NULL == (t->artist = artist_convert_title(res, tup)))
+		goto clean3;
+
+	if( NULL == (t->album = album_convert(res, tup)))
+		goto clean4;
+
 	return t;
+
+clean4:
+	artist_free(t->artist);
+
+clean3:
+	free(t->title);
 
 clean2:
 	free(t->fname);
@@ -115,8 +123,13 @@ int track_settitle( t_track *t, const char *title )
 
 int track_setartist( t_track *t, int artistid )
 {
-	t->artistid = artistid;
-	t->modified.m.artistid = 1;
+	t_artist *nart;
+
+	if( NULL == (nart = artist_get(artistid)))
+		return 1;
+	artist_free(t->artist);
+	t->artist = nart;
+	t->modified.m.artist = 1;
 	return 0;
 }
 
@@ -162,10 +175,10 @@ int track_save( t_track *t )
 			return 1;
 	}
 
-	if( t->modified.m.artistid ){
+	if( t->modified.m.artist ){
 		len += addcom( buffer + len, SBUFLEN - len, &fields );
 		len += snprintf( buffer + len, SBUFLEN - len, "artist_id=%d", 
-				t->artistid );
+				t->artist->id );
 		if( len > SBUFLEN || len < 0 )
 			return 1;
 	}

@@ -149,6 +149,33 @@ t_user *user_get( int uid )
 	return u;
 }
 
+t_user *user_getn( const char *name )
+{
+	PGresult *res;
+	t_user *u;
+	char *esc;
+
+	if( NULL == (esc = db_escape(name)))
+		return NULL;
+
+	res = db_query( "SELECT * FROM mserv_user WHERE name = '%s'", esc );
+	free(esc);
+	if( !res || PQresultStatus(res) != PGRES_TUPLES_OK ){
+		syslog( LOG_ERR, "user_getn: %s", db_errstr());
+		PQclear(res);
+		return NULL;
+	}
+
+	if( PQntuples(res) != 1 ){
+		PQclear(res);
+		return NULL;
+	}
+
+	u = user_convert(res, 0);
+	PQclear(res);
+	return u;
+}
+
 int user_id( const char *name )
 {
 	PGresult *res;

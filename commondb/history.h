@@ -4,12 +4,12 @@
 #include <time.h>
 
 #include "track.h"
+#include "user.h"
 
 typedef struct _t_history {
-	t_track *_track;
+	t_track *track;
 	time_t played;
-	int uid;
-	// TODO: include user details in t_history
+	t_user *user;
 } t_history;
 
 int history_add( t_track *t, int uid );

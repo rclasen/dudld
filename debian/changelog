@@ -1,3 +1,9 @@
+dudld (0.0.3) unstable; urgency=low
+
+  * retrieve all infos by default
+
+ -- Rainer Clasen <bj@zuto.de>  Sat, 28 Aug 2004 21:57:21 +0200
+
 dudld (0.0.2) unstable; urgency=low
 
   * enhanced filter: year, regexp matches, album, artist, title

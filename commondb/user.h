@@ -2,7 +2,14 @@
 #define _USER_H
 
 #include "dudldb.h"
-#include "client.h"
+//#include "client.h"
+
+typedef enum {
+	r_any,
+	r_guest,
+	r_user,
+	r_master,
+} t_rights;
 
 typedef struct {
 	int id;
@@ -23,6 +30,7 @@ int user_add( const char *name, t_rights right, const char *pass );
 int user_del( int uid );
 
 t_user *user_get( int uid );
+t_user *user_getn( const char *name );
 int user_id( const char *name );
 int user_ok( t_user *u, const char *pass );
 

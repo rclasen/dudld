@@ -245,7 +245,7 @@ static t_track *getnext( void )
 	/* queue */
 	while( NULL != (q = queue_fetch())){
 		curtrack = queue_track(q);
-		curuid = q->uid;
+		curuid = q->user->id;
 		queue_free(q);
 
 		if( track_exists(curtrack) )

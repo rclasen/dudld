@@ -6,12 +6,24 @@
 
 // TODO: do not use opt directly
 #include <opt.h>
-#include <commondb/artist.h>
-#include "dudldb.h"
+#include "artist.h"
 
 
 
+typedef struct _t_artist_col {
+	char	*id;
+	char	*artist;
+} t_artist_col;
 
+static t_artist_col title_col = {
+	.id = "artist_id",
+	.artist = "artist_name",
+};
+
+static t_artist_col album_col = {
+	.id = "album_artist_id",
+	.artist = "album_artist_name",
+};
 
 
 #define GETFIELD(var,field,gofail) \
@@ -20,7 +32,8 @@
 		goto gofail; \
 	}
 
-static t_artist *artist_convert( PGresult *res, int tup )
+
+static t_artist *artist_convert( PGresult *res, int tup, t_artist_col *col )
 {
 	t_artist *t;
 	int f;
@@ -37,10 +50,10 @@ static t_artist *artist_convert( PGresult *res, int tup )
 		return NULL;
 
 
-	GETFIELD(f,"id", clean1 );
+	GETFIELD(f, col->id, clean1 );
 	t->id = pgint(res, tup, f );
 
-	GETFIELD(f,"nname", clean1 );
+	GETFIELD(f, col->artist, clean1 );
 	if( NULL == (t->artist = pgstring(res, tup, f)))
 		goto clean1;
 
@@ -50,6 +63,16 @@ clean1:
 	free(t);
 
 	return NULL;
+}
+
+t_artist *artist_convert_title( PGresult *res, int tup )
+{
+	return artist_convert( res, tup, &title_col );
+}
+
+t_artist *artist_convert_album( PGresult *res, int tup )
+{
+	return artist_convert( res, tup, &album_col );
 }
 
 void artist_free( t_artist *t )
@@ -96,14 +119,14 @@ t_artist *artist_get( int id )
 	PGresult *res;
 	t_artist *t;
 
-	res = db_query( "SELECT * FROM mus_artist WHERE id = %d", id );
+	res = db_query( "SELECT * FROM mserv_artist WHERE artist_id = %d", id );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "artist_get: %s", db_errstr());
 		PQclear(res);
 		return NULL;
 	}
 
-	t = artist_convert( res, 0 );
+	t = artist_convert( res, 0, &title_col );
 	PQclear( res );
 
 	return t;
@@ -111,8 +134,8 @@ t_artist *artist_get( int id )
 
 it_artist *artist_list( void )
 {
-	return db_iterate( (db_convert)artist_convert, "SELECT * "
-			"FROM mus_artist");
+	return db_iterate( (db_convert)artist_convert_title, "SELECT * "
+			"FROM mserv_artist");
 }
 
 it_artist *artist_search( const char *substr )
@@ -123,9 +146,9 @@ it_artist *artist_search( const char *substr )
 	if( NULL == (str = db_escape( substr )))
 		return NULL;
 
-	it = db_iterate( (db_convert)artist_convert, "SELECT * "
-			"FROM mus_artist "
-			"WHERE LOWER(nname) LIKE LOWER('%%%s%%')", str );
+	it = db_iterate( (db_convert)artist_convert_title, "SELECT * "
+			"FROM mserv_artist "
+			"WHERE LOWER(artist_name) LIKE LOWER('%%%s%%')", str );
 	free(str);
 	return it;
 }

@@ -3,13 +3,15 @@
 
 #include "dudldb.h"
 #include "parseexpr.h"
+#include "artist.h"
+#include "album.h"
 
 typedef struct _t_track {
 	int id;
-	int albumid;
+	t_album *album;
 	int albumnr;
 	char *title;
-	int artistid;
+	t_artist *artist;
 	int duration;
 	char *fname;
 	int _refs;
@@ -18,10 +20,9 @@ typedef struct _t_track {
 		unsigned int any;
 		struct {
 			unsigned int title:1;
-			unsigned int artistid:1;
+			unsigned int artist:1;
 		} m;
 	} modified;
-	// TODO: include artist and album details in t_track
 } t_track;
 
 #define it_track it_db

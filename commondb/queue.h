@@ -2,13 +2,13 @@
 #define _QUEUE_H
 
 #include "track.h"
+#include "user.h"
 
 
 typedef struct _t_queue {
 	int id;
-	t_track *_track;
-	int uid;
-	// TODO: include user details in t_queue
+	t_track *track;
+	t_user *user;
 	time_t queued;
 	int _refs;
 } t_queue;

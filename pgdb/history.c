@@ -35,7 +35,7 @@ void history_free( t_history *h)
 	if( !h )
 		return;
 
-	track_free(h->_track);
+	track_free(h->track);
 	free(h);
 }
 
@@ -59,16 +59,20 @@ static t_history *history_convert( PGresult *res, int tup )
 	if( NULL == (h = malloc(sizeof(t_history))))
 		return NULL;
 
-	GETFIELD(f,"user_id", clean1 );
-	h->uid = pgint(res, tup, f);
-
 	GETFIELD(f,"played", clean1 );
 	h->played = pgint(res, tup, f );
 
-	if( NULL == ( h->_track = track_convert( res, tup )))
+	GETFIELD(f,"user_id", clean1 );
+	if( NULL == ( h->user = user_get(pgint(res, tup, f))))
 		goto clean1;
 
+	if( NULL == ( h->track = track_convert( res, tup )))
+		goto clean2;
+
 	return h;
+
+clean2:
+	user_free(h->user);
 
 clean1:
 	free(h);
@@ -79,8 +83,8 @@ clean1:
 
 t_track *history_track( t_history *h)
 {
-	track_use(h->_track);
-	return h->_track;
+	track_use(h->track);
+	return h->track;
 }
 
 it_history *history_list( int num )

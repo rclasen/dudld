@@ -6,8 +6,8 @@
 
 // TODO: do not use opt directly
 #include <opt.h>
-#include <commondb/album.h>
-#include "dudldb.h"
+#include "album.h"
+#include "artist.h"
 
 
 
@@ -20,7 +20,7 @@
 		goto gofail; \
 	}
 
-static t_album *album_convert( PGresult *res, int tup )
+t_album *album_convert( PGresult *res, int tup )
 {
 	t_album *t;
 	int f;
@@ -37,17 +37,20 @@ static t_album *album_convert( PGresult *res, int tup )
 		return NULL;
 
 
-	GETFIELD(f,"id", clean1 );
+	GETFIELD(f,"album_id", clean1 );
 	t->id = pgint(res, tup, f );
 
-	GETFIELD(f,"artist_id", clean1 );
-	t->artistid = pgint(res, tup, f);
-
-	GETFIELD(f,"album", clean1 );
+	GETFIELD(f,"album_name", clean1 );
 	if( NULL == (t->album = pgstring(res, tup, f)))
 		goto clean1;
 
+	if( NULL == (t->artist = artist_convert_album( res, tup )))
+		goto clean2;
+
 	return t;
+
+clean2:
+	free(t->album);
 
 clean1:
 	free(t);
@@ -57,6 +60,7 @@ clean1:
 
 void album_free( t_album *t )
 {
+	artist_free( t->artist );
 	free( t->album );
 	free( t );
 }
@@ -103,7 +107,8 @@ int album_setartist( t_album *t, int artistid )
 
 	PQclear(res);
 
-	t->artistid = artistid;
+	artist_free(t->artist);
+	t->artist = artist_get(artistid);
 	return 0;
 }
 
@@ -118,7 +123,7 @@ t_album *album_get( int id )
 	PGresult *res;
 	t_album *t;
 
-	res = db_query( "SELECT * FROM mus_album WHERE id = %d", id );
+	res = db_query( "SELECT * FROM mserv_album WHERE album_id = %d", id );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "album_get: %s", db_errstr());
 		PQclear(res);
@@ -134,7 +139,7 @@ t_album *album_get( int id )
 it_album *album_list( void )
 {
 	return db_iterate( (db_convert)album_convert, "SELECT * "
-			"FROM mus_album");
+			"FROM mserv_album");
 }
 
 it_album *album_search( const char *substr )
@@ -146,8 +151,8 @@ it_album *album_search( const char *substr )
 		return NULL;
 
 	it = db_iterate( (db_convert)album_convert, "SELECT * "
-			"FROM mus_album "
-			"WHERE LOWER(album) LIKE LOWER('%%%s%%')", str );
+			"FROM mserv_album "
+			"WHERE LOWER(album_name) LIKE LOWER('%%%s%%')", str );
 	free(str);
 	return it;
 }
