@@ -35,10 +35,7 @@ static int loop( void )
 	while(1){
 		/* handle flag set by SIGCHLD handler */
 		if( check_child ){
-			if( PE_OK != player_check() ){
-				syslog( LOG_WARNING, "player_check failed" );
-			}
-
+			player_check();
 			check_child = 0;
 		}
 
@@ -53,8 +50,15 @@ static int loop( void )
 		wakeup = 0;
 		earliest( &wakeup, player_wakeuptime() );
 		// TODO: check other scheduled events
+
+
 		if( wakeup ){
-			tv.tv_sec = time(NULL) - wakeup;
+			check_child++;
+
+			wakeup -= time(NULL);
+			if( wakeup < 0 )
+				wakeup = 0;
+			tv.tv_sec = wakeup;
 			tv.tv_usec = 0;
 			tvp = &tv;
 		}
