@@ -32,7 +32,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <arpa/inet.h>
 
+#include "user.h"
 #include "proto.h"
 
 static int proto_vline( t_client *client, int last, const char *code, 
@@ -93,7 +95,8 @@ static void proto_badarg( t_client *client, const char *desc )
 	proto_rlast( client, "501", desc );
 }
 
-static void proto_bcast( const char *code, const char *fmt, ... )
+static void proto_bcast( t_rights right, const char *code, 
+		const char *fmt, ... )
 {
 	t_client *c;
 	va_list ap;
@@ -103,10 +106,33 @@ static void proto_bcast( const char *code, const char *fmt, ... )
 		if( c->close )
 			continue;
 
+		if( c->right < right )
+			continue;
+
 		proto_vline( c, 1, code, fmt, ap );
 	}
 	va_end( ap );
 }
+
+
+/************************************************************
+ * broadcasts
+ */
+
+static void proto_bcast_login( t_client *client )
+{
+	proto_bcast( r_user, "630", "%d\t%d\t%s", client->id, client->uid, 
+			inet_ntoa(client->sin.sin_addr) );
+}
+
+static void proto_bcast_logout( t_client *client )
+{
+	proto_bcast( r_user, "631", "%d\t%d\t%s", client->id, client->uid, 
+			inet_ntoa(client->sin.sin_addr) );
+}
+
+// TODO: more broadcasts
+
 
 /************************************************************
  * commands
@@ -121,7 +147,17 @@ static void proto_bcast( const char *code, const char *fmt, ... )
 		proto_badarg( client, "no arguments allowed" ); \
 		return; \
 	}
-	
+#define RARGS			\
+	if( !line || !strlen(line) ){\
+		proto_badarg( client, "missing arguments" ); \
+		return; \
+	}
+#define STATE(st)	(client->pstate == (st))	
+#define IDLE	\
+	if( !STATE(p_idle) ){\
+		RLAST("520", "waiting for other input" ); \
+		return; \
+	}
 
 CMD(cmd_quit)
 {
@@ -131,26 +167,134 @@ CMD(cmd_quit)
 	client_close(client);
 }
 
-CMD(cmd_play)
+CMD(cmd_disconnect)
 {
-	RNOARGS;
+	int id;
+	char *end;
+	t_client *c;
 
-	RLAST( "541", "player error" );
+	RARGS;
+	IDLE;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid session ID" );
+		return;
+	}
+
+	for( c = clients; c; c = c->next ){
+		if( c->id == id ){
+			proto_rlast( c, "632", "disconnected" );
+			client_close( c );
+
+			RLAST( "231", "disconnected" );
+			return;
+		}
+	}
+
+	RLAST( "530", "session not found" );
+}
+
+CMD(cmd_user)
+{
+	if( ! (STATE(p_open) || STATE(p_idle)) ){
+		RLAST( "520", "already seen a USER command" );
+		return;
+	}
+
+	RARGS;
+
+	client->pdata = strdup( line );
+	client->pstate = p_user;
+
+	RLAST( "320", "user ok, use PASS for password" );
+}
+
+CMD(cmd_pass)
+{
+	if( ! STATE(p_user) ){
+		RLAST( "520", "first issue a USER command" );
+		return;
+	}
+
+	RARGS;
+
+	if( ! user_ok( client->pdata, line )){
+		client->pstate = p_open;
+		client->right = r_any;
+		client->uid = 0;
+		RLAST("52x", "login failed" );
+	
+	} else {
+		client->uid = 1;
+		client->pstate = p_idle;
+		client->right = r_master;
+
+		RLAST( "221", "successfully logged in" );
+		proto_bcast_login(client);
+	}
+
+	free( client->pdata );
+	client->pdata = NULL;
+
 }
 
 CMD(cmd_who)
 {
 	t_client *c;
 
+	IDLE;
 	RNOARGS;
 	for( c = clients; c; c = c->next ){
 		if( c->close )
 			continue;
 
-		RLINE( "230", "%d", 0);
+		RLINE( "230", "%d\t%d\t%s", c->id, c->uid, 
+				inet_ntoa(c->sin.sin_addr));
 	}
 	RLAST( "230", "");
 }
+
+CMD(cmd_kick)
+{
+	int uid;
+	char *end;
+	t_client *c;
+	int found = 0;
+
+	IDLE;
+	RARGS;
+
+	uid = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid user ID" );
+		return;
+	}
+
+	for( c = clients; c; c = c->next ){
+		if( c->uid == uid ){
+			proto_rlast( c, "632", "kicked" );
+			client_close( c );
+
+			found++;
+		}
+	}
+
+	if( found )
+		RLINE( "231", "kicked" );
+	else 
+		RLAST( "530", "user not found" );
+}
+
+CMD(cmd_play)
+{
+	IDLE;
+	RNOARGS;
+
+	RLAST( "541", "player error" );
+}
+
+
 
 	
 /************************************************************
@@ -162,15 +306,22 @@ typedef void (*t_func_cmd)( t_client *client, char *line );
 typedef struct _t_cmd {
 	const char *name;
 	t_func_cmd cmd;
+	t_rights right;
 } t_cmd;
 
 
 static t_cmd proto_cmds[] = {
-	{ "QUIT", cmd_quit },
-	{ "PLAY", cmd_play },
-	{ "WHO", cmd_who },
+	{ "QUIT", cmd_quit, r_any },
+	{ "DISCONNECT", cmd_disconnect, r_master },
+	{ "USER", cmd_user, r_any },
+	{ "PASS", cmd_pass, r_any },
+	//{ "USERS", cmd_users, r_user },
+	//{ "USERGETID", cmd_usergetid, r_user },
+	{ "WHO", cmd_who, r_user },
+	{ "KICK", cmd_kick, r_master },
+	{ "PLAY", cmd_play, r_user },
 
-	{ NULL, NULL}
+	{ NULL, NULL, 0 }
 };
 
 static void cmd( t_client *client, char *line )
@@ -178,13 +329,19 @@ static void cmd( t_client *client, char *line )
 	t_cmd *c;
 	int len;
 
-	len = strcspn(line, " ");
 	for( c = proto_cmds; c && c->name; c++ ){
-		if( 0 == strncasecmp(c->name, line, len )){
-			while( len > 0 && isspace(line[len-1]) )
-				line[--len] = 0;
+		len = strlen(c->name);
+		if( 0 == strncasecmp(c->name, line,len )){
+			char *s = line + len;
 
-			(*c->cmd)(client, line +len);
+			while( *s && isspace(*s) )
+				s++;
+
+			if( c->right <= client->right ){
+				(*c->cmd)(client, s);
+			} else {
+				RLAST( "520", "permission denied");
+			}
 			return;
 		}
 	}
@@ -192,22 +349,6 @@ static void cmd( t_client *client, char *line )
 	RLAST( "500", "unkonwn command" );
 }
 
-
-/************************************************************
- * broadcasts
- */
-
-void proto_bcast_login( int uid )
-{
-	proto_bcast( "630", "%d", uid );
-}
-
-void proto_bcast_logout( int uid )
-{
-	proto_bcast( "631", "%d", uid );
-}
-
-// TODO: more broadcasts
 
 /************************************************************
  * interface functions
@@ -225,7 +366,7 @@ void proto_input( t_client *client )
 			line[l] = 0;
 		}
 			
-		if( l > 0 )
+		if( l >= 0 )
 			cmd( client, line );
 		else
 			RLAST( "500", "no command" );
@@ -242,9 +383,8 @@ void proto_newclient( t_client *client )
 
 void proto_delclient( t_client *client )
 {
-	(void)client;
 	printf( "a client is gone\n" );
-	proto_bcast_logout( 1 );
+	proto_bcast_logout( client );
 }
 
 // TODO: greeting
