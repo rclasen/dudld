@@ -1,5 +1,5 @@
 Source: dudld
-Section: unknown
+Section: sound
 Priority: optional
 Maintainer: Rainer Clasen <bj@zuto.de>
 Build-Depends: debhelper (>> 3.0.0)
@@ -8,5 +8,8 @@ Standards-Version: 3.5.2
 Package: dudld
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: dudl jukebox daemon
+ The dudl jukebox is a network oriented MP3 server you can connect to with
+ multiple clients. 
+ .
+ This is the daemon using the dudl database.
