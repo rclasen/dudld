@@ -426,17 +426,17 @@ CMD(cmd_pass, r_any, p_user, arg_need )
 {
 	int uid;
 	t_user *u;
+	int allowed;
 
 	if( 0 > ( uid = user_id( client->pdata )))
-		goto failed;
+		goto clean1;
 
 	if( NULL == ( u = user_get( uid )))
-		goto failed;
+		goto clean2;
 
-	if( ! user_ok( u, line ))
-		goto failed;
+	if( ! (allowed = user_ok( u, line )))
+		goto clean3;
 
-	
 	client->uid = u->id;
 	client->pstate = p_idle;
 	client->right = u->right;
@@ -445,19 +445,21 @@ CMD(cmd_pass, r_any, p_user, arg_need )
 	RLAST( "221", "successfully logged in" );
 	proto_bcast_login(client);
 
-	goto clean;
 
-failed:
+clean3:
+	user_free(u);
+clean2:
+	free( client->pdata );
+	client->pdata = NULL;
+
+	if( allowed ) return;
+
+clean1:
 	client->pstate = p_open;
 	client->right = r_any;
 	client->uid = 0;
 	syslog( LOG_NOTICE, "login failed" );
 	RLAST("521", "login failed" );
-
-clean:
-	free( client->pdata );
-	client->pdata = NULL;
-	user_free(u);
 }
 
 CMD(cmd_clientlist, r_user, p_idle, arg_none )
