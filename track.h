@@ -41,6 +41,7 @@ int track_setrandom( t_track *t, int radnom );
 int track_setlastplay( t_track *t, int lastplay );
 int track_save( t_track *t );
 
+int tracks( void );
 t_track *track_get( int id );
 // TODO: t_track *track_getalbumnr( int albumid, int albumnr );
 
@@ -51,6 +52,7 @@ it_db *tracks_search( const char *substr );
 
 
 int random_setfilter( const char *filt );
+int random_filterstat( void );
 const char *random_filter( void );
 it_track *random_top( int num );
 t_track *random_fetch( void );
