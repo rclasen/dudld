@@ -1,5 +1,6 @@
 
-CFLAGS=-I..
+CFLAGS=-I..-g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
+
 
 noinst_LIBRARIES=libdudldb.a
 libdudldb_a_SOURCES= album.c \
