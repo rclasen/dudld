@@ -36,7 +36,9 @@ static char *filter = NULL;
 	"FROM "\
 		"mus_title t "\
 			"INNER JOIN mserv_cache c "\
-			"USING(id) "
+			"USING(id) "\
+	"WHERE "\
+		"t.available "
 
 #define TRACK_QCACHE \
 	"SELECT "\
@@ -54,7 +56,8 @@ static char *filter = NULL;
 			"ON f.unitid = u.id " \
 	"WHERE "\
 		"f.titleid NOTNULL "\
-		"AND NOT f.broken "
+		"AND NOT f.broken "\
+		"AND t.available "
 
 
 
@@ -68,8 +71,10 @@ int random_setfilter( const char *filt )
 	char *n;
 
 	/* flush cache table */
-	res = db_query( "DROP TABLE " CACHE_TAB );
-	PQclear(res);
+	if( filter ){
+		res = db_query( "DROP TABLE " CACHE_TAB );
+		PQclear(res);
+	}
 
 	/* recreate empty cache table - now the filter may fail
 	 * and further queries are still vaild */
