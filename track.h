@@ -44,7 +44,7 @@ t_track *track_get( int id );
 
 it_track *tracks_albumid( int albumid );
 it_track *tracks_artistid( int artistid );
-it_db *tracks_search( const char *substr );
+it_track *tracks_search( const char *substr );
 // TODO: it_db *tracks_searchf( const char *filter );
 
 
