@@ -17,36 +17,6 @@
 
 
 
-#define TRACK_TAB "mus_title"
-
-#define TRACK_QUERY \
-	"SELECT "\
-		"t.id,"\
-		"t.album_id,"\
-		"t.nr,"\
-		"date_part('epoch',f.duration) AS dur,"\
-		"date_part('epoch',t.lastplay) AS lplay,"\
-		"t.title,"\
-		"t.artist_id,"\
-		"stor_filename(u.collection,u.colnum,f.dir,f.fname) "\
-			"AS filename " \
-	"FROM "\
-		"( "\
-			"mus_title t  "\
-				"INNER JOIN stor_file f  "\
-				"ON t.id = f.titleid "\
-			")  "\
-			"INNER JOIN stor_unit u  "\
-			"ON f.unitid = u.id " \
-	"WHERE "\
-		"f.titleid NOTNULL "\
-		"AND NOT f.broken "
-
-
-
-
-
-
 #define GETFIELD(var,field,gofail) \
 	if( -1 == (var = PQfnumber(res, field ))){\
 		syslog( LOG_ERR, "missing track data: %s", field ); \
@@ -173,7 +143,7 @@ int track_save( t_track *t )
 	if( ! t->modified.any )
 		return 0;
 
-	len = snprintf( buffer, SBUFLEN, "UPDATE " TRACK_TAB " SET ");
+	len = snprintf( buffer, SBUFLEN, "UPDATE mus_title SET ");
 	if( len > SBUFLEN || len < 0 )
 		return 1;
 
@@ -222,7 +192,7 @@ t_track *track_get( int id )
 	// TODO: for a single track it is faster to query all three tables
 	// seperately
 
-	res = db_query( TRACK_QUERY "AND t.id = %d", id );
+	res = db_query( "SELECT * FROM mserv_track WHERE id = %d", id );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "track_get: %s",
 				db_errstr());
@@ -238,15 +208,17 @@ t_track *track_get( int id )
 
 it_track *tracks_albumid( int albumid )
 {
-	return db_iterate( (db_convert)track_convert, TRACK_QUERY 
-			"AND album_id = %d ORDER BY nr", albumid );
+	return db_iterate( (db_convert)track_convert, "SELECT * "
+			"FROM mserv_track "
+			"WHERE  album_id = %d ORDER BY nr", albumid );
 }
 
 
 it_track *tracks_artistid( int artistid )
 {
-	return db_iterate( (db_convert)track_convert, 
-			TRACK_QUERY "AND t.artist_id = %d", artistid );
+	return db_iterate( (db_convert)track_convert, "SELECT * "
+			"FROM mserv_track "
+			"WHERE artist_id = %d", artistid );
 }
 
 
@@ -258,8 +230,9 @@ it_track *tracks_search( const char *substr )
 	if( NULL == (str = db_escape( substr )))
 		return NULL;
 
-	it = db_iterate( (db_convert)track_convert, TRACK_QUERY 
-			"AND LOWER(t.title) LIKE LOWER('%%%s%%')", str );
+	it = db_iterate( (db_convert)track_convert, "SELECT * "
+			"FROM mserv_track "
+			"WHERE LOWER(title) LIKE LOWER('%%%s%%')", str );
 	free(str);
 	return it;
 }
@@ -269,7 +242,7 @@ int tracks( void )
 	PGresult *res;
 	int num;
 
-	res = db_query( "SELECT count(*) FROM " TRACK_TAB );
+	res = db_query( "SELECT count(*) FROM mus_title" );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "tracks: %s", db_errstr() );
 		PQclear(res);
