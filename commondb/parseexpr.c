@@ -359,6 +359,10 @@ static valop parse_valop( parse_stat *i )
 
 		  return vo_lt;
 
+	  case '~':
+		  PI_DONE(i->in);
+		  return vo_re;
+
 	  case 'i':
 	  case 'I':
 		  n = PI_NEXT(i->in);
@@ -409,6 +413,9 @@ static valtest *parse_valtest( parse_stat *i )
 		vt->field = vf_title;
 	} else if( 0 == strcmp( name, "album" )){
 		vt->field = vf_album;
+	} else if( 0 == strcmp( name, "year" )){
+		vt->field = vf_year;
+		numeric++;
 	} else {
 		parse_error( i, "unknown field" );
 		free(name);
@@ -429,8 +436,18 @@ static valtest *parse_valtest( parse_stat *i )
 	  case vo_le:
 	  case vo_gt:
 	  case vo_ge:
+		/*
 		if( ! numeric ){
 			parse_error( i, "invalid operation for string value" );
+			goto clean2;
+		}
+		*/
+		vt->val = parse_value(i);
+		break;
+
+	  case vo_re:
+		if( numeric ){
+			parse_error( i, "invalid operation for numeric value");
 			goto clean2;
 		}
 		vt->val = parse_value(i);
@@ -450,10 +467,26 @@ static valtest *parse_valtest( parse_stat *i )
 		goto clean2;
 	}
 
-	if( numeric && vt->val->type != vt_num ){
-		parse_error(i, "need a numeric value" );
+	if( vt->op == vo_re && vt->val->type != vt_string ){
+		parse_error(i, "regexp match needs string value" );
 		goto clean3;
 	}
+	
+	if( numeric ){
+		if( vt->val->type != vt_num ){
+			parse_error(i, "need a numeric value" );
+			goto clean3;
+		}
+
+	} else {
+		if( vt->field != vf_tag && vt->val->type != vt_string ){
+			// TODO: id lookup
+			// TODO: lookup reject should happen from DB module
+			parse_error(i, "id lookup not yet allowed");
+			goto clean3;
+		}
+	}
+
 
 	return vt;
 
@@ -477,7 +510,8 @@ static char *valfield_name[vf_max] = {
 	"tag",
 	"artist",
 	"title",
-	"album"
+	"album",
+	"year"
 };
 
 static char *valop_name[vo_max] = {
@@ -488,6 +522,7 @@ static char *valop_name[vo_max] = {
 	">",
 	">=",
 	"IN",
+	"~",
 };
 
 static int valtest_fmt( char *buf, size_t len, valtest *vt )

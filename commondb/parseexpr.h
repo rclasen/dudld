@@ -28,6 +28,7 @@ typedef enum {
 	vo_gt,
 	vo_ge,
 	vo_in,
+	vo_re,
 
 	vo_max,
 } valop;
@@ -39,6 +40,7 @@ typedef enum {
 	vf_artist,
 	vf_title,
 	vf_album,
+	vf_year,
 
 	vf_max,
 } valfield;

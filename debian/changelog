@@ -1,3 +1,9 @@
+dudld (0.0.2) unstable; urgency=low
+
+  * enhanced filter: year, regexp matches, album, artist, title
+
+ -- Rainer Clasen <bj@zuto.de>  Sat, 28 Aug 2004 16:09:00 +0200
+
 dudld (0.0.1) unstable; urgency=low
 
   * Initial Release.

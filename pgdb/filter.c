@@ -137,9 +137,10 @@ char *field_names[vf_max] = {
 	"dur",
 	"lplay",
 	"",
-	"artist_id",
+	"artist_name",
 	"title",
-	"album_id",
+	"album_name",
+	"album_publish_date",
 };
 
 char *oper_names[vo_max] = {
@@ -150,6 +151,7 @@ char *oper_names[vo_max] = {
 	">",
 	">=",
 	"IN",
+	"~*",
 };
 
 static int sql_valtest( char *buf, size_t len, valtest *vt )
@@ -162,6 +164,10 @@ static int sql_valtest( char *buf, size_t len, valtest *vt )
 		  used += sql_tag( buf+used, len-used, vt );
 		  break;
 
+	  // TODO allow other fields than tag
+	  case vf_title:
+	  case vf_artist:
+	  case vf_album:
 	  case vf_dur:
 	  case vf_lplay:
 		  used += snprintf( buf+used, len-used, "%s %s ", 
@@ -171,11 +177,14 @@ static int sql_valtest( char *buf, size_t len, valtest *vt )
 		  used += sql_value( buf+used, len-used, vt->val );
 		  break;
 
-	  case vf_title:
-	  case vf_artist:
-	  case vf_album:
+	  case vf_year:
+		  used += snprintf( buf+used, len-used, "%s %s '%04d-01-01'", 
+				  field_names[vt->field], 
+				  oper_names[vt->op],
+				  vt->val->val.num );
+		  break;
+
 	  case vf_max:
-		  // TODO allow other fields than tag
 		  return 0;
 	}
 
