@@ -297,6 +297,8 @@ int track_exists( t_track *t )
 	track_mkpath(buf, MAXPATHLEN, t);
 	if( 0 > (fd = open( buf, O_RDONLY ))){
 
+		syslog( LOG_NOTICE, "track is unavailable: %d, %s",
+				t->id, buf );
 		res = db_query( "UPDATE stor_file SET available = false "
 				"WHERE id = %d", t->id );
 
