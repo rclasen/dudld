@@ -57,6 +57,8 @@ static int playpid = 0;
  * actions like _stop() currently assume that kill succeeds
  */
 
+// TODO: this player is far too complicated */
+
 /*
  * get next track to play
  */
@@ -229,8 +231,10 @@ static t_childstat p_checkchild( void )
 		/* the player might have been killed to skip to another
 		 * track - do not send a _stop event */
 
-		// TODO: finish track
-
+		if( current ){
+			track_setlastplay(current, time(NULL));
+			track_save( current );
+		}
 	}
 
 	current = NULL;
@@ -263,6 +267,7 @@ static t_playerror p_stop( void )
 
 	assert(playpid != 0);
 
+	// TODO: reap children before killing
 	if( 0 > kill(-playpid, SIGTERM ))
 		return PE_SYS;
 
@@ -349,6 +354,7 @@ static t_playerror p_pause( void )
 
 	assert(playpid != 0 );
 
+	// TODO: reap children before killing
 	if( 0 > kill( -playpid, SIGSTOP ))
 		return PE_SYS;
 
@@ -407,6 +413,7 @@ static t_playerror p_resume( void )
 
 	assert( playpid != 0 );
 
+	// TODO: reap children before killing
 	if( 0 > kill( -playpid, SIGCONT ))
 		return PE_SYS;
 
