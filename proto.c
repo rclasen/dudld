@@ -42,15 +42,15 @@
 #include <syslog.h>
 #include <errno.h>
 
-#include "album.h"
-#include "artist.h"
-#include "user.h"
-#include "history.h"
-#include "random.h"
-#include "queue.h"
+#include "commondb/album.h"
+#include "commondb/artist.h"
+#include "commondb/user.h"
+#include "commondb/history.h"
+#include "commondb/random.h"
+#include "commondb/queue.h"
+#include "commondb/tag.h"
 #include "player.h"
 #include "sleep.h"
-#include "tag.h"
 #include "proto.h"
 
 typedef enum {

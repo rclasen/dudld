@@ -8,9 +8,10 @@
 #include <stdio.h>
 #include <syslog.h>
 
+// TODO: do not use opt directly
 #include <opt.h>
-#include <pgdb/db.h>
-#include <pgdb/track.h>
+#include "dudldb.h"
+#include "track.h"
 
 
 

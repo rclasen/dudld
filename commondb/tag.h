@@ -1,7 +1,7 @@
 #ifndef _TAG_H
 #define _TAG_H
 
-#include <db.h>
+#include "dudldb.h"
 
 typedef struct {
 	int id;

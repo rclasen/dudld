@@ -1,8 +1,8 @@
 #ifndef _USER_H
 #define _USER_H
 
-#include <db.h>
-#include <client.h>
+#include "dudldb.h"
+#include "client.h"
 
 typedef struct {
 	int id;

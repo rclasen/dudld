@@ -3,10 +3,10 @@
 #include <syslog.h>
 #include <time.h>
 
-#include <pgdb/db.h>
-#include <pgdb/track.h>
-#include <random.h>
-#include <history.h>
+#include <commondb/history.h>
+#include <commondb/random.h>
+#include "dudldb.h"
+#include "track.h"
 
 int history_add( t_track *track, int uid )
 {

@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <syslog.h>
 
-#include <pgdb/db.h>
-#include <pgdb/track.h>
-#include <tag.h>
+#include <commondb/tag.h>
+#include "dudldb.h"
+#include "track.h"
 
 t_tag_func tag_func_changed = NULL;
 t_tag_func tag_func_del = NULL;

@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <syslog.h>
 
-#include <pgdb/track.h>
-#include <pgdb/queue.h>
+#include "track.h"
+#include "queue.h"
 
 t_queue_func_clear queue_func_clear = NULL;
 t_queue_func_fetch queue_func_add = NULL;

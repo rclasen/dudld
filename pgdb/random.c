@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <syslog.h>
 
-#include <pgdb/db.h>
-#include <pgdb/track.h>
-#include <random.h>
+#include <commondb/random.h>
+#include "dudldb.h"
+#include "track.h"
 
 
 

@@ -1,7 +1,7 @@
 #ifndef _TRACK_H
 #define _TRACK_H
 
-#include <db.h>
+#include "dudldb.h"
 
 typedef struct _t_track {
 	int id;

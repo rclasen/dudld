@@ -1,5 +1,5 @@
-#ifndef _DB_H
-#define _DB_H
+#ifndef _DUDLDB_H
+#define _DUDLDB_H
 
 int db_init( void );
 void db_done( void );

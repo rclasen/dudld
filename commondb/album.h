@@ -1,7 +1,7 @@
 #ifndef _ALBUM_H
 #define _ALBUM_H
 
-#include <db.h>
+#include "dudldb.h"
 
 typedef struct _t_album {
 	int id;

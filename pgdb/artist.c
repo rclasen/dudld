@@ -4,9 +4,10 @@
 #include <stdio.h>
 #include <syslog.h>
 
+// TODO: do not use opt directly
 #include <opt.h>
-#include <pgdb/db.h>
-#include <artist.h>
+#include <commondb/artist.h>
+#include "dudldb.h"
 
 
 

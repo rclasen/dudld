@@ -1,7 +1,7 @@
 #ifndef _ARTIST_H
 #define _ARTIST_H
 
-#include <db.h>
+#include "dudldb.h"
 
 typedef struct _t_artist {
 	int id;

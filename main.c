@@ -12,7 +12,7 @@
 
 #include "client.h"
 #include "proto.h"
-#include "random.h"
+#include "commondb/random.h"
 #include "player.h"
 #include "sleep.h"
 #include "opt.h"

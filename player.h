@@ -1,7 +1,7 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
-#include "track.h"
+#include "commondb/track.h"
 
 typedef enum {
 	pl_stop,

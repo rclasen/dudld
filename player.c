@@ -14,10 +14,10 @@
 #include <assert.h>
 
 #include "opt.h"
-#include "track.h"
-#include "random.h"
-#include "queue.h"
-#include "history.h"
+#include "commondb/track.h"
+#include "commondb/random.h"
+#include "commondb/queue.h"
+#include "commondb/history.h"
 #include "player.h"
 
 static t_playstatus curstat = pl_stop;

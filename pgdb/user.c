@@ -5,8 +5,8 @@
 #include <syslog.h>
 #include <crypt.h>
 
-#include <pgdb/user.h>
-#include <pgdb/db.h>
+#include "dudldb.h"
+#include "user.h"
 
 #define GETFIELD(var,field,gofail) \
 	if( -1 == (var = PQfnumber(res, field ))){\

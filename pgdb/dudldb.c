@@ -5,8 +5,9 @@
 #include <ctype.h>
 #include <stdarg.h>
 
+// TODO: do not use opt.c directly
 #include <opt.h>
-#include <pgdb/db.h>
+#include "dudldb.h"
 
 static PGconn *dbcon = NULL;
 
