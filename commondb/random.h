@@ -6,6 +6,8 @@
 
 typedef void (*t_random_func)( void );
 
+int random_init( void );
+
 int random_setfilter( expr *filt );
 int random_filterstat( void );
 expr *random_filter( void );

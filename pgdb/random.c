@@ -45,19 +45,9 @@ static int fill_cache( expr *filt )
 	return 0;
 }
 
-int random_setfilter( expr *filt )
+static int create_cache( void )
 {
 	PGresult *res;
-
-	/* flush old filter */
-	if( db_table_exists( "juke_cache" ) ){
-		res = db_query( "DROP TABLE juke_cache" );
-		PQclear(res);
-	}
-	if( filter ){
-		expr_free( filter );
-		filter = NULL;
-	}
 
 	/* recreate empty cache table - now the filter may fail
 	 * and further queries are still vaild - but wont pick any results */
@@ -67,11 +57,33 @@ int random_setfilter( expr *filt )
 				"filename VARCHAR"
 			")");
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK){
-		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
+		syslog( LOG_ERR, "create_cache: %s", db_errstr() );
 		PQclear(res);
 		return 1;
 	}
 	PQclear(res);
+	return 0;
+}
+
+int random_init( void )
+{
+	return create_cache();
+}
+
+int random_setfilter( expr *filt )
+{
+	PGresult *res;
+
+	/* flush old filter */
+	res = db_query( "DROP TABLE juke_cache" );
+	PQclear(res);
+	if( filter ){
+		expr_free( filter );
+		filter = NULL;
+	}
+
+	if( create_cache() )
+		return 1;
 
 	/* try filling cache - retry with reset filter */
 	if( fill_cache( filt ) ){

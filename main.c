@@ -207,6 +207,7 @@ int main( int argc, char **argv )
 	syslog(LOG_INFO, "initializing" );
 
 	db_init();
+	random_init();
 	//player_init();
 	player_setgap( opt_gap );
 	player_setrandom( opt_random );
