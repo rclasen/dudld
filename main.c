@@ -9,6 +9,7 @@
 #include "client.h"
 #include "proto.h"
 #include "player.h"
+#include "opt.h"
 
 int check_child = 0;
 
@@ -117,6 +118,7 @@ int main( int argc, char **argv )
 
 	//player_init();
 	proto_init();
+	random_setfilter( opt_filter );
 
 	syslog(LOG_INFO, "started" );
 	rv = loop();
