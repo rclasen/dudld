@@ -1,33 +1,34 @@
 
-CC	:= gcc
-LD	:= gcc
+CC		:= gcc
+LD		:= gcc
 
-LIBS	:=
+LIBS		:=
 DEPFLAGS	:=
-LDFLAGS	:=
-CFLAGS	:= -g -W -Wall -Wunused -Wmissing-prototypes \
-	-Wcast-qual -Wcast-align -Werror \
-	$(DEPFLAGS)
+LDFLAGS		:=
+CFLAGS		:= -g -W -Wall -Wunused -Wmissing-prototypes \
+		-Wcast-qual -Wcast-align -Werror \
+		$(DEPFLAGS)
 
 # choose your database type:
-DBDIR	:= pgdb
+DBDIR		:= pgdb
+# whoops - nothing else to choose from *g*
 
 
 
-
-
-ifeq ($(DBDIR),pgdb)
-LIBS	+= -lpq
-endif
 
 all: x-all
 
-DBSRCS	:= user.c track.c queue.c db.c
 
-SRCS	:= client.c proto.c \
-	$(patsubst %,$(DBDIR)/%,$(DBSRCS)) \
-	opt.c player.c main.c
-OBJS	:= $(patsubst %.c,%.o,$(SRCS))
+SRCS		:= client.c proto.c \
+		opt.c player.c main.c
+
+ifeq ($(DBDIR),pgdb)
+DBSRCS		:= user.c track.c queue.c db.c
+SRCS		+= $(patsubst %,$(DBDIR)/%,$(DBSRCS))
+LIBS		+= -lpq
+endif
+
+OBJS		:= $(patsubst %.c,%.o,$(SRCS))
 
 LNK += xmserv
 xmserv: $(OBJS)
