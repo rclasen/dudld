@@ -163,7 +163,7 @@ void clients_clean( void )
 
 			s->next = NULL;
 			if( client_func_disconnect )
-				(*client_func_disconnect)( c );
+				(*client_func_disconnect)( s );
 
 			client_free( s );
 
