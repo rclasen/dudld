@@ -11,7 +11,6 @@ typedef struct _t_track {
 	int artistid;
 	int duration;
 	char *fname;
-	int random;
 	int _refs;
 	unsigned int lastplay;
 	union {
@@ -19,7 +18,6 @@ typedef struct _t_track {
 		struct {
 			unsigned int title:1;
 			unsigned int artistid:1;
-			unsigned int random:1;
 			unsigned int lastplay:1;
 		} m;
 	} modified;

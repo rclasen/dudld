@@ -12,7 +12,6 @@
 	"t.album_id, " \
 	"t.nr, "\
 	"date_part('epoch',f.duration) AS dur, "\
-	"t.random, "\
 	"date_part('epoch',t.lastplay) AS lplay, "\
 	"t.title, "\
 	"t.artist_id, "\
@@ -42,7 +41,8 @@
 
 /* this speeds up queries enormously: */
 #define TRACK_WHERE	" "\
-	"f.titleid NOTNULL "
+	"f.titleid NOTNULL "\
+	"AND NOT f.broken "
 
 #define GETFIELD(var,field,gofail) \
 	if( -1 == (var = PQfnumber(res, field ))){\
@@ -98,10 +98,6 @@ static t_track *track_convert( PGresult *res, int tup )
 	t->duration = 0;
 	if( -1 != (f = PQfnumber( res, "dur" )))
 		t->duration = pgint(res, tup, f);
-
-	t->random = 1;
-	if( -1 != (f = PQfnumber( res, "random" )))
-		t->random = pgbool( res, tup, f);
 
 	GETFIELD(f,"colnum", clean1 );
 	colnum = pgint(res, tup, f );
@@ -175,13 +171,6 @@ int track_setartist( t_track *t, int artistid )
 	return 0;
 }
 
-int track_setrandom( t_track *t, int random )
-{
-	t->random = random;
-	t->modified.m.random = 1;
-	return 0;
-}
-
 int track_setlastplay( t_track *t, int lastplay )
 {
 	t->lastplay = lastplay;
@@ -244,14 +233,6 @@ int track_save( t_track *t )
 		len += addcom( buffer + len, SBUFLEN - len, &fields );
 		len += snprintf( buffer + len, SBUFLEN - len, "artist_id=%d", 
 				t->artistid );
-		if( len > SBUFLEN || len < 0 )
-			return 1;
-	}
-
-	if( t->modified.m.random ){
-		len += addcom( buffer + len, SBUFLEN - len, &fields );
-		len += snprintf( buffer + len, SBUFLEN - len, "random='%s'", 
-				t->random ?  "true" : "false" );
 		if( len > SBUFLEN || len < 0 )
 			return 1;
 	}
