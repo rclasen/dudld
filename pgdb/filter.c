@@ -175,7 +175,7 @@ static int sql_valtest( char *buf, size_t len, valtest *vt )
 	  case vf_artist:
 	  case vf_album:
 	  case vf_max:
-		  // TODO
+		  // TODO allow other fields than tag
 		  return 0;
 	}
 

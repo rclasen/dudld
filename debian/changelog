@@ -2,7 +2,7 @@ dudld (0.0.1) unstable; urgency=low
 
   * Initial Release.
 
- -- Rainer Clasen <bj@zuto.de>  Thu,  1 Aug 2002 18:35:50 +0200
+ -- Rainer Clasen <bj@zuto.de>  Fri,  2 Aug 2002 16:43:12 +0200
 
 Local variables:
 mode: debian-changelog

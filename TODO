@@ -1,9 +1,25 @@
+cleanup error reporting:
+ use values from errno.h
+ use the same 5xx replies for all commands
+
+rename tables from mserv_<name> to juke_<name> or mus_<name>
+
 who caused a broadcast message ???
 
 complete filter / random.c
 
 rating
-multiple instances
 
-move proto stuff out of client.c
+multiple (anonymouse) instances not possible because:
+ track.lastplay
+ track.available?
+ history
+ queue
+ user/permission
+
+automatically skip silence at start/end of a file
+
+clean history
+
+re-check tracks with available=false
 

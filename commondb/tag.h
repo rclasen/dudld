@@ -34,6 +34,7 @@ int tag_del( int id );
 it_tag *track_tags( int tid );
 int track_tagset( int tid, int id );
 int track_tagdel( int tid, int id );
+// TODO: track_tagsetf( expr *filt, int tagid ); or is this clients' task?
 
 int track_tagged( int tid, int id );
 
