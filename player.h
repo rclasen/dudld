@@ -39,7 +39,6 @@ t_playerror player_stop( void );
 t_playerror player_next( void );
 t_playerror player_prev( void );
 t_playerror player_pause( void );
-t_playerror player_resume( void );
 
 void player_check( void );
 time_t player_wakeuptime( void );
