@@ -12,6 +12,7 @@
 #include <opt.h>
 #include "dudldb.h"
 #include "track.h"
+#include "filter.h"
 
 
 
@@ -260,6 +261,18 @@ it_track *tracks_search( const char *substr )
 			"WHERE LOWER(title) LIKE LOWER('%%%s%%')", str );
 	free(str);
 	return it;
+}
+
+it_track *tracks_searchf( expr *filter )
+{
+	char where[4096];
+
+	*where = 0;
+	sql_expr(where, 4096, filter);
+
+	return db_iterate( (db_convert)track_convert, "SELECT * "
+			"FROM mserv_track t "
+			"WHERE %s", where );
 }
 
 int tracks( void )
