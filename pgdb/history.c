@@ -83,7 +83,6 @@ t_track *history_track( t_history *h)
 	return h->_track;
 }
 
-// TODO: history_*list() are *SLOW*
 it_history *history_list( int num )
 {
 	return db_iterate( (db_convert)history_convert, 
@@ -93,7 +92,7 @@ it_history *history_list( int num )
 				"h.user_id "
 			"FROM "
 				"( SELECT * FROM mserv_hist "
-					"ORDER BY added DESC "
+					"ORDER BY added "
 					"LIMIT %d "
 				") AS h "
 					"INNER JOIN mserv_track t "
@@ -117,7 +116,7 @@ it_history *history_tracklist( int trackid, int num )
 				") AS h "
 					"INNER JOIN mserv_track t "
 					"ON t.id = h.file_id "
-			"ORDER BY h.added ",
+			"ORDER BY h.added DESC ",
 					
 			trackid, num );
 }
