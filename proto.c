@@ -25,8 +25,8 @@
  * x5z: filter
  * x6z: queue
  * x7z: tag
- * x8z:
- * x9z:
+ * x8z: album
+ * x9z: artist
  *
  */
 
@@ -42,6 +42,8 @@
 #include <syslog.h>
 #include <errno.h>
 
+#include "album.h"
+#include "artist.h"
 #include "user.h"
 #include "history.h"
 #include "random.h"
@@ -64,6 +66,8 @@ typedef enum {
 #define BUFLENTRACK	1024
 #define BUFLENTAG	1024
 #define BUFLENUSER	512
+#define BUFLENALBUM	512
+#define BUFLENARTIST	512
 
 static int proto_vline( t_client *client, int last, const char *code, 
 		const char *fmt, va_list ap )
@@ -235,39 +239,32 @@ static int mktab( char *buffer, int len, const char *fmt, ... )
 	return r;
 }
 
-// TODO: check error handling in mkclient, mktrack, mk* ...
-
 /* make a reply string from client data */
-static inline char *mkclient( char *buffer, int len, t_client *c )
+static inline int mkclient( char *buffer, int len, t_client *c )
 {
-	if( len < mktab( buffer, len, "dds",
-				c->id, c->uid, inet_ntoa(c->sin.sin_addr)))
-		return NULL;
-
-	return buffer;
+	return mktab( buffer, len, "dds",
+			c->id, c->uid, inet_ntoa(c->sin.sin_addr));
 }
 
 /* make a reply string from track data */
-static inline char *mktrack( char *buffer, int len, t_track *t )
+static inline int mktrack( char *buffer, int len, t_track *t )
 {
-	if( len < mktab( buffer, len, "dddsdd", 
+	return mktab( buffer, len, "dddsdd", 
 				t->id, 
 				t->albumid, 
 				t->albumnr, 
 				t->title, 
 				t->artistid, 
-				t->duration))
-		return NULL;
-
-	return buffer;
+				t->duration);
 }
 
-static inline char *mkhistory( char *buf, int len, t_history *h )
+static inline int mkhistory( char *buf, int len, t_history *h )
 {
 	t_track *t;
+	int used;
 
 	t = history_track( h );
-	if( len < mktab( buf, len, "dddddsdd",
+	used = mktab( buf, len, "dddddsdd",
 				h->uid,
 				h->played,
 				t->id,
@@ -276,21 +273,18 @@ static inline char *mkhistory( char *buf, int len, t_history *h )
 				t->title, 
 				t->artistid, 
 				t->duration
-				)){
-		track_free(t);
-		return NULL;
-	}
-
+				);
 	track_free(t);
-	return buf;
+	return len;
 }
 
-static inline char *mkqueue( char *buf, int len, t_queue *q )
+static inline int mkqueue( char *buf, int len, t_queue *q )
 {
 	t_track *t;
+	int used;
 
 	t = queue_track(q);
-	if( len < mktab(buf, len, "ddddddsdd",
+	used = mktab(buf, len, "ddddddsdd",
 				q->id,
 				q->uid,
 				q->queued,
@@ -299,29 +293,58 @@ static inline char *mkqueue( char *buf, int len, t_queue *q )
 				t->albumnr, 
 				t->title, 
 				t->artistid, 
-				t->duration)){
-		track_free(t);
-		return NULL;
+				t->duration);
+	track_free(t);
+	return used;
+}
+
+static inline int mktag( char *buf, int len, t_tag *t )
+{
+	return mktab(buf, len, "dss", t->id, t->name, t->desc );
+}
+
+static inline int mkuser( char *buf, int len, t_user *u )
+{
+	return mktab(buf, len, "dsd", u->id, u->name, u->right );
+}
+
+static inline int mkalbum( char *buf, int len, t_album *a )
+{
+	return mktab(buf, len, "dsd", a->id, a->album, a->artistid );
+}
+
+static inline int mkartist( char *buf, int len, t_artist *a )
+{
+	return mktab(buf, len, "ds", a->id, a->artist );
+}
+
+static inline int mknewtrack( char *buf, int len, t_track *t )
+{
+	int used = 0;
+	t_album *album;
+	t_artist *artist;
+
+	*buf = 0;
+
+	if( NULL == (album = album_get( t->albumid )))
+		return len+1;
+
+	if( NULL == (artist = artist_get( t->artistid))){
+		album_free(album);
+		return len+1;
 	}
 
-	track_free(t);
-	return buf;
-}
 
-static inline char *mktag( char *buf, int len, t_tag *t )
-{
-	if( len < mktab(buf, len, "dss", t->id, t->name, t->desc ))
-		return NULL;
+	used = mktrack(buf, len, t );
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mkartist( buf+used, len-used, artist );
+	if(len > used++ ){ buf[used-1] = '\t'; }
+	used += mkalbum( buf+used, len-used, album );
 
-	return buf;
-}
+	album_free(album);
+	artist_free(artist);
 
-static inline char *mkuser( char *buf, int len, t_user *u )
-{
-	if( len < mktab(buf, len, "dsd", u->id, u->name, u->right ))
-		return NULL;
-
-	return buf;
+	return used;
 }
 
 
@@ -346,7 +369,7 @@ CMD(cmd_quit, r_any, p_any, arg_none )
 	client_close(client);
 }
 
-CMD(cmd_disconnect, r_master, p_idle, arg_need )
+CMD(cmd_clientclose, r_master, p_idle, arg_need )
 {
 	int id;
 	char *end;
@@ -379,14 +402,16 @@ static void proto_bcast_login( t_client *client )
 {
 	char buf[BUFLENWHO];
 
-	proto_bcast( r_user, "630", "%s", mkclient(buf, BUFLENWHO, client));
+	mkclient(buf, BUFLENWHO, client);
+	proto_bcast( r_user, "630", "%s", buf );
 }
 
 static void proto_bcast_logout( t_client *client )
 {
 	char buf[BUFLENWHO];
 
-	proto_bcast( r_user, "631", "%s", mkclient(buf, BUFLENWHO, client));
+	mkclient(buf, BUFLENWHO, client);
+	proto_bcast( r_user, "631", "%s", buf ); 
 }
 
 CMD(cmd_user, r_any, p_open, arg_need )
@@ -402,7 +427,7 @@ CMD(cmd_pass, r_any, p_user, arg_need )
 	int uid;
 	t_user *u;
 
-	if( 0 > ( uid = user_getname( client->pdata )))
+	if( 0 > ( uid = user_id( client->pdata )))
 		goto failed;
 
 	if( NULL == ( u = user_get( uid )))
@@ -435,7 +460,7 @@ clean:
 	user_free(u);
 }
 
-CMD(cmd_who, r_user, p_idle, arg_none )
+CMD(cmd_clientlist, r_user, p_idle, arg_none )
 {
 	char buf[BUFLENWHO];
 	t_client *c;
@@ -445,12 +470,13 @@ CMD(cmd_who, r_user, p_idle, arg_none )
 		if( c->close )
 			continue;
 
-		RLINE( "230", "%s", mkclient(buf, BUFLENWHO, c));
+		mkclient(buf, BUFLENWHO, c);
+		RLINE( "230", "%s", buf ); 
 	}
 	RLAST( "230", "");
 }
 
-CMD(cmd_kick, r_master, p_idle, arg_need )
+CMD(cmd_clientcloseuser, r_master, p_idle, arg_need )
 {
 	int uid;
 	char *end;
@@ -496,16 +522,17 @@ CMD(cmd_userget, r_user, p_idle, arg_need )
 		return;
 	}
 
-	RLAST( "233", "%s", mkuser(buf, BUFLENUSER, u ));
+	mkuser(buf, BUFLENUSER, u );
+	RLAST( "233", "%s", buf ); 
 	user_free(u);
 }
 
 
-CMD(cmd_usergetname, r_user, p_idle, arg_need )
+CMD(cmd_user2id, r_user, p_idle, arg_need )
 {
 	int uid;
 
-	if( 0 > ( uid = user_getname(line))){
+	if( 0 > ( uid = user_id(line))){
 		RBADARG("no such user");
 		return;
 	}
@@ -519,14 +546,15 @@ static void dump_users( t_client *client, const char *code, it_user *it )
 	t_user *t;
 
 	for( t = it_user_begin(it); t; t = it_user_next(it) ){
-		RLINE(code,"%s", mkuser(buf, BUFLENUSER, t) );
+		mkuser(buf, BUFLENUSER, t);
+		RLINE(code,"%s", buf ); 
 		user_free(t);
 	}
 
 	RLAST(code, "" );
 }
 
-CMD(cmd_users, r_user, p_idle, arg_none )
+CMD(cmd_userlist, r_user, p_idle, arg_none )
 {
 	it_user *it;
 
@@ -641,7 +669,8 @@ static void proto_bcast_player_newtrack( void )
 	t_track *track;
 
 	track = player_track();
-	proto_bcast( r_guest, "640", "%s", mktrack(buf, BUFLENTRACK, track) );
+	mknewtrack(buf, BUFLENTRACK, track);
+	proto_bcast( r_guest, "640", "%s", buf ); 
 	track_free(track);
 }
 
@@ -784,7 +813,9 @@ CMD(cmd_curtrack, r_guest, p_idle, arg_none )
 		return;
 	}
 
-	RLAST( "248", "%s", mktrack(buf, BUFLENTRACK, t) );
+
+	mktrack(buf, BUFLENTRACK, t);
+	RLAST( "248", "%s", buf );
 	track_free(t);
 }
 
@@ -885,7 +916,8 @@ CMD(cmd_trackget, r_guest, p_idle, arg_need )
 		return;
 	}
 
-	RLAST( "210", "%s", mktrack(buf, BUFLENTRACK, t) );
+	mktrack(buf, BUFLENTRACK, t);
+	RLAST( "210", "%s", buf ); 
 	track_free(t);
 }
 
@@ -895,14 +927,15 @@ static void dump_tracks( t_client *client, const char *code, it_track *it )
 	t_track *t;
 
 	for( t = it_track_begin(it); t; t = it_track_next(it) ){
-		RLINE(code,"%s", mktrack(buf, BUFLENTRACK, t) );
+		mktrack(buf, BUFLENTRACK, t);
+		RLINE(code,"%s", buf ); 
 		track_free(t);
 	}
 
 	RLAST(code, "" );
 }
 
-CMD(cmd_tracks, r_guest, p_idle, arg_none )
+CMD(cmd_trackcount, r_guest, p_idle, arg_none )
 {
 	int matches;
 
@@ -958,7 +991,7 @@ CMD(cmd_tracksartist, r_guest, p_idle, arg_need )
 	it_track_done(it);
 }
 
-CMD(cmd_trackid, r_guest, p_idle, arg_need )
+CMD(cmd_track2id, r_guest, p_idle, arg_need )
 {
 	char *s;
 	char *e;
@@ -1072,7 +1105,8 @@ static void dump_history( t_client *client, const char *code, it_history *it )
 	t_history *t;
 
 	for( t = it_history_begin(it); t; t = it_history_next(it) ){
-		RLINE(code,"%s", mkhistory(buf, BUFLENTRACK, t) );
+		mkhistory(buf, BUFLENTRACK, t);
+		RLINE(code,"%s", buf ); 
 		history_free(t);
 	}
 
@@ -1139,19 +1173,25 @@ CMD(cmd_historytrack, r_guest, p_idle, arg_need )
 static void proto_bcast_queue_fetch( t_queue *q )
 {
 	char buf[BUFLENTRACK];
-	proto_bcast( r_guest, "660", "%s", mkqueue(buf,BUFLENTRACK,q) );
+
+	mkqueue(buf,BUFLENTRACK,q);
+	proto_bcast( r_guest, "660", "%s", buf ); 
 }
 
 static void proto_bcast_queue_add( t_queue *q )
 {
 	char buf[BUFLENTRACK];
-	proto_bcast( r_guest, "661", "%s", mkqueue(buf,BUFLENTRACK,q) );
+
+	mkqueue(buf,BUFLENTRACK,q);
+	proto_bcast( r_guest, "661", "%s", buf ); 
 }
 
 static void proto_bcast_queue_del( t_queue *q )
 {
 	char buf[BUFLENTRACK];
-	proto_bcast( r_guest, "662", "%s", mkqueue(buf,BUFLENTRACK,q));
+
+	mkqueue(buf,BUFLENTRACK,q);
+	proto_bcast( r_guest, "662", "%s", buf ); 
 }
 
 static void proto_bcast_queue_clear( void )
@@ -1159,7 +1199,7 @@ static void proto_bcast_queue_clear( void )
 	proto_bcast( r_guest, "663", "queue cleared" );
 }
 
-CMD(cmd_queue, r_guest, p_idle, arg_none)
+CMD(cmd_queuelist, r_guest, p_idle, arg_none)
 {
 	char buf[BUFLENTRACK];
 	it_queue *it;
@@ -1168,7 +1208,8 @@ CMD(cmd_queue, r_guest, p_idle, arg_none)
 	(void)line;
 	it = queue_list();
 	for( q = it_queue_begin(it); q; q = it_queue_next(it)){
-		RLINE("260", "%s", mkqueue(buf, BUFLENTRACK, q ));
+		mkqueue(buf, BUFLENTRACK, q );
+		RLINE("260", "%s", buf ); 
 		queue_free(q);
 	}
 	it_queue_done(it);
@@ -1248,7 +1289,8 @@ CMD(cmd_queueget, r_user, p_idle, arg_need)
 		return;
 	}
 
-	RLAST( "264", "%s", mkqueue(buf,BUFLENTRACK, q ));
+	mkqueue(buf,BUFLENTRACK, q );
+	RLAST( "264", "%s", buf ); 
 	queue_free(q);
 }
 
@@ -1259,13 +1301,15 @@ CMD(cmd_queueget, r_user, p_idle, arg_need)
 static void proto_bcast_tag_changed( t_tag *t )
 {
 	char buf[BUFLENTAG];
-	proto_bcast( r_guest, "670", "%s", mktag(buf,BUFLENTAG,t));
+	mktag(buf,BUFLENTAG,t);
+	proto_bcast( r_guest, "670", "%s", buf ); 
 }
 
 static void proto_bcast_tag_del( t_tag *t )
 {
 	char buf[BUFLENTAG];
-	proto_bcast( r_guest, "671", "%s", mktag(buf,BUFLENTAG,t));
+	mktag(buf,BUFLENTAG,t);
+	proto_bcast( r_guest, "671", "%s", buf ); 
 }
 
 static void dump_tags( t_client *client, const char *code, it_tag *it )
@@ -1274,7 +1318,8 @@ static void dump_tags( t_client *client, const char *code, it_tag *it )
 	t_tag *t;
 
 	for( t = it_tag_begin(it); t; t = it_tag_next(it) ){
-		RLINE(code,"%s", mktag(buf, BUFLENTAG, t) );
+		mktag(buf, BUFLENTAG, t) ;
+		RLINE(code,"%s", buf ); 
 		tag_free(t);
 	}
 
@@ -1309,22 +1354,22 @@ CMD(cmd_tagget, r_guest, p_idle, arg_need )
 		return;
 	}
 
-	RLAST("271", "%s", mktag(buf, BUFLENTAG, t));
+	mktag(buf, BUFLENTAG, t);
+	RLAST("271", "%s", buf ); 
 }
 
-CMD(cmd_tagname, r_guest, p_idle, arg_need )
+CMD(cmd_tag2id, r_guest, p_idle, arg_need )
 {
-	char buf[BUFLENTAG];
-	t_tag *t;
+	int t;
 
-	if( NULL == (t = tag_getname( line ))){
+	if( 0 > (t = tag_id( line ))){
 		RLAST("511", "no such tag" );
 		return;
 	}
-	RLAST("272", "%s", mktag(buf, BUFLENTAG, t));
+	RLAST("272", "%d", t);
 }
 
-CMD(cmd_tagadd, r_guest, p_idle, arg_need )
+CMD(cmd_tagadd, r_user, p_idle, arg_need )
 {
 	int id;
 
@@ -1336,7 +1381,7 @@ CMD(cmd_tagadd, r_guest, p_idle, arg_need )
 	RLAST( "273", "%d", id );
 }
 
-CMD(cmd_tagsetname, r_guest, p_idle, arg_need )
+CMD(cmd_tagsetname, r_user, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1356,7 +1401,7 @@ CMD(cmd_tagsetname, r_guest, p_idle, arg_need )
 	RLAST("274", "name changed" );
 }
 
-CMD(cmd_tagsetdesc, r_guest, p_idle, arg_need )
+CMD(cmd_tagsetdesc, r_user, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1395,7 +1440,7 @@ CMD(cmd_tagdel, r_user, p_idle, arg_need )
 	RLAST("276", "deleted" );
 }
 
-CMD(cmd_tracktags, r_guest, p_idle, arg_need )
+CMD(cmd_tracktaglist, r_guest, p_idle, arg_need )
 {
 	it_tag *it;
 	char *end;
@@ -1412,7 +1457,7 @@ CMD(cmd_tracktags, r_guest, p_idle, arg_need )
 	it_tag_done(it );
 }
 
-CMD(cmd_tracktagset, r_guest, p_idle, arg_need )
+CMD(cmd_tracktagset, r_user, p_idle, arg_need )
 {
 	char *s, *e;
 	int trackid;
@@ -1439,7 +1484,7 @@ CMD(cmd_tracktagset, r_guest, p_idle, arg_need )
 	RLAST("278", "tag added to track (or already exists)" );
 }
 
-CMD(cmd_tracktagdel, r_guest, p_idle, arg_need )
+CMD(cmd_tracktagdel, r_user, p_idle, arg_need )
 {
 	char *s, *e;
 	int trackid;
@@ -1494,6 +1539,236 @@ CMD(cmd_tracktagged, r_guest, p_idle, arg_need )
 	RLAST("279", "%d", r );
 }
 
+
+/************************************************************
+ * commands: album
+ */
+
+CMD(cmd_albumget, r_guest, p_idle, arg_need )
+{
+	int id;
+	char *end;
+	t_album *a;
+	char buf[BUFLENALBUM];
+
+	id = strtol(line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid album ID");
+		return;
+	}
+
+	if( NULL == (a = album_get(id))){
+		RLAST( "580", "failed" );
+		return;
+	}
+
+	mkalbum(buf, BUFLENALBUM, a);
+	RLAST( "280", "%s\n", buf ); 
+	album_free(a);
+}
+
+
+static void dump_album( t_client *client, const char *code, it_album *it )
+{
+	char buf[BUFLENALBUM];
+	t_album *t;
+
+	for( t = it_album_begin(it); t; t = it_album_next(it) ){
+		mkalbum(buf, BUFLENALBUM, t) ;
+		RLINE(code,"%s", buf ); 
+		album_free(t);
+	}
+
+	RLAST(code, "" );
+}
+
+CMD(cmd_albumlist, r_guest, p_idle, arg_none )
+{
+	it_album *it;
+
+	(void)line;
+	it = album_list( );
+	dump_album( client, "281", it );
+	it_album_done(it);
+}
+
+CMD(cmd_albumsearch, r_guest, p_idle, arg_need )
+{
+	it_album *it;
+
+	it = album_search( line );
+	dump_album( client, "282", it );
+	it_album_done(it);
+}
+
+CMD(cmd_albumsetname, r_user, p_idle, arg_need )
+{
+	char *end;
+	int id;
+	t_album *a;
+
+	id = strtol( line, &end, 10 );
+	if( line == end ){
+		RBADARG( "ecpecting an album ID" );
+		return;
+	}
+
+	if( NULL == (a = album_get(id))){
+		RLAST( "512", "no such album" );
+		return;
+	}
+
+	end += strspn(end, " \t" );
+	if( album_setname(a, end )){
+		RLAST("511", "failed" );
+		album_free(a);
+		return;
+	}
+
+	album_save(a);
+	album_free(a);
+	RLAST("283", "name changed" );
+}
+
+CMD(cmd_albumsetartist, r_user, p_idle, arg_need )
+{
+	char *s, *e;
+	int album;
+	int artist;
+	t_album *a;
+
+	album = strtol(line, &e, 10 );
+	if( line == e ){
+		RBADARG( "missing/invalid album id");
+		return;
+	}
+
+	s = e + strspn(e, "\t " );
+	artist = strtol(s, &e, 10 );
+	if( *e ){
+		RBADARG( "missing/invalid artist id");
+		return;
+	}
+
+	if( NULL == (a = album_get(album))){
+		RLAST( "512", "no such album" );
+		return;
+	}
+
+	if( album_setartist(a, artist)){
+		album_free(a);
+		RLAST("511", "failed" );
+		return;
+	}
+
+	album_save(a);
+	album_free(a);
+	RLAST("284", "artist changed" );
+}
+
+
+
+/************************************************************
+ * commands: artist
+ */
+
+CMD(cmd_artistget, r_guest, p_idle, arg_need )
+{
+	int id;
+	char *end;
+	t_artist *a;
+	char buf[BUFLENALBUM];
+
+	id = strtol(line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid artist ID");
+		return;
+	}
+
+	if( NULL == (a = artist_get(id))){
+		RLAST( "590", "failed" );
+		return;
+	}
+
+	mkartist(buf, BUFLENALBUM, a);
+	RLAST( "290", "%s\n", buf ); 
+	artist_free(a);
+}
+
+
+static void dump_artist( t_client *client, const char *code, it_artist *it )
+{
+	char buf[BUFLENALBUM];
+	t_artist *t;
+
+	for( t = it_artist_begin(it); t; t = it_artist_next(it) ){
+		mkartist(buf, BUFLENALBUM, t) ;
+		RLINE(code,"%s", buf ); 
+		artist_free(t);
+	}
+
+	RLAST(code, "" );
+}
+
+CMD(cmd_artistlist, r_guest, p_idle, arg_none )
+{
+	it_artist *it;
+
+	(void)line;
+	it = artist_list( );
+	dump_artist( client, "291", it );
+	it_artist_done(it);
+}
+
+CMD(cmd_artistsearch, r_guest, p_idle, arg_need )
+{
+	it_artist *it;
+
+	it = artist_search( line );
+	dump_artist( client, "292", it );
+	it_artist_done(it);
+}
+
+CMD(cmd_artistsetname, r_user, p_idle, arg_need )
+{
+	char *end;
+	int id;
+	t_artist *a;
+
+	id = strtol( line, &end, 10 );
+	if( line == end ){
+		RBADARG( "ecpecting an artist ID" );
+		return;
+	}
+
+	if( NULL == (a = artist_get(id))){
+		RLAST( "512", "no such artist" );
+		return;
+	}
+
+	end += strspn(end, " \t" );
+	if( artist_setname(a, end )){
+		RLAST("511", "failed" );
+		artist_free(a);
+		return;
+	}
+
+	artist_save(a);
+	artist_free(a);
+	RLAST("293", "name changed" );
+}
+
+CMD(cmd_artistadd, r_user, p_idle, arg_need )
+{
+	RLAST( "555", "TODO: artistadd");
+	(void)line;
+}
+
+CMD(cmd_artistdel, r_user, p_idle, arg_need )
+{
+	RLAST( "555", "TODO: artisdel");
+	(void)line;
+}
 
 /************************************************************
  * command array
