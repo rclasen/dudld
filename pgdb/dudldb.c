@@ -167,6 +167,28 @@ char *db_escape( const char *in )
 }
 
 
+int db_table_exists( char *table )
+{
+	PGresult *res;
+	int found = 0;
+
+	res = db_query( "SELECT relname "
+			"FROM pg_class "
+			"WHERE relkind = 'r' "
+				"AND relname = '%s'", table );
+	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
+		syslog( LOG_ERR, "table_exists: %s", db_errstr() );
+		PQclear(res);
+		return -1;
+	}
+
+	if( PQntuples(res))
+		found++;
+
+	PQclear(res);
+	return found;
+}
+
 int pgint( PGresult *res, int tup, int field )
 {
 	return atoi(PQgetvalue( res, tup, field ));

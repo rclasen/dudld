@@ -18,6 +18,8 @@ const char *db_errstr( void );
 PGresult *db_query( char *query, ... );
 _it_db *db_iterate( db_convert func, char *query, ... );
 
+int db_table_exists( char *table );
+
 char *db_escape( const char *in );
 
 int pgint( PGresult *res, int tup, int field );
