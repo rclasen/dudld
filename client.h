@@ -25,7 +25,7 @@ void clients_clean( void );
 int client_send( t_client *c, const char *buf );
 void client_poll( t_client *c, fd_set *read );
 char *client_getline( t_client *c );
-void clients_fdset( fd_set *read, fd_set *write, int *maxfd );
+void clients_fdset( int *maxfd, fd_set *read );
 
 
 #endif

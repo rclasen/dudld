@@ -48,6 +48,8 @@ int clients_init( int port )
 		return -1;
 	}
 
+	// TODO: fcntl F_SETFD
+	
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = INADDR_ANY;
@@ -79,6 +81,8 @@ t_client *client_accept( fd_set *read )
 		free(c);
 		return NULL;
 	}
+
+	// TODO: fcntl F_SETFD
 
 	c->close = 0;
 	c->ilen = 0;
@@ -121,7 +125,7 @@ void clients_clean( void )
 	l = NULL;
 
 	while( c ){
-		if( c->close ){
+		if(  c->close ){
 			t_client *s = c;
 
 			c = c->next;
@@ -173,15 +177,12 @@ void client_poll( t_client *c, fd_set *read )
 	if( ! FD_ISSET(c->sock,read))
 		return;
 
-	if( 0 > (len = recv( c->sock, 
+	if( 0 >= (len = recv( c->sock, 
 			c->ibuf + c->ilen,
 			CLIENT_BUFLEN - c->ilen, MSG_NOSIGNAL))){
 		client_close(c);
 		return;
 	}
-
-	if( ! len )
-		return;
 
 	c->ilen += len;
 	c->ibuf[c->ilen] = 0;
@@ -247,7 +248,7 @@ static inline void largest( int *a, int b )
  * add sockets to FD_SETs for select()
  * don't forget to initialize/reset the varialbles 
  */
-void clients_fdset( fd_set *read, fd_set *write, int *maxfd )
+void clients_fdset( int *maxfd, fd_set *read )
 {
 	t_client *c;
 
@@ -259,7 +260,6 @@ void clients_fdset( fd_set *read, fd_set *write, int *maxfd )
 			continue;
 
 		FD_SET( c->sock, read );
-		FD_SET( c->sock, write );
 		largest( maxfd, c->sock );
 	}
 }
@@ -274,7 +274,7 @@ void clients_done( void )
 	for( c = clients; c; c = c->next )
 		client_close( c );
 	
-	clients_clean();
+	clients_clean( );
 
 	close(lsocket);
 	lsocket=0;
