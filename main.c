@@ -63,6 +63,9 @@ int main( int argc, char **argv )
 		return 1;
 	}
 
+	//player_init();
+	proto_init();
+
 	loop();
 
 	clients_done();
