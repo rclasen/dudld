@@ -140,6 +140,11 @@ static t_playstatus update_status( t_playstatus *wantstat )
 
 	/* there are outstanding children */
 	if( pid == 0 ) {
+		if( last != curstat && 
+				curstat == pl_pause && 
+				player_func_pause )
+			(*player_func_pause)();
+
 		return curstat;
 	} 
 
@@ -178,14 +183,11 @@ static t_playstatus update_status( t_playstatus *wantstat )
 	died_unexpected = 0;
 
 	/* send broadcasts for what is detectable from here */
-	if( last != curstat ){
-		if( curstat == pl_stop && curstat == *wantstat && 
-				player_func_stop )
-			(*player_func_stop)();
-
-		else if( curstat == pl_pause && player_func_pause )
-			(*player_func_pause)();
-	}
+	if( last != curstat && 
+			curstat == pl_stop && 
+			curstat == *wantstat && 
+			player_func_stop )
+		(*player_func_stop)();
 
 	return curstat;
 }
