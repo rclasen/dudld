@@ -16,8 +16,6 @@ int main( int argc, char **argv )
 	t = track_get( 6551 );
 	if( t ){
 		printf( "%2d %s\n", t->albumnr, t->title );
-		track_setlastplay(t, time(NULL));
-		track_save(t);
 		track_free( t );
 	}
 
