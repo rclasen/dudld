@@ -83,7 +83,7 @@ $(LNK):
 	$(LD) $(LDFLADS) -o $@ $^ $(LIBS)
 
 todo:
-	@grep -i todo $(SRC)
+	@find . -type f | grep '\.[ch]$$' | xargs grep -i todo 
 
 clean:
 	rm -f $(OBJ)
