@@ -40,6 +40,12 @@
 #include "player.h"
 #include "proto.h"
 
+typedef enum {
+	arg_none,
+	arg_opt,
+	arg_need,
+} t_args;
+
 #define STRERR strerror(errno)
 
 static int proto_vline( t_client *client, int last, const char *code, 
@@ -165,54 +171,31 @@ static char *mktrack( t_track *t )
 	return buffer;
 }
 
+// TODO: this file is too large. Split out cmds
 
+#define CMD(name, right, state, args )	\
+	static void name( t_client *client, char *line )
 
-
-/************************************************************
- * commands
- */
-
-#define CMD(name)	static void name( t_client *client, char *line )
 #define RLINE(code,text...)	proto_rline( client, code,text )
 #define RLAST(code,text...)	proto_rlast( client, code,text )
 #define RBADARG(desc)		proto_badarg( client, desc )
-#define RNOARGS			\
-	if( line && strlen(line) ){\
-		proto_badarg( client, "no arguments allowed" ); \
-		return; \
-	}
-#define RARGS			\
-	if( !line || !strlen(line) ){\
-		proto_badarg( client, "missing arguments" ); \
-		return; \
-	}
-#define STATE(st)	(client->pstate == (st))	
-#define IDLE	\
-	if( !STATE(p_idle) ){\
-		RLAST("520", "waiting for other input" ); \
-		return; \
-	}
 
 /************************************************************
  * commands: connection
  */
 
-CMD(cmd_quit)
+CMD(cmd_quit, r_any, p_any, arg_none )
 {
-	RNOARGS;
-
+	(void)line;
 	RLAST( "221", "bye" );
 	client_close(client);
 }
 
-CMD(cmd_disconnect)
+CMD(cmd_disconnect, r_master, p_idle, arg_need )
 {
 	int id;
 	char *end;
 	t_client *c;
-
-	RARGS;
-	IDLE;
 
 	id = strtol( line, &end, 10 );
 	if( *end ){
@@ -247,30 +230,16 @@ static void proto_bcast_logout( t_client *client )
 	proto_bcast( r_user, "631", "%s", mkclient(client));
 }
 
-CMD(cmd_user)
+CMD(cmd_user, r_any, p_open, arg_need )
 {
-	if( ! (STATE(p_open) || STATE(p_idle)) ){
-		RLAST( "520", "already seen a USER command" );
-		return;
-	}
-
-	RARGS;
-
 	client->pdata = strdup( line );
 	client->pstate = p_user;
 
 	RLAST( "320", "user ok, use PASS for password" );
 }
 
-CMD(cmd_pass)
+CMD(cmd_pass, r_any, p_user, arg_need )
 {
-	if( ! STATE(p_user) ){
-		RLAST( "520", "first issue a USER command" );
-		return;
-	}
-
-	RARGS;
-
 	if( ! user_ok( client->pdata, line )){
 		client->pstate = p_open;
 		client->right = r_any;
@@ -288,15 +257,13 @@ CMD(cmd_pass)
 
 	free( client->pdata );
 	client->pdata = NULL;
-
 }
 
-CMD(cmd_who)
+CMD(cmd_who, r_user, p_idle, arg_none )
 {
 	t_client *c;
 
-	IDLE;
-	RNOARGS;
+	(void)line;
 	for( c = clients; c; c = c->next ){
 		if( c->close )
 			continue;
@@ -306,15 +273,12 @@ CMD(cmd_who)
 	RLAST( "230", "");
 }
 
-CMD(cmd_kick)
+CMD(cmd_kick, r_master, p_idle, arg_need )
 {
 	int uid;
 	char *end;
 	t_client *c;
 	int found = 0;
-
-	IDLE;
-	RARGS;
 
 	uid = strtol( line, &end, 10 );
 	if( *end ){
@@ -336,6 +300,10 @@ CMD(cmd_kick)
 	else 
 		RLAST( "530", "user not found" );
 }
+
+// TODO: cmd_users, r_user },
+// TODO: cmd_userget, r_user },
+
 
 /************************************************************
  * commands: player
@@ -391,108 +359,91 @@ static void reply_player( t_client *client, int r )
 			return;
 	}
 }
-#define RPMISC(x)	reply_player(client,x)
+#define RPLAYER(x)	reply_player(client,x)
 
 
-CMD(cmd_play)
+CMD(cmd_play, r_user, p_idle, arg_none )
 {
 	int r;
 
-	IDLE;
-	RNOARGS;
-
+	(void)line;
 	r = player_start();
-
 	if( r == PE_OK ){
 		RLAST( "240", "playing" );
 		return;
 	}
 
-	RPMISC(r);
+	RPLAYER(r);
 }
 
-CMD(cmd_stop)
+CMD(cmd_stop, r_user, p_idle, arg_none )
 {
 	int r;
 
-	IDLE;
-	RNOARGS;
-
+	(void)line;
 	r = player_stop();
-
 	if( r == PE_OK ){
 		RLAST( "241", "stopped" );
 		return;
 	}
 
-	RPMISC(r);
+	RPLAYER(r);
 }
 
-CMD(cmd_next)
+CMD(cmd_next, r_user, p_idle, arg_none )
 {
 	int r;
 
-	IDLE;
-	RNOARGS;
-
+	(void)line;
 	r = player_next();
-
 	if( r == PE_OK  ){
 		RLAST( "240", "playing" );
 		return;
 	}
 
-	RPMISC(r);
+	RPLAYER(r);
 }
 
-CMD(cmd_prev)
+CMD(cmd_prev, r_user, p_idle, arg_none )
 {
 	int r;
 
-	IDLE;
-	RNOARGS;
-
+	(void)line;
 	r = player_prev();
-
 	if( r == PE_OK ){
 		RLAST( "240", "playing" );
 		return;
 	}
 
-	RPMISC(r);
+	RPLAYER(r);
 }
 
-CMD(cmd_pause)
+CMD(cmd_pause, r_user, p_idle, arg_none )
 {
 	int r;
 
-	IDLE;
-	RNOARGS;
-
+	(void)line;
 	r = player_pause();
-
 	if( r == PE_OK ){
 		RLAST( "242", "paused" );
 		return;
 	}
 
-	RPMISC(r);
+	RPLAYER(r);
 }
 
+// TODO: cmd_status, r_guest }, // playstatus + track
 
 /************************************************************
  * commands: track 
  */
 
 
-CMD(cmd_trackget)
+CMD(cmd_trackget, r_guest, p_idle, arg_need )
 {
 	char *buf;
 	int id;
 	t_track *t;
-
-	IDLE;
-	RARGS;
 
 	id = strtol(line, &buf, 10);
 	if( *buf ){
@@ -520,25 +471,19 @@ static void dump_tracks( t_client *client, const char *code, it_track *it )
 	RLAST(code, "" );
 }
 
-CMD(cmd_tracksearch)
+CMD(cmd_tracksearch, r_guest, p_idle, arg_need )
 {
 	it_track *it;
-
-	IDLE;
-	RARGS;
 
 	it = tracks_search(line);
 	dump_tracks( client, "211", it );
 }
 
-CMD(cmd_tracksalbum)
+CMD(cmd_tracksalbum, r_guest, p_idle, arg_need )
 {
 	char *end;
 	int id;
 	it_track *it;
-
-	IDLE;
-	RARGS;
 
 	id = strtol(line, &end, 10);
 	if( *end ){
@@ -550,14 +495,11 @@ CMD(cmd_tracksalbum)
 	dump_tracks( client, "212", it );
 }
 
-CMD(cmd_tracksartist)
+CMD(cmd_tracksartist, r_guest, p_idle, arg_need )
 {
 	char *end;
 	int id;
 	it_track *it;
-
-	IDLE;
-	RARGS;
 
 	id = strtol(line, &end, 10);
 	if( *end ){
@@ -569,11 +511,11 @@ CMD(cmd_tracksartist)
 	dump_tracks( client, "213", it );
 }
 
-CMD(cmd_trackalter)
+CMD(cmd_trackalter, r_user, p_idle, arg_need )
 {
-	IDLE;
-	RARGS;
+	(void)line;
 	// TODO: do something
+	RBADARG("blurb");
 }
 
 /************************************************************
@@ -589,20 +531,17 @@ static void proto_bcast_filter( void )
 }
 
 
-CMD(cmd_filter)
+CMD(cmd_filter, r_guest, p_idle, arg_none )
 {
 	const char *f;
 
-	IDLE;
-	RNOARGS;
-
+	(void)line;
 	f = random_filter();
 	RLAST( "250", "%s", f ? f : "" );
 }
 
-CMD(cmd_filterset)
+CMD(cmd_filterset, r_user, p_idle, arg_need )
 {
-	IDLE;
 
 	if( random_setfilter(line)){
 		RLAST( "510", "invalid filter" );
@@ -612,14 +551,12 @@ CMD(cmd_filterset)
 	RLAST( "251", "filter changed" );
 }
 
-CMD(cmd_randomtop)
+CMD(cmd_randomtop, r_guest, p_idle, arg_opt )
 {
 	it_track *it;
 	t_track *t;
 	int num;
 	char *buf;
-
-	IDLE;
 
 	if( *line ){
 		num = strtol(line, &buf, 10);
@@ -640,6 +577,8 @@ CMD(cmd_randomtop)
 	RLAST("252", "" );
 }
 
+// TODO: cmd_randomset, r_user },
+// TODO: cmd_random, r_user },
 
 /************************************************************
  * command array
@@ -651,38 +590,13 @@ typedef struct _t_cmd {
 	const char *name;
 	t_func_cmd cmd;
 	t_rights right;
+	t_protstate state;
+	t_args args;
 } t_cmd;
 
 static t_cmd proto_cmds[] = {
-	{ "QUIT", cmd_quit, r_any },
-	{ "DISCONNECT", cmd_disconnect, r_master },
-
-	{ "USER", cmd_user, r_any },
-	{ "PASS", cmd_pass, r_any },
-	//{ "USERS", cmd_users, r_user },
-	//{ "USERGET", cmd_userget, r_user },
-	{ "WHO", cmd_who, r_user },
-	{ "KICK", cmd_kick, r_master },
-
-	{ "PLAY", cmd_play, r_user },
-	{ "STOP", cmd_stop, r_user },
-	{ "NEXT", cmd_next, r_user },
-	{ "PREV", cmd_prev, r_user },
-	{ "PAUSE", cmd_pause, r_user },
-	//{ "STATUS", cmd_status, r_guest }, // playstatus + track
-
-	{ "TRACKGET", cmd_trackget, r_guest },
-	{ "TRACKSEARCH", cmd_tracksearch, r_guest },
-	{ "TRACKSALBUM", cmd_tracksalbum, r_guest },
-	{ "TRACKSARTIST", cmd_tracksartist, r_guest },
-	{ "TRACKALTER", cmd_trackalter, r_user },
-
-	{ "FILTER", cmd_filter, r_guest },
-	{ "FILTERSET", cmd_filterset, r_user },
-	{ "RANDOMTOP", cmd_randomtop, r_user },
-	//{ "RANDOM", cmd_random, r_user },
-	
-	{ NULL, NULL, 0 }
+#include "cmd.list"
+	{ NULL, NULL, 0, 0, 0 }
 };
 
 /*
@@ -695,22 +609,65 @@ static void cmd( t_client *client, char *line )
 {
 	t_cmd *c;
 	int len;
+	char *s;
 
 	for( c = proto_cmds; c && c->name; c++ ){
 		len = strlen(c->name);
-		if( 0 == strncasecmp(c->name, line,len )){
-			char *s = line + len;
+		if( 0 != strncasecmp(c->name, line,len ))
+			continue;
 
-			while( *s && isspace(*s) )
-				s++;
+		switch( c->state ){
+			case p_any:
+				break;
 
-			if( c->right <= client->right ){
-				(*c->cmd)(client, s);
-			} else {
-				RLAST( "520", "permission denied");
-			}
+			case p_open:
+				if( client->pstate == p_open )
+					break;
+				RLAST( "520", "you are already authenticated");
+				return;
+
+			case p_user:
+				if( client->pstate == p_user )
+					break;
+				RLAST( "520", "fisrt issue a USER command" );
+				return;
+
+			default:
+				if( client->pstate == c->state )
+					break;
+				RLAST( "520", "different command required" );
+				return;
+		}
+
+		if( c->right > client->right ){
+			RLAST( "520", "permission denied");
 			return;
 		}
+
+		s = line + len;
+		while( *s && isspace(*s) )
+			s++;
+
+		switch( c->args ){
+			case arg_none:
+				if( ! *s )
+					break;
+				RBADARG( "command takes no arguments" );
+				return;
+
+			case arg_need:
+				if( *s )
+					break;
+				RBADARG( "command needs arguments" );
+				return;
+
+			default:
+				break;
+		}
+
+
+		(*c->cmd)(client, s);
+		return;
 	}
 
 	RLAST( "500", "unkonwn command" );

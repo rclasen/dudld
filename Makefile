@@ -47,6 +47,10 @@ SRC += $(SRC_xmserv)
 OBJ += $(OBJ_xmserv)
 xmserv: $(OBJ_xmserv) $(OBJ_db)
 
+# generate array from CMD() macros
+cmd.list: proto.c
+	cat $^ | sh mkcmdlist.sh  > $@
+
 
 ############################################################
 # testdb
