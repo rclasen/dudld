@@ -22,7 +22,7 @@ static char *filter = NULL;
 		"t.album_id,"\
 		"t.nr,"\
 		"c.dur,"\
-		"date_part('epoch',t.lastplay) AS lplay,"\
+		"time2unix(t.lastplay) AS lplay,"\
 		"t.title,"\
 		"t.artist_id,"\
 		"c.filename "\
