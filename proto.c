@@ -646,6 +646,12 @@ CMD(cmd_randomset, r_user, p_idle, arg_need )
  * commands: sleep 
  */
 
+static void proto_bcast_sleep( void )
+{
+	proto_bcast( r_guest, "651", "%d", sleep_remain());
+}
+
+
 CMD(cmd_sleep, r_guest, p_idle, arg_none )
 {
 	(void)line;
@@ -714,7 +720,7 @@ CMD(cmd_tracks, r_guest, p_idle, arg_none )
 	int matches;
 
 	(void)line;
-	if( 0 > ( matches = random_filterstat())){
+	if( 0 > ( matches = tracks())){
 		RLAST( "510", "internal error" );
 		return;
 	}
@@ -1210,6 +1216,8 @@ void proto_init( void )
 	player_func_resume = proto_bcast_player_resume;
 	player_func_stop = proto_bcast_player_stop;
 	player_func_random = proto_bcast_player_random;
+
+	sleep_func_set = proto_bcast_sleep;
 
 	random_func_filter = proto_bcast_filter;
 

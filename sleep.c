@@ -4,6 +4,7 @@
 #include "sleep.h"
 
 static time_t sleepat = 0;
+t_sleep_func_set sleep_func_set = NULL;
 
 time_t sleep_get( void )
 {
@@ -26,12 +27,22 @@ time_t sleep_remain( void )
 
 void sleep_in( time_t sek )
 {
+	time_t old = sleepat;
+
 	sleepat = time(NULL) + sek;
+
+	if( old != sleepat && sleep_func_set )
+		(*sleep_func_set)();
 }
 
 void sleep_at( time_t when )
 {
+	time_t old = sleepat;
+
 	sleepat = when;
+
+	if( old != sleepat && sleep_func_set )
+		(*sleep_func_set)();
 }
 
 void sleep_check( void )
