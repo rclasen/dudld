@@ -1088,7 +1088,7 @@ static void cmd_help( t_client *client, char *line )
 
 	(void)line;
 	for( c = proto_cmds; c && c->name; ++c ){
-		if( client->pstate != c->state )
+		if( client->pstate != c->state && c->state != p_any )
 			continue;
 		
 		if( client->right < c->right )
