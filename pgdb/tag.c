@@ -6,6 +6,9 @@
 #include <pgdb/track.h>
 #include <tag.h>
 
+t_tag_func tag_func_changed = NULL;
+t_tag_func tag_func_del = NULL;
+
 #define GETFIELD(var,field,gofail) \
 	if( -1 == (var = PQfnumber(res, field ))){\
 		syslog( LOG_ERR, "missing tag data: %s", field ); \
@@ -143,18 +146,36 @@ int tag_add( const char *name )
 
 	PQclear(res);
 
+	if( tag_func_changed ){
+		t_tag *t;
+
+		if( NULL != (t = tag_get(id))){
+			(*tag_func_changed)(t);
+			tag_free(t);
+		}
+	}
+
 	return id;
 }
 
 int tag_del( int id )
 {
+	t_tag *t;
 	PGresult *res;
+
+	if( tag_func_del )
+		t = tag_get(id);
 
 	res = db_query("DELETE FROM mserv_tag WHERE id = %d", id);
 	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "tag_del: %s", db_errstr());
 		PQclear(res);
 		return -1;
+	}
+
+	if( tag_func_del  && t ){
+		(*tag_func_changed)(t);
+		tag_free(t);
 	}
 
 	PQclear(res);
@@ -180,6 +201,16 @@ int tag_setname( int id, const char *name )
 	}
 
 	PQclear(res);
+
+	if( tag_func_changed ){
+		t_tag *t;
+
+		if( NULL != (t = tag_get(id))){
+			(*tag_func_changed)(t);
+			tag_free(t);
+		}
+	}
+
 	return 0;
 }
 
@@ -202,6 +233,16 @@ int tag_setdesc( int id, const char *desc )
 	}
 
 	PQclear(res);
+
+	if( tag_func_changed ){
+		t_tag *t;
+
+		if( NULL != (t = tag_get(id))){
+			(*tag_func_changed)(t);
+			tag_free(t);
+		}
+	}
+
 	return 0;
 }
 

@@ -24,7 +24,7 @@
  * x4z: player
  * x5z: filter
  * x6z: queue
- * x7z:
+ * x7z: tag
  * x8z:
  * x9z:
  *
@@ -62,7 +62,7 @@ typedef enum {
 #define BUFLENLINE	10240
 #define BUFLENWHO	100
 #define BUFLENTRACK	1024
-#define BUFLENTAG	100
+#define BUFLENTAG	1024
 
 static int proto_vline( t_client *client, int last, const char *code, 
 		const char *fmt, va_list ap )
@@ -1079,6 +1079,18 @@ CMD(cmd_queueget, r_user, p_idle, arg_need)
  * commands: tag
  */
 
+static void proto_bcast_tag_changed( t_tag *t )
+{
+	char buf[BUFLENTAG];
+	proto_bcast( r_guest, "670", "%s", mktag(buf,BUFLENTAG,t));
+}
+
+static void proto_bcast_tag_del( t_tag *t )
+{
+	char buf[BUFLENTAG];
+	proto_bcast( r_guest, "671", "%s", mktag(buf,BUFLENTAG,t));
+}
+
 static void dump_tags( t_client *client, const char *code, it_tag *it )
 {
 	char buf[BUFLENTAG];
@@ -1098,7 +1110,7 @@ CMD(cmd_taglist, r_guest, p_idle, arg_none )
 
 	(void)line;
 	it = tags_list();
-	dump_tags( client, "xxx", it );
+	dump_tags( client, "270", it );
 	it_tag_done(it );
 }
 
@@ -1120,7 +1132,7 @@ CMD(cmd_tagget, r_guest, p_idle, arg_need )
 		return;
 	}
 
-	RLAST("xxx", "%s", mktag(buf, BUFLENTAG, t));
+	RLAST("271", "%s", mktag(buf, BUFLENTAG, t));
 }
 
 CMD(cmd_tagname, r_guest, p_idle, arg_need )
@@ -1132,7 +1144,7 @@ CMD(cmd_tagname, r_guest, p_idle, arg_need )
 		RLAST("511", "no such tag" );
 		return;
 	}
-	RLAST("xxx", "%s", mktag(buf, BUFLENTAG, t));
+	RLAST("272", "%s", mktag(buf, BUFLENTAG, t));
 }
 
 CMD(cmd_tagadd, r_guest, p_idle, arg_need )
@@ -1140,11 +1152,11 @@ CMD(cmd_tagadd, r_guest, p_idle, arg_need )
 	int id;
 
 	if( 0 > (id = tag_add( line ))){
-		RLAST("xxx", "failed" );
+		RLAST("511", "failed" );
 		return;
 	}
 
-	RLAST( "xxx", "%d", id );
+	RLAST( "273", "%d", id );
 }
 
 CMD(cmd_tagsetname, r_guest, p_idle, arg_need )
@@ -1160,11 +1172,11 @@ CMD(cmd_tagsetname, r_guest, p_idle, arg_need )
 
 	end += strspn(end, " \t" );
 	if( tag_setname(id, end )){
-		RLAST("xxx", "failed" );
+		RLAST("511", "failed" );
 		return;
 	}
 
-	RLAST("xxx", "name changed" );
+	RLAST("274", "name changed" );
 }
 
 CMD(cmd_tagsetdesc, r_guest, p_idle, arg_need )
@@ -1180,11 +1192,11 @@ CMD(cmd_tagsetdesc, r_guest, p_idle, arg_need )
 
 	end += strspn(end, " \t" );
 	if( tag_setdesc(id, end )){
-		RLAST("xxx", "failed" );
+		RLAST("511", "failed" );
 		return;
 	}
 
-	RLAST("xxx", "desc changed" );
+	RLAST("275", "desc changed" );
 }
 
 CMD(cmd_tagdel, r_user, p_idle, arg_need )
@@ -1199,11 +1211,11 @@ CMD(cmd_tagdel, r_user, p_idle, arg_need )
 	}
 
 	if( tag_del( id )){
-		RLAST("xxx", "failed" );
+		RLAST("511", "failed" );
 		return;
 	}
 
-	RLAST("xxx", "deleted" );
+	RLAST("276", "deleted" );
 }
 
 CMD(cmd_tracktags, r_guest, p_idle, arg_need )
@@ -1219,7 +1231,7 @@ CMD(cmd_tracktags, r_guest, p_idle, arg_need )
 	}
 
 	it = track_tags(id);
-	dump_tags( client, "xxx", it );
+	dump_tags( client, "277", it );
 	it_tag_done(it );
 }
 
@@ -1243,11 +1255,11 @@ CMD(cmd_tracktagset, r_guest, p_idle, arg_need )
 	}
 
 	if( track_tagset(trackid,tagid)){
-		RLAST("xxx", "failed" );
+		RLAST("511", "failed" );
 		return;
 	}
 
-	RLAST("xxx", "tag added to track (or already exists)" );
+	RLAST("278", "tag added to track (or already exists)" );
 }
 
 CMD(cmd_tracktagdel, r_guest, p_idle, arg_need )
@@ -1270,11 +1282,11 @@ CMD(cmd_tracktagdel, r_guest, p_idle, arg_need )
 	}
 
 	if( track_tagdel(trackid,tagid)){
-		RLAST("xxx", "failed" );
+		RLAST("511", "failed" );
 		return;
 	}
 
-	RLAST("xxx", "tag deleted from track" );
+	RLAST("279", "tag deleted from track" );
 }
 
 CMD(cmd_tracktagged, r_guest, p_idle, arg_need )
@@ -1298,11 +1310,11 @@ CMD(cmd_tracktagged, r_guest, p_idle, arg_need )
 	}
 
 	if( 0 > (r = track_tagged(trackid,tagid))){
-		RLAST("xxx", "failed" );
+		RLAST("511", "failed" );
 		return;
 	}
 
-	RLAST("xxx", "%d", r );
+	RLAST("279", "%d", r );
 }
 
 
@@ -1471,6 +1483,9 @@ void proto_init( void )
 	queue_func_del = proto_bcast_queue_del;
 	queue_func_clear = proto_bcast_queue_clear;
 	queue_func_fetch = proto_bcast_queue_fetch;
+
+	tag_func_changed = proto_bcast_tag_changed;
+	tag_func_del = proto_bcast_tag_del;
 }
 
 

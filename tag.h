@@ -9,6 +9,10 @@ typedef struct {
 	char *desc;
 } t_tag;
 
+typedef void (*t_tag_func)( t_tag *t );
+extern t_tag_func tag_func_changed;
+extern t_tag_func tag_func_del;
+
 #define it_tag it_db
 #define it_tag_begin(x)		((t_tag*)it_db_begin(x))
 #define it_tag_cur(x)		((t_tag*)it_db_cur(x))
