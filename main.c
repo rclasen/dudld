@@ -202,12 +202,14 @@ int main( int argc, char **argv )
 		char *msg;
 		int pos;
 
-		if( opt_filter && *opt_filter )
+		if( opt_filter && *opt_filter ){
 			e = expr_parse_str( &pos, &msg, opt_filter );
-
-		if( pos < 0 )
-			syslog( LOG_ERR, "startup filter failed at %d: %s",
-					pos, msg );
+			if( e == NULL ){
+				syslog( LOG_ERR, "startup filter "
+						"failed at %d: %s",
+						pos, msg );
+			}
+		}
 
 		/* at least initialize with an empty filter */
 		random_setfilter( e );
