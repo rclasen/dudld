@@ -23,7 +23,6 @@ static int curpid = 0;
 static t_track *curtrack = NULL;
 
 static time_t nextstart = 0;
-static t_track *nexttrack = NULL;
 
 
 /* used by player_start: */
@@ -33,8 +32,6 @@ t_player_func_update player_func_newtrack = NULL;
 /* used by update_status: */
 t_player_func_update player_func_pause = NULL;
 t_player_func_update player_func_stop = NULL;
-
-
 
 
 /* 
@@ -229,6 +226,7 @@ static t_track *getnext( void )
 static t_playerror startplay( void )
 {
 	t_playstatus wantstat = pl_play;
+	t_track *track;
 	int pid;
 
 	update_status(&wantstat);
@@ -244,12 +242,8 @@ static t_playerror startplay( void )
 
 	nextstart = 0;
 
-	/* get next track when there is no pre-fetched one */
-	if( nexttrack == NULL )
-		nexttrack = getnext();
-
-	/* still no track? queue must be empty */
-	if( NULL == nexttrack )
+	/* get next track */
+	if( NULL == (track = getnext()))
 		return PE_NOTHING;
 
 	pid = fork();
@@ -283,8 +277,8 @@ static t_playerror startplay( void )
 		setsid();
 
 		syslog( LOG_DEBUG, "starting %s %s", opt_player, 
-				nexttrack->fname );
-		execlp( opt_player, opt_player, nexttrack->fname, NULL );
+				track->fname );
+		execlp( opt_player, opt_player, track->fname, NULL );
 
 		syslog( LOG_ERR, "exec of player failed: %m");
 		exit( -1 );
@@ -294,13 +288,11 @@ static t_playerror startplay( void )
 	/* parent */
 	curstat = pl_play;
 	curpid = pid;
-	curtrack = nexttrack;
+	curtrack = track;
 
 	if( player_func_newtrack )
 		(*player_func_newtrack)();
 
-	/* pre-fetch next track */
-	nexttrack = getnext();
 
 	/* we cannot tell, if the start worked - update_status has to deal
 	 * with this */
@@ -356,10 +348,11 @@ t_playerror player_pause( void )
 			sleep(1);
 	}
 
+	/* player is not running */
 	if( curstat == pl_stop )
 		return PE_NOTHING;
 
-	/* loop didn't run a single time - it wasn't playint */
+	/* loop didn't run a single time - player was already paused */
 	if( i == 0 )
 		return PE_BUSY;
 
@@ -391,12 +384,20 @@ t_playerror player_start( void )
 
 t_playerror player_next( void )
 {
+	t_playstatus last = curstat;
 	t_playstatus wantstat = pl_play;
+	t_playerror er;
 
 	if( PE_OK != terminate( &wantstat) )
 		return PE_FAIL;
 
-	return startplay();
+	if( PE_OK == (er = startplay()))
+		return PE_OK;
+
+	if( last != pl_stop && player_func_stop )
+		(*player_func_stop)();
+
+	return er;
 }
 
 t_playerror player_prev( void )
@@ -407,12 +408,7 @@ t_playerror player_prev( void )
 	if( PE_OK != terminate(&wantstat) )
 		return PE_FAIL;
 
-	track_free(nexttrack);
-	if( NULL == (nexttrack = get_prev())){
-		return PE_NOTHING;
-	}
-
-	return startplay();
+	return startplay(lasttrack);
 #else
 	return PE_NOSUP;
 #endif
@@ -441,23 +437,37 @@ void player_check( void )
 	if( nextstart && nextstart < now )
 		curstat = pl_stop;
 
-	if( curstat == pl_stop && wantstat == pl_play ){
+	/* nothig else to do ? */
+	if( curstat != pl_stop )
+		return;
 
+
+
+	/* we want to play */
+	if( wantstat == pl_play ){
 		if( ! nextstart )
 			nextstart = now + opt_gap;
 
-		if( nextstart <= now )
-			/* nextstart is reset to 0 by startplay() */
-			startplay();
-		else
+		if( nextstart > now ){
 			curstat = pl_play;
+			return;
+		}
 
+		/* nextstart is reset to 0 by startplay() */
+		if( PE_OK == startplay())
+			return;
+
+		/* failed to start next track - stopped */
+		if( player_func_stop )
+			(*player_func_stop)();
+
+		return;
+	} 
+	
 	/* player terminated although it is paused - this results in 
 	 * the same status as the gap before a track */
-	} else if( curstat == pl_stop && wantstat == pl_pause ){
+	if( wantstat == pl_pause )
 		curstat = pl_pause;
-
-	}
 }
 
 
