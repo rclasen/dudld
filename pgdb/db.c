@@ -184,7 +184,7 @@ char *pgstring( PGresult *res, int tup, int field )
 	if( NULL == (c = strdup(PQgetvalue( res, tup, field ))))
 		return NULL;
 
-	e = c + strlen(e);
+	e = c + strlen(c);
 	while( --e > c && isspace(*e))
 		*e = 0;
 
