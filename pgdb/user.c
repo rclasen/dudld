@@ -243,3 +243,24 @@ int user_save( t_user *u )
 	return 0;
 }
 
+int user_del( int uid )
+{
+	PGresult *res;
+
+	res = db_query( "DELETE FROM mserv_user WHERE id = %d", uid );
+	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
+		syslog( LOG_ERR, "user_del: %s", db_errstr() );
+		PQclear(res);
+		return -1;
+	}
+
+	if( PQcmdTuples(res) == 0 ){
+		PQclear(res);
+		return -1;
+	}
+
+	PQclear(res);
+
+	return 0;
+}
+

@@ -363,7 +363,7 @@ CMD(cmd_disconnect, r_master, p_idle, arg_need )
 			proto_rlast( c, "632", "disconnected" );
 			client_close( c );
 
-			RLAST( "231", "disconnected" );
+			RLAST( "232", "disconnected" );
 			return;
 		}
 	}
@@ -496,7 +496,7 @@ CMD(cmd_userget, r_user, p_idle, arg_need )
 		return;
 	}
 
-	RLAST( "2xx", "%s", mkuser(buf, BUFLENUSER, u ));
+	RLAST( "233", "%s", mkuser(buf, BUFLENUSER, u ));
 	user_free(u);
 }
 
@@ -510,7 +510,7 @@ CMD(cmd_usergetname, r_user, p_idle, arg_need )
 		return;
 	}
 
-	RLAST("2xx", "%d", uid);
+	RLAST("234", "%d", uid);
 }
 
 static void dump_users( t_client *client, const char *code, it_user *it )
@@ -532,7 +532,7 @@ CMD(cmd_users, r_user, p_idle, arg_none )
 
 	(void)line;
 	it = users_list();
-	dump_users( client, "2xx", it );
+	dump_users( client, "235", it );
 	it_user_done( it );
 }
 
@@ -556,9 +556,9 @@ CMD(cmd_usersetpass, r_master, p_idle, arg_need )
 	end += strspn( end, " \t");
 
 	if( 0 > user_setpass(u, end) ){
-		RLAST( "5xx", "failed");
+		RLAST( "530", "failed");
 	} else {
-		RLAST( "2xx", "password changed" );
+		RLAST( "236", "password changed" );
 		user_save(u);
 	}
 	user_free(u);
@@ -590,9 +590,9 @@ CMD(cmd_usersetright, r_master, p_idle, arg_need )
 
 
 	if( 0 > user_setright(u, right) ){
-		RLAST( "5xx", "failed");
+		RLAST( "530", "failed");
 	} else {
-		RLAST( "2xx", "right changed" );
+		RLAST( "237", "right changed" );
 		user_save(u);
 	}
 	user_free(u);
@@ -603,12 +603,33 @@ CMD(cmd_useradd, r_master, p_idle, arg_need )
 	int uid;
 
 	if( 0 > ( uid = user_add(line, 1, ""))){
-		RLAST( "5xx", "failed" );
+		RLAST( "530", "failed" );
 		return;
 	} 
 
-	RLAST( "2xx", "%d", uid );
+	RLAST( "238", "%d", uid );
 }
+
+CMD(cmd_userdel, r_user, p_idle, arg_need )
+{
+	int uid;
+	char *end;
+
+	uid = strtol(line, &end, 10 );
+	if( *end ){
+		RBADARG("invalid user ID" );
+		return;
+	}
+
+	if( 0>  user_del(uid)){
+		RLAST( "530", "failed" );
+		return;
+	}
+
+	RLAST( "239", "deleted");
+}
+
+
 
 /************************************************************
  * commands: player

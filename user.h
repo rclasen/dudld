@@ -20,6 +20,7 @@ typedef struct {
 
 void user_free( t_user *u );
 int user_add( const char *name, t_rights right, const char *pass );
+int user_del( int uid );
 
 t_user *user_get( int uid );
 int user_getname( const char *name );
