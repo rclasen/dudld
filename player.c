@@ -242,6 +242,7 @@ static t_track *getnext( void )
 {
 	t_queue *q;
 
+	/* queue */
 	while( NULL != (q = queue_fetch())){
 		curtrack = queue_track(q);
 		curuid = q->uid;
@@ -257,6 +258,7 @@ static t_track *getnext( void )
 	if( ! do_random )
 		return NULL;
 
+	/* random */
 	while( NULL != (curtrack = random_fetch())){
 		if( track_exists(curtrack) )
 			return curtrack;
@@ -303,9 +305,8 @@ static t_playerror startplay( void )
 		int fd;
 		char fname[MAXPATHLEN];
 
-		// TODO: redirect output to a file
 		if( 0 > (fd = open( "/dev/null", O_RDWR, 0700 ))){
-			syslog( LOG_ERR, "cannot open player output: %m" );
+			syslog( LOG_ERR, "cannot open /dev/null: %m" );
 			exit( -1 );
 		}
 
