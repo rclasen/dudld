@@ -31,5 +31,7 @@ AC_FUNC_MALLOC
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([dup2 inet_ntoa memmove select socket strchr strcspn strdup strncasecmp strpbrk strspn strtol])
 
+AM_MAINTAINER_MODE
+
 AC_CONFIG_FILES([Makefile commondb/Makefile pgdb/Makefile])
 AC_OUTPUT
