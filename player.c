@@ -25,6 +25,7 @@ static int do_random = 1;
 
 static int curpid = 0;
 static t_track *curtrack = NULL;
+static int curuid = 0;
 
 static int gap = 0;
 static time_t nextstart = 0;
@@ -150,11 +151,11 @@ static t_playstatus update_status( t_playstatus *wantstat )
 		curpid = 0;
 		if( curtrack ){
 			if( ! failed ){
-				// TODO: pass queue user id to history 
-				history_add(curtrack, 0 );
+				history_add(curtrack, curuid );
 			}
 			track_free( curtrack );
 			curtrack = NULL;
+			curuid = 0;
 		}
 
 	}
@@ -221,26 +222,27 @@ static t_playerror terminate( t_playstatus *wantstat )
 static t_track *getnext( void )
 {
 	t_queue *q;
-	t_track *t;
 
 	while( NULL != (q = queue_fetch())){
-		t = queue_track(q);
+		curtrack = queue_track(q);
+		curuid = q->uid;
 		queue_free(q);
 
-		if( track_exists(t) )
-			return t;
+		if( track_exists(curtrack) )
+			return curtrack;
 
-		track_free(t);
+		track_free(curtrack);
 	}
 
+	curuid = 0;
 	if( ! do_random )
 		return NULL;
 
-	while( NULL != (t = random_fetch())){
-		if( track_exists(t) )
-			return t;
+	while( NULL != (curtrack = random_fetch())){
+		if( track_exists(curtrack) )
+			return curtrack;
 
-		track_free(t);
+		track_free(curtrack);
 	}
 
 	return NULL;
@@ -249,7 +251,6 @@ static t_track *getnext( void )
 static t_playerror startplay( void )
 {
 	t_playstatus wantstat = pl_play;
-	t_track *track;
 	int pid;
 
 	update_status(&wantstat);
@@ -266,7 +267,8 @@ static t_playerror startplay( void )
 	nextstart = 0;
 
 	/* get next track */
-	if( NULL == (track = getnext()))
+	getnext();
+	if( NULL == curtrack )
 		return PE_NOTHING;
 
 	pid = fork();
@@ -300,8 +302,8 @@ static t_playerror startplay( void )
 		setsid();
 
 		syslog( LOG_DEBUG, "starting %s %s", opt_player, 
-				track->fname );
-		execlp( opt_player, opt_player, track->fname, NULL );
+				curtrack->fname );
+		execlp( opt_player, opt_player, curtrack->fname, NULL );
 
 		syslog( LOG_ERR, "exec of player failed: %m");
 		exit( -1 );
@@ -311,7 +313,6 @@ static t_playerror startplay( void )
 	/* parent */
 	curstat = pl_play;
 	curpid = pid;
-	curtrack = track;
 
 	if( player_func_newtrack )
 		(*player_func_newtrack)();
