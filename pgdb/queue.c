@@ -1,6 +1,6 @@
 
-#include "track.h"
-#include "queue.h"
+#include <pgdb/track.h>
+#include <pgdb/queue.h>
 
 // TODO: get rid of testing track
 static t_track t = {

@@ -3,7 +3,7 @@ CC		:= gcc
 LD		:= gcc
 
 LIBS		:=
-DEPFLAGS	:=
+DEPFLAGS	:= -I.
 LDFLAGS		:=
 CFLAGS		:= -g -W -Wall -Wunused -Wmissing-prototypes \
 		-Wcast-qual -Wcast-align -Werror \
@@ -39,15 +39,21 @@ xmserv: $(OBJS)
 
 x-all: $(LNK)
 
+include $(OBJS:.o=.d)
+%.d: %.c
+	@echo mkdep $<
+	@$(CC) $(DEPFLAGS) -M -MG $< | \
+		sed -e 's@ /[^ ]*@@g' -e 's@^\(.*\)\.o:@\1.d \1.o:@' > $@
+
+
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 $(LNK):
 	$(LD) $(LDFLADS) -o $@ $^ $(LIBS)
 
--include .depend
-depend:
-	makedepend -Y -f- $(SRCS) > .depend
+todo:
+	@grep -i todo $(SRCS)
 
 clean:
 	rm -f $(OBJS)

@@ -1,5 +1,5 @@
 
-#include "user.h"
+#include <pgdb/user.h>
 
 int user_ok( const char *login, const char *pass )
 {

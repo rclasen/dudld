@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../opt.h"
-#include "db.h"
+#include <opt.h>
+#include <pgdb/db.h>
 
 static PGconn *dbcon = NULL;
 

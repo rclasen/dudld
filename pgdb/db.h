@@ -3,7 +3,7 @@
 
 #include <postgresql/libpq-fe.h>
 
-#include "../db.h"
+#include <db.h>
 
 typedef void *(*db_convert)( PGresult *res, int tup );
 

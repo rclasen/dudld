@@ -1,6 +1,6 @@
 #ifndef _PGDB_TRACK_H
 #define _PGDB_TRACK_H
 
-#include "../track.h"
+#include <track.h>
 
 #endif

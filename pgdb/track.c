@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "track.h"
+#include <pgdb/track.h>
 
 t_track *random_fetch( void )
 {
