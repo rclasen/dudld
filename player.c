@@ -1,5 +1,6 @@
 
 #include <sys/types.h>
+#include <sys/param.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -186,8 +187,10 @@ static t_playerror terminate( t_playstatus *wantstat )
 	for( i = 0; pl_stop != update_status(wantstat) && i < 5; ++i ){
 
 		if( i == 0 ){
-			/* try to kill the process itself */
-			kill( curpid, SIGTERM );
+			/* try to kill the process and all of its
+			 * children. Do not kill the process itself - this
+			 * will fool the waitpid() */
+			kill( -curpid, SIGTERM );
 			/* and wake it up in case it was stopped */
 			kill( -curpid, SIGCONT );
 
@@ -282,6 +285,7 @@ static t_playerror startplay( void )
 	/* child */
 	if( pid == 0){
 		int fd;
+		char fname[MAXPATHLEN];
 
 		// TODO: redirect output to a file
 		if( 0 > (fd = open( "/dev/null", O_RDWR, 0700 ))){
@@ -301,9 +305,10 @@ static t_playerror startplay( void )
 		 * player from _stop() */
 		setsid();
 
-		syslog( LOG_DEBUG, "starting %s %s", opt_player, 
-				curtrack->fname );
-		execlp( opt_player, opt_player, curtrack->fname, NULL );
+		track_mkpath(fname, MAXPATHLEN, curtrack);
+
+		syslog( LOG_DEBUG, "starting %s %s", opt_player, fname );
+		execlp( opt_player, opt_player, fname, NULL );
 
 		syslog( LOG_ERR, "exec of player failed: %m");
 		exit( -1 );
