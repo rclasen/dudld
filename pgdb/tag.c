@@ -165,7 +165,7 @@ int tag_add( const char *name )
 
 int tag_del( int id )
 {
-	t_tag *t;
+	t_tag *t = NULL;
 	PGresult *res;
 
 	if( tag_func_del )

@@ -203,7 +203,7 @@ static int mkvtab( char *buffer, int len, const char *fmt, va_list ap )
 			buffer += l;
 
 		} else if( *fmt == 'c' ) {
-			char c = va_arg( ap, char );
+			int c = va_arg( ap, int );
 			EADD(len, used, buffer, c );
 
 		} else if( *fmt == 'd' ) {

@@ -210,7 +210,7 @@ int queue_add( int trackid, int uid )
 int queue_del( int queueid, int uid )
 {
 	PGresult *res;
-	t_queue *q;
+	t_queue *q = NULL;
 
 	if( queue_func_del )
 		q = queue_get(queueid);
