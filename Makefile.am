@@ -30,6 +30,6 @@ testfilt_SOURCES=testfilt.c \
 	filter_parse.y \
 	filter_defs.h
 
-CLEANFILES=cmd.list
+CLEANFILES=cmd.list filter_parse.c filter_parse.h
 EXTRA_DIST=mkcmdlist.sh
 
