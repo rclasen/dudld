@@ -30,6 +30,8 @@ t_playstatus player_status( void );
 t_track *player_track( void );
 int player_gap( void );
 t_playerror player_setgap( int gap );
+int player_random( void );
+t_playerror player_setrandom( int random );
 
 t_playerror player_start( void );
 t_playerror player_stop( void );

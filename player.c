@@ -19,6 +19,8 @@
 
 static t_playstatus curstat = pl_stop;
 
+static int do_random = 1;
+
 static int curpid = 0;
 static t_track *curtrack = NULL;
 
@@ -216,7 +218,7 @@ static t_track *getnext( void )
 	t_track *t;
 
 	if( NULL == (t = queue_fetch() ))
-		if( NULL == ( t = random_fetch() ))
+		if( ! do_random || NULL == ( t = random_fetch() ))
 			return NULL;
 
 	// TODO: use stat() to verify existance
@@ -331,6 +333,17 @@ int player_gap( void )
 t_playerror player_setgap( int g )
 {
 	gap = g;
+	return PE_OK;
+}
+
+int player_random( void )
+{
+	return do_random;
+}
+
+t_playerror player_setrandom( int r )
+{
+	do_random = r;
 	return PE_OK;
 }
 

@@ -117,6 +117,8 @@ int main( int argc, char **argv )
 	}
 
 	//player_init();
+	player_setgap( opt_gap );
+	player_setrandom( opt_random );
 	proto_init();
 	random_setfilter( opt_filter );
 
