@@ -263,6 +263,8 @@ static t_track *getnext( void )
 		if( track_exists(curtrack) )
 			return curtrack;
 
+		syslog( LOG_INFO, "skipping nonexisting track: %d", 
+				curtrack->id);
 		track_free(curtrack);
 	}
 
