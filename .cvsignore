@@ -16,3 +16,6 @@ config.status
 libtool
 testfilt
 dudld
+*-stamp
+config.sub
+config.guess
