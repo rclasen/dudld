@@ -40,8 +40,6 @@
 #include "player.h"
 #include "proto.h"
 
-// TODO: escape tabs in output 
-
 typedef enum {
 	arg_none,
 	arg_opt,
@@ -137,6 +135,10 @@ static void proto_bcast( t_rights right, const char *code,
 /************************************************************
  * helper
  */
+
+/* TODO: mktab */
+// TODO: escape tabs in output 
+
 
 /* make a reply string from client data */
 static char *mkclient( t_client *c )
@@ -435,7 +437,6 @@ CMD(cmd_pause, r_user, p_idle, arg_none )
 	RPLAYER(r);
 }
 
-// TODO: cmd_status, r_guest }, // playstatus + track
 CMD(cmd_status, r_guest, p_idle, arg_none )
 {
 	(void)line;
@@ -443,7 +444,33 @@ CMD(cmd_status, r_guest, p_idle, arg_none )
 	RLAST( "243", "%d", player_status() );
 }
 
-// TODO: gap
+CMD(cmd_curtrack, r_guest, p_idle, arg_none )
+{
+	(void)line;
+
+	RBADARG( "TODO: curtrack" );
+}
+
+CMD(cmd_gap, r_guest, p_idle, arg_none )
+{
+	(void)line;
+	RLAST( "xxx", "%d", player_gap() );
+}
+
+CMD(cmd_gapset, r_user, p_idle, arg_need )
+{
+	char *end;
+	int gap;
+
+	gap = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid time" );
+		return;
+	}
+
+	player_setgap( gap );
+	RLAST( "xxx", "gap adjusted" );
+}
 
 /************************************************************
  * commands: track 
@@ -463,7 +490,7 @@ CMD(cmd_trackget, r_guest, p_idle, arg_need )
 	}
 
 	if( ! (t = track_get( id ))){
-		RLAST("510", "no such track" );
+		RLAST("511", "no such track" );
 		return;
 	}
 
@@ -480,6 +507,19 @@ static void dump_tracks( t_client *client, const char *code, it_track *it )
 	it_track_done(it);
 
 	RLAST(code, "" );
+}
+
+CMD(cmd_tracks, r_guest, p_idle, arg_none )
+{
+	int matches;
+
+	(void)line;
+	if( 0 > ( matches = random_filterstat())){
+		RLAST( "510", "internal error" );
+		return;
+	}
+
+	RLAST( "214", "%d", matches );
 }
 
 CMD(cmd_tracksearch, r_guest, p_idle, arg_need )
@@ -553,13 +593,25 @@ CMD(cmd_filter, r_guest, p_idle, arg_none )
 
 CMD(cmd_filterset, r_user, p_idle, arg_opt )
 {
-
 	if( random_setfilter(line)){
-		RLAST( "510", "invalid filter" );
+		RLAST( "511", "invalid filter" );
 		return;
 	}
 
 	RLAST( "251", "filter changed" );
+}
+
+CMD(cmd_filterstat, r_guest, p_idle, arg_none )
+{
+	int matches;
+
+	(void)line;
+	if( 0 > ( matches = random_filterstat())){
+		RLAST( "550", "filter error" );
+		return;
+	}
+
+	RLAST( "253", "%d", matches );
 }
 
 CMD(cmd_randomtop, r_guest, p_idle, arg_opt )
