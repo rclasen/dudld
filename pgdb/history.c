@@ -92,7 +92,7 @@ it_history *history_list( int num )
 				"h.user_id "
 			"FROM "
 				"( SELECT * FROM mserv_hist "
-					"ORDER BY added "
+					"ORDER BY added DESC "
 					"LIMIT %d "
 				") AS h "
 					"INNER JOIN mserv_track t "
