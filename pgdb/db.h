@@ -7,13 +7,21 @@
 
 typedef void *(*db_convert)( PGresult *res, int tup );
 
-typedef struct _it_db {
+typedef struct {
 	PGresult *res;
 	db_convert conv;
 	int tuple;
-} it_db;
+} _it_db;
+
+const char *db_errstr( void );
 
 PGresult *db_query( char *query );
-it_db *db_iterate( char *query, db_convert func );
+_it_db *db_iterate( char *query, db_convert func );
+
+char *db_escape( const char *in );
+
+int pgint( PGresult *res, int tup, int field );
+int pgbool( PGresult *res, int tup, int field );
+char *pgstring( PGresult *res, int tup, int field );
 
 #endif

@@ -102,14 +102,6 @@ static t_playerror p_start( t_track *track )
 	/* child */
 	if( pid == 0){
 		int fd;
-		char *fname;
-
-		if( NULL == (fname = malloc( strlen(track->dir) + 
-						strlen(track->fname) + 10 ))){
-			syslog( LOG_ERR, "cannot allocate filename: %m" );
-			exit( -1);
-		}
-		sprintf( fname, "%s/%s", track->dir, track->fname );
 
 		// TODO: redirect output to a file
 		if( 0 > (fd = open( "/dev/null", O_RDWR, 0700 ))){
@@ -129,8 +121,9 @@ static t_playerror p_start( t_track *track )
 		 * player from _stop() */
 		setsid();
 
-		syslog( LOG_DEBUG, "starting %s %s", opt_player, fname );
-		execlp( opt_player, opt_player, fname, NULL );
+		syslog( LOG_DEBUG, "starting %s %s", opt_player, 
+				track->fname );
+		execlp( opt_player, opt_player, track->fname, NULL );
 
 		syslog( LOG_ERR, "exec of player failed: %m");
 		exit( -1 );

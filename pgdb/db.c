@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 
 #include <opt.h>
 #include <pgdb/db.h>
@@ -8,38 +9,46 @@
 static PGconn *dbcon = NULL;
 
 
-static void addopt( char *buffer, const char *opt, const char *val )
+static int addopt( char *buffer, const char *opt, const char *val )
 {
 	if( ! val || ! *val )
-		return;
+		return 0;
 
-	if( *buffer )
-		strcat( buffer, "," );
-
-	strcat( buffer, opt );
-	strcat( buffer, "=" );
-	strcat( buffer, val );
+	return sprintf( buffer, "%s='%s' ", opt, val );
 }
 
 static int db_conn( void )
 {
 	char buffer[1024];
+	int len = 0;
 
 	db_done();
 
 	*buffer = 0;
 
-	addopt( buffer, "host", opt_db_host );
-	addopt( buffer, "port", opt_db_port );
-	addopt( buffer, "dbname", opt_db_name );
-	addopt( buffer, "user", opt_db_user );
-	addopt( buffer, "password", opt_db_pass );
+	len += addopt( buffer +len, "host", opt_db_host );
+	len += addopt( buffer +len, "port", opt_db_port );
+	len += addopt( buffer +len, "dbname", opt_db_name );
+	len += addopt( buffer +len, "user", opt_db_user );
+	len += addopt( buffer +len, "password", opt_db_pass );
 
-	if( NULL == (dbcon = PQconnectdb( buffer )))
-		// TODO: log connect failure?
+	dbcon = PQconnectdb( buffer );
+	if( NULL == dbcon || CONNECTION_OK != PQstatus(dbcon)){
+		syslog( LOG_ERR, "db_conn failed: %s", PQerrorMessage(dbcon));
+		PQfinish(dbcon);
+		dbcon = NULL;
 		return 1;
+	}
 
 	return 0;
+}
+
+const char *db_errstr( void )
+{
+	if( ! dbcon )
+		return "no database handle open";
+
+	return PQerrorMessage(dbcon);
 }
 
 /*
@@ -62,8 +71,6 @@ PGresult *db_query( char *query )
 	if( res != NULL )
 		return res;
 
-	// TODO: log query failure
-
 	/* reconnect and retry */
 	if( db_conn() )
 		return NULL;
@@ -71,10 +78,10 @@ PGresult *db_query( char *query )
 	return PQexec( dbcon, query );
 }
 
-it_db *db_iterate( char *query, db_convert func )
+_it_db *db_iterate( char *query, db_convert func )
 {
 	PGresult *res = NULL;
-	it_db *it;
+	_it_db *it;
 
 	if( NULL == func )
 		return NULL;
@@ -82,7 +89,7 @@ it_db *db_iterate( char *query, db_convert func )
 	if( NULL == (res = db_query( query )))
 		return NULL;
 
-	if( NULL == (it = malloc(sizeof(it_db)))){
+	if( NULL == (it = malloc(sizeof(_it_db)))){
 		PQclear(res);
 		return NULL;
 	}
@@ -92,6 +99,56 @@ it_db *db_iterate( char *query, db_convert func )
 	it->tuple = 0;
 
 	return it;
+}
+
+char *db_escape( const char *in )
+{
+	int len;
+	const char *p;
+	char *q, *esc;
+
+	/* return a simple copy, if there is nothing to escape */
+	if( NULL == (p = strchr(in, '\'')))
+		return strdup(in);
+
+	/* get length of string to allocate */
+	len = strlen(in);
+	while( NULL != (p = strchr(p, '\'' ) )){
+		len++;
+		p++;
+	}
+
+	if( NULL == (esc = malloc(len+1)))
+		return NULL;
+
+	/* copy string. a single ' is duplicated to escape it */
+	q = esc;
+	for( p = in; p && *p; ++p ){
+		*q++ = *p;
+		if( *p == '\'' ){
+			*q++ = '\'';
+		}
+	}
+	*q = 0;
+
+	return esc;
+}
+
+
+int pgint( PGresult *res, int tup, int field )
+{
+	return atoi(PQgetvalue( res, tup, field ));
+}
+
+int pgbool( PGresult *res, int tup, int field )
+{
+	return 0 != strcmp(PQgetvalue( res, tup, field ),"t");
+
+}
+
+char *pgstring( PGresult *res, int tup, int field )
+{
+	return strdup(PQgetvalue( res, tup, field ));
 }
 
 
@@ -112,9 +169,9 @@ void db_done( void )
 }
 
 
-#define ITDB(x)		((it_db*)x)
+#define ITDB(x)		((_it_db*)x)
 
-void *it_db_begin( void *i )
+it_db *it_db_begin( it_db *i )
 {
 	if( ! i )
 		return NULL;
@@ -123,7 +180,7 @@ void *it_db_begin( void *i )
 	return it_db_cur(i);
 }
 
-void *it_db_cur( void *i )
+it_db *it_db_cur( it_db *i )
 {
 	if( ! i )
 		return NULL;
@@ -131,7 +188,7 @@ void *it_db_cur( void *i )
 	return (*ITDB(i)->conv)( ITDB(i)->res, ITDB(i)->tuple);
 }
 
-void *it_db_next( void *i )
+it_db *it_db_next( it_db *i )
 {
 	if( ! i )
 		return NULL;
@@ -140,7 +197,7 @@ void *it_db_next( void *i )
 	return it_db_cur(i);
 }
 
-void it_db_done( void *i )
+void it_db_done( it_db *i )
 {
 	if( ! i )
 		return;
