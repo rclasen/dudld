@@ -189,7 +189,7 @@ int client_send( t_client *c, const char *buf )
 	if( c->close )
 		return -1;
 
-	if( 0 > send( c->sock, buf, len, MSG_DONTWAIT|MSG_NOSIGNAL )){
+	if( 0 > send( c->sock, buf, len, MSG_DONTWAIT )){
 		client_close(c);
 		return -1;
 	}
@@ -213,7 +213,7 @@ void client_poll( t_client *c, fd_set *read )
 
 	if( 0 >= (len = recv( c->sock, 
 			c->ibuf + c->ilen,
-			CLIENT_BUFLEN - c->ilen, MSG_NOSIGNAL))){
+			CLIENT_BUFLEN - c->ilen, 0))){
 		client_close(c);
 		return;
 	}
