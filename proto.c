@@ -33,6 +33,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <syslog.h>
 #include <errno.h>
 
 #include "user.h"
@@ -583,7 +584,8 @@ void proto_input( t_client *client )
 void proto_newclient( t_client *client )
 {
 	RLAST( "220", "hello" );
-	printf( "new client\n");
+	syslog( LOG_DEBUG, "new connection %d from %s", client->id,
+			inet_ntoa(client->sin.sin_addr ));
 }
 
 /*
@@ -591,7 +593,8 @@ void proto_newclient( t_client *client )
  */
 void proto_delclient( t_client *client )
 {
-	printf( "a client is gone\n" );
+	syslog( LOG_DEBUG, "lost connection %d to %s", client->id,
+			inet_ntoa(client->sin.sin_addr ));
 	proto_bcast_logout( client );
 }
 
