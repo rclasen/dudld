@@ -86,19 +86,8 @@ static int loop( void )
 
 		// TODO: do other things
 
-		/* find clients that are gone */
-		for( client = clients; client; client = client->next ){
-			if( ! client->close )
-				continue;
-
-			proto_delclient( client );
-		}
-
 		clients_clean();
-
-		if( NULL != (client = client_accept( &fdread ))){
-			proto_newclient( client );
-		}
+		client_accept( &fdread );
 	}
 }
 
