@@ -41,6 +41,7 @@
 #include "user.h"
 #include "history.h"
 #include "random.h"
+#include "queue.h"
 #include "player.h"
 #include "proto.h"
 
@@ -272,6 +273,29 @@ static inline char *mkhistory( char *buf, int len, t_history *h )
 	return buf;
 }
 
+static inline char *mkqueue( char *buf, int len, t_queue *q )
+{
+	t_track *t;
+
+	t = queue_track(q);
+	if( len < mktab(buf, len, "ddddddsddd",
+				q->id,
+				q->uid,
+				q->queued,
+				t->id,
+				t->albumid, 
+				t->albumnr, 
+				t->title, 
+				t->artistid, 
+				t->duration,
+				t->lastplay)){
+		track_free(t);
+		return NULL;
+	}
+
+	track_free(t);
+	return buf;
+}
 
 // TODO: this file is too large. Split out cmds
 
@@ -770,7 +794,7 @@ CMD(cmd_randomtop, r_guest, p_idle, arg_opt )
 
 
 /************************************************************
- * history
+ * commands: history
  */
 
 static void dump_history( t_client *client, const char *code, it_history *it )
@@ -787,7 +811,7 @@ static void dump_history( t_client *client, const char *code, it_history *it )
 	RLAST(code, "" );
 }
 
-CMD(cmd_history, r_any, p_any, arg_opt )
+CMD(cmd_history, r_guest, p_idle, arg_opt )
 {
 	int num = 20;
 	char *end;
@@ -805,7 +829,7 @@ CMD(cmd_history, r_any, p_any, arg_opt )
 	dump_history( client, "260", it );
 }
 
-CMD(cmd_historytrack, r_any, p_any, arg_need )
+CMD(cmd_historytrack, r_guest, p_idle, arg_need )
 {
 	int id;
 	int num = 20;
@@ -837,6 +861,103 @@ CMD(cmd_historytrack, r_any, p_any, arg_need )
 	dump_history( client, "260", it );
 }
 
+
+/************************************************************
+ * commands: queue
+ */
+
+static void proto_bcast_queue_add( int qid )
+{
+	char buf[BUFLENTRACK];
+	t_queue *q;
+
+	if( NULL == (q = queue_get( qid )))
+		return;
+
+	proto_bcast( r_guest, "xxx", "%s", mkqueue(buf,BUFLENTRACK,q) );
+	queue_free(q);
+}
+
+static void proto_bcast_queue_del( t_queue *q )
+{
+	proto_bcast( r_guest, "xxx", "%d", q->id );
+}
+
+static void proto_bcast_queue_clear( void )
+{
+	proto_bcast( r_guest, "xxx", "queue cleared" );
+}
+
+static void proto_bcast_queue_fetch( t_queue *q )
+{
+	proto_bcast( r_guest, "xxx", "%d", q->id );
+}
+
+CMD(cmd_queue, r_guest, p_idle, arg_none)
+{
+	char buf[BUFLENTRACK];
+	it_queue *it;
+	t_queue *q;
+
+	(void)line;
+	it = queue_list();
+	for( q = it_queue_begin(it); q; q = it_queue_next(it)){
+		RLINE("xxx", "%s", mkqueue(buf, BUFLENTRACK, q ));
+		queue_free(q);
+	}
+	it_queue_done(it);
+	RLAST("xxx","");
+}
+
+CMD(cmd_queueadd, r_user, p_idle, arg_need)
+{
+	int id;
+	char *end;
+	int qid;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "expecting a track ID" );
+		return;
+	}
+
+	if( -1 == (qid = queue_add(id, client->uid))){
+		RLAST( "xxx", "failed to add track to queue" );
+		return;
+	}
+
+	RLAST( "xxx", "queued as queue ID %d", qid );
+}
+
+CMD(cmd_queuedel, r_user, p_idle, arg_need)
+{
+	int id;
+	char *end;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "expecting a queue ID" );
+		return;
+	}
+
+	if( queue_del( id )){
+		RLAST("xxx", "failed to delete from queue" );
+		return;
+	}
+
+	RLAST("xxx", "track removed from queue" );
+}
+
+CMD(cmd_queueclear, r_master, p_idle, arg_none)
+{
+	(void)line;
+	if( queue_clear() ){
+		RLAST("xxx", "failed to clear queue" );
+		return;
+	}
+
+	RLAST("xxx", "queue cleared" );
+}
 
 /************************************************************
  * command array
@@ -994,6 +1115,11 @@ void proto_init( void )
 	player_func_random = proto_bcast_player_random;
 
 	random_func_filter = proto_bcast_filter;
+
+	queue_func_add = proto_bcast_queue_add;
+	queue_func_del = proto_bcast_queue_del;
+	queue_func_clear = proto_bcast_queue_clear;
+	queue_func_fetch = proto_bcast_queue_fetch;
 }
 
 
