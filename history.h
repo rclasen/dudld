@@ -13,7 +13,6 @@ typedef struct _t_history {
 
 int history_add( t_track *t, int uid );
 
-/* TODO: do not assume the db.h iterator */
 #define it_history it_db
 #define it_history_begin(x)	((t_history*)it_db_begin(x))
 #define it_history_cur(x)	((t_history*)it_db_cur(x))

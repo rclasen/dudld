@@ -280,6 +280,11 @@ int tracks( void )
 	return num;
 }
 
+int track_mkpath( char *buf, int len, t_track *t )
+{
+	return snprintf( buf, len, "%s/%s", opt_path_tracks, t->fname );
+}
+
 int track_exists( t_track *t )
 {
 	char buf[MAXPATHLEN];
@@ -288,7 +293,7 @@ int track_exists( t_track *t )
 
 	/* try to open the file - the easiest way to see, if it is
 	 * readable */
-	snprintf( buf, MAXPATHLEN, "%s/%s", opt_path_tracks, t->fname );
+	track_mkpath(buf, MAXPATHLEN, t);
 	if( 0 > (fd = open( buf, O_RDONLY ))){
 
 		res = db_query( "UPDATE stor_file SET available = false "

@@ -22,7 +22,6 @@ typedef struct _t_track {
 	} modified;
 } t_track;
 
-/* TODO: do not assume the db.h iterator for tracks */
 #define it_track it_db
 #define it_track_begin(x)	((t_track*)it_db_begin(x))
 #define it_track_cur(x)		((t_track*)it_db_cur(x))
@@ -32,6 +31,7 @@ typedef struct _t_track {
 t_track *track_use( t_track *t );
 void track_free( t_track *t );
 
+int track_mkpath( char *buf, int len, t_track *t );
 int track_exists( t_track *t );
 
 int track_settitle( t_track *t, const char *title );
