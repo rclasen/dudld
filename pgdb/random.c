@@ -15,51 +15,22 @@ static char *filter = NULL;
 
 
 #define RANDOM_LIMIT 1000
-#define CACHE_TAB "mserv_cache"
-
-#define CACHE_CREATE "CREATE TEMP TABLE " CACHE_TAB " ("\
-	"id INTEGER,"\
-	"duration TIME,"\
-	"filename VARCHAR"\
-	")"
 
 #define CACHE_QUERY \
 	"SELECT "\
 		"t.id,"\
-		"t.album_id," \
+		"t.album_id,"\
 		"t.nr,"\
-		"date_part('epoch',c.duration) AS dur,"\
+		"c.dur,"\
 		"date_part('epoch',t.lastplay) AS lplay,"\
 		"t.title,"\
 		"t.artist_id,"\
 		"c.filename "\
-	"FROM "\
-		"mus_title t "\
-			"INNER JOIN mserv_cache c "\
-			"USING(id) "\
+	"FROM mserv_cache c "\
+		"INNER JOIN mus_title t "\
+		"ON t.id = c.id "\
 	"WHERE "\
 		"t.available "
-
-#define TRACK_QCACHE \
-	"SELECT "\
-		"t.id,"\
-		"f.duration,"\
-		"stor_filename(u.collection,u.colnum,f.dir,f.fname) "\
-			"AS filename "\
-	"FROM "\
-		"( "\
-			"mus_title t  "\
-				"INNER JOIN stor_file f  "\
-				"ON t.id = f.titleid "\
-			")  "\
-			"INNER JOIN stor_unit u  "\
-			"ON f.unitid = u.id " \
-	"WHERE "\
-		"f.titleid NOTNULL "\
-		"AND NOT f.broken "\
-		"AND t.available "
-
-
 
 t_random_func random_func_filter = NULL;
 
@@ -72,13 +43,17 @@ int random_setfilter( const char *filt )
 
 	/* flush cache table */
 	if( filter ){
-		res = db_query( "DROP TABLE " CACHE_TAB );
+		res = db_query( "DROP TABLE mserv_cache" );
 		PQclear(res);
 	}
 
 	/* recreate empty cache table - now the filter may fail
 	 * and further queries are still vaild */
-	res = db_query( CACHE_CREATE );
+	res = db_query( "CREATE TEMP TABLE mserv_cache ("
+				"id INTEGER,"
+				"dur INTEGER,"
+				"filename VARCHAR"
+			")");
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK){
 		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
 		PQclear(res);
@@ -93,11 +68,11 @@ int random_setfilter( const char *filt )
 	filter = n;
 
 	/* fill cache - if possible */
-	res = db_query( "INSERT INTO " CACHE_TAB " "
-			TRACK_QCACHE "%s%s%s",
-			filt && *filt ? "AND (" : "",
-			filt && *filt ? filt : "",
-			filt && *filt ? ")" : ""
+	res = db_query( "INSERT INTO mserv_cache "
+			"SELECT id, dur, filename FROM mserv_track "
+			"%s%s",
+			filt && *filt ? "WHERE " : "",
+			filt && *filt ? filt : ""
 			);
 	if( ! res || PGRES_COMMAND_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
@@ -122,7 +97,7 @@ int random_filterstat( void )
 	PGresult *res;
 	int num;
 
-	res = db_query( "SELECT count(*) FROM " CACHE_TAB );
+	res = db_query( "SELECT count(*) FROM mserv_cache" );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "filterstat: %s", db_errstr() );
 		PQclear(res);
@@ -142,8 +117,8 @@ const char *random_filter( void )
 
 it_track *random_top( int num )
 {
-	return db_iterate( (db_convert)track_convert,
-			CACHE_QUERY "ORDER BY lastplay LIMIT %d", num );
+	return db_iterate( (db_convert)track_convert, CACHE_QUERY
+			"ORDER BY lastplay LIMIT %d", num );
 }
 
 t_track *random_fetch( void )
@@ -152,9 +127,15 @@ t_track *random_fetch( void )
 	int num;
 	t_track *t;
 
+	num = random_filterstat() / 3;
+	if( num > RANDOM_LIMIT )
+		num = RANDOM_LIMIT;
+
+	if( num < 1 )
+		num = 1;
+
 	/* get first tracks matching filter */
-	res = db_query( CACHE_QUERY "ORDER BY lastplay LIMIT %d", 
-			RANDOM_LIMIT );
+	res = db_query( CACHE_QUERY "ORDER BY lplay LIMIT %d", num );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "random_fetch: %s", db_errstr());
 		PQclear(res);
@@ -172,10 +153,17 @@ t_track *random_fetch( void )
 	 *
 	 * This way the likeliness of more recent tracks decreases
 	 */
-	num = abs( random() + random() - RAND_MAX );
+	/* num = abs( random() + random() - RAND_MAX ); */
+	/*Unum = (double)num / RAND_MAX * PQntuples(res); */
+
+	/* even better: multiply two normalized randoms*/
+	num = ((double)random() / RAND_MAX * PQntuples(res)) *
+		((double)random() / RAND_MAX * PQntuples(res)) /
+		 PQntuples(res);
 
 	/* adjust number to available tracks */
-	num = (double)num / RAND_MAX * PQntuples(res);
+	syslog( LOG_DEBUG, "random: picking %d from top %d", num, 
+			PQntuples(res));
 
 	t = track_convert( res, num );
 	PQclear(res);

@@ -76,43 +76,22 @@ t_track *history_track( t_history *h)
 	return h->_track;
 }
 
-#define HIST_QUERY	\
-	"SELECT "\
-		"t.id,"\
-		"t.album_id,"\
-		"t.nr,"\
-		"date_part('epoch',f.duration) AS dur,"\
-		"date_part('epoch',t.lastplay) AS lplay,"\
-		"t.title,"\
-		"t.artist_id,"\
-		"stor_filename(u.collection,u.colnum,f.dir,f.fname) "\
-			"AS filename, " \
-		"date_part('epoch',h.added) AS played, "\
-		"h.user_id "\
-	"FROM "\
-		"(( mus_title t  "\
-				"INNER JOIN stor_file f  "\
-				"ON t.id = f.titleid "\
-			") "\
-			"INNER JOIN mserv_hist h "\
-			"ON t.id = h.title_id "\
-		") "\
-		"INNER JOIN stor_unit u  "\
-		"ON f.unitid = u.id "
-
-#define HIST_ORDER	"ORDER BY h.added DESC "
-
+// TODO: history_*list() are *SLOW*
 it_history *history_list( int num )
 {
-	return db_iterate( (db_convert)history_convert,
-			HIST_QUERY HIST_ORDER "LIMIT %d", num );
+	return db_iterate( (db_convert)history_convert, "SELECT * "
+			"FROM mserv_xhist "
+			"ORDER BY played DESC "
+			"LIMIT %d", num );
 }
 
 it_history *history_tracklist( int trackid, int num )
 {
-	return db_iterate( (db_convert)history_convert,
-			HIST_QUERY "WHERE title_id = %d "
-			HIST_ORDER "LIMIT %d", 
+	return db_iterate( (db_convert)history_convert, "SELECT * "
+			"FROM mserv_xhist "
+			"WHERE id = %d "
+			"ORDER BY played DESC "
+			"LIMIT %d", 
 			trackid, num );
 }
 
