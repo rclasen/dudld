@@ -1,16 +1,43 @@
 
+#include <stdlib.h>
+#include <syslog.h>
+
 #include <pgdb/track.h>
 #include <pgdb/queue.h>
 
-// TODO: get rid of testing track
-static t_track t = {
-	.id = 0,
-	.dir = "/pub/fun/mp3/0saug/Creed.-.Human.Clay",
-	.fname = "Creed.-.02_What.If.mp3",
-};
-
-t_track *queue_fetch( void )
+t_queue *queue_fetch( void )
 {
-	return &t;
+	PGresult *res;
+
+	res = db_query( "SELECT * "
+			"FROM mserv_queue "
+			"ORDER BY added "
+			"LIMIT 1" );
+	if( ! res || PQresultStatus(res) != PGRES_TUPLES_OK ){
+		syslog( LOG_ERR, "queue_fetch: %s", db_errstr() );
+		PQclear(res);
+		return NULL;
+	}
+
+	PQclear(res);
+
+	return NULL;
 }
 
+t_track *queue_track( t_queue *q )
+{
+	if( ! q )
+		return NULL;
+
+	track_use(q->_track);
+	return q->_track;
+}
+
+void queue_free( t_queue *q )
+{
+	if( ! q )
+		return;
+	
+	track_free(q->_track);
+	free(q);
+}
