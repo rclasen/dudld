@@ -89,7 +89,7 @@ static char *filter = NULL;
 		goto gofail; \
 	}
 
-static t_track *track_convert( PGresult *res, int tup )
+t_track *track_convert( PGresult *res, int tup )
 {
 	t_track *t;
 	int f;
@@ -184,13 +184,6 @@ int track_setartist( t_track *t, int artistid )
 	return 0;
 }
 
-int track_setlastplay( t_track *t, int lastplay )
-{
-	t->lastplay = lastplay;
-	t->modified.m.lastplay = 1;
-	return 0;
-}
-
 static int addcom( char *buffer, int len, int *fields )
 {
 	if( *fields && len ){
@@ -229,15 +222,6 @@ int track_save( t_track *t )
 		len += snprintf( buffer + len, SBUFLEN - len, "title='%s'",
 				esc );
 		free( esc );
-		if( len > SBUFLEN || len < 0 )
-			return 1;
-	}
-
-	if( t->modified.m.lastplay ){
-		len += addcom( buffer + len, SBUFLEN - len, &fields );
-		len += snprintf( buffer + len, SBUFLEN - len, 
-				"lastplay=timestamp 'epoch' + '%d seconds'",
-				t->lastplay );
 		if( len > SBUFLEN || len < 0 )
 			return 1;
 	}
@@ -353,6 +337,7 @@ int tracks( void )
 
 	res = db_query( "SELECT count(*) FROM " TRACK_TAB );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
+		syslog( LOG_ERR, "tracks: %s", db_errstr() );
 		PQclear(res);
 		return -1;
 	}
@@ -379,6 +364,7 @@ int random_setfilter( const char *filt )
 	 * and further queries are still vaild */
 	res = db_query( CACHE_CREATE );
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK){
+		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
 		PQclear(res);
 		return 1;
 	}
@@ -403,6 +389,7 @@ int random_setfilter( const char *filt )
 	res = db_query( query );
 	free( query );
 	if( ! res || PGRES_COMMAND_OK !=  PQresultStatus(res) ){
+		syslog( LOG_ERR, "setfilter: %s", db_errstr() );
 		PQclear(res);
 		return 1;
 	}
@@ -426,6 +413,7 @@ int random_filterstat( void )
 
 	res = db_query( "SELECT count(*) FROM " CACHE_TAB );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
+		syslog( LOG_ERR, "filterstat: %s", db_errstr() );
 		PQclear(res);
 		return -1;
 	}

@@ -18,7 +18,6 @@ typedef struct _t_track {
 		struct {
 			unsigned int title:1;
 			unsigned int artistid:1;
-			unsigned int lastplay:1;
 		} m;
 	} modified;
 } t_track;
@@ -38,7 +37,6 @@ void track_free( t_track *t );
 int track_settitle( t_track *t, const char *title );
 int track_setartist( t_track *t, int artistid );
 int track_setrandom( t_track *t, int radnom );
-int track_setlastplay( t_track *t, int lastplay );
 int track_save( t_track *t );
 
 int tracks( void );
