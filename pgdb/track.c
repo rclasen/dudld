@@ -48,7 +48,7 @@ t_track *track_convert( PGresult *res, int tup )
 	GETFIELD(f,"album_id", clean1 );
 	t->albumid = pgint(res, tup, f);
 
-	GETFIELD(f,"nr", clean1 );
+	GETFIELD(f,"album_pos", clean1 );
 	t->albumnr = pgint(res, tup, f);
 
 	GETFIELD(f,"artist_id", clean1 );
@@ -143,7 +143,7 @@ int track_save( t_track *t )
 	if( ! t->modified.any )
 		return 0;
 
-	len = snprintf( buffer, SBUFLEN, "UPDATE mus_title SET ");
+	len = snprintf( buffer, SBUFLEN, "UPDATE stor_file SET ");
 	if( len > SBUFLEN || len < 0 )
 		return 1;
 
@@ -189,8 +189,8 @@ int track_id( int album_id, int num )
 	int f;
 	int id;
 
-	res = db_query( "SELECT id FROM mus_title "
-			"WHERE album_id = %d AND nr = %d", 
+	res = db_query( "SELECT id FROM stor_file "
+			"WHERE album_id = %d AND album_pos = %d", 
 			album_id, num );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "track_id: %s", db_errstr());
@@ -234,7 +234,7 @@ it_track *tracks_albumid( int albumid )
 {
 	return db_iterate( (db_convert)track_convert, "SELECT * "
 			"FROM mserv_track "
-			"WHERE  album_id = %d ORDER BY nr", albumid );
+			"WHERE  album_id = %d ORDER BY album_pos", albumid );
 }
 
 
@@ -266,7 +266,8 @@ int tracks( void )
 	PGresult *res;
 	int num;
 
-	res = db_query( "SELECT count(*) FROM mus_title" );
+	res = db_query( "SELECT count(*) FROM stor_file "
+			"WHERE title NOTNULL" );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "tracks: %s", db_errstr() );
 		PQclear(res);
@@ -290,7 +291,7 @@ int track_exists( t_track *t )
 	snprintf( buf, MAXPATHLEN, "%s/%s", opt_path_tracks, t->fname );
 	if( 0 > (fd = open( buf, O_RDONLY ))){
 
-		res = db_query( "UPDATE mus_title SET available = false "
+		res = db_query( "UPDATE stor_file SET available = false "
 				"WHERE id = %d", t->id );
 
 		if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK )

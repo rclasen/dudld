@@ -11,6 +11,9 @@ const char *random_filter( void );
 it_track *random_top( int num );
 t_track *random_fetch( void );
 
+// TODO: internal:
+int random_cache_update( int id, int lplay );
+
 extern t_random_func random_func_filter;
 
 #endif

@@ -234,6 +234,8 @@ static int mktab( char *buffer, int len, const char *fmt, ... )
 	return r;
 }
 
+// TODO: check error handling in mkclient, mktrack, mk* ...
+
 /* make a reply string from client data */
 static inline char *mkclient( char *buffer, int len, t_client *c )
 {

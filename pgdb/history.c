@@ -1,17 +1,22 @@
 
 #include <stdlib.h>
 #include <syslog.h>
+#include <time.h>
 
 #include <pgdb/db.h>
 #include <pgdb/track.h>
+#include <random.h>
 #include <history.h>
 
 int history_add( t_track *track, int uid )
 {
 	PGresult *res;
+	time_t now;
 
-	res = db_query( "INSERT INTO mserv_hist(title_id, user_id) "
-			"VALUES( %d, %d )", track->id, uid );
+	now = time(NULL);
+	res = db_query( "INSERT INTO mserv_hist(file_id, user_id, added) "
+			"VALUES( %d, %d, unix2time(%d) )", 
+			track->id, uid, now );
 	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "history_add: %s", db_errstr() );
 		PQclear(res);
@@ -19,6 +24,8 @@ int history_add( t_track *track, int uid )
 	}
 
 	PQclear(res);
+
+	random_cache_update( track->id, now );
 
 	return 0;
 }

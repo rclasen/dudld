@@ -251,10 +251,10 @@ it_tag *track_tags( int tid )
 	return db_iterate( (db_convert)tag_convert, 
 			"SELECT tg.id, tg.name, tg.cmnt "
 			"FROM mserv_tag tg "
-				"INNER JOIN mserv_titletag tt "
+				"INNER JOIN mserv_filetag tt "
 				"ON tg.id = tt.tag_id "
-				"INNER JOIN mus_title t "
-				"ON tt.title_id = t.id "
+				"INNER JOIN stor_file t "
+				"ON tt.file_id = t.id "
 			"WHERE t.id = %d "
 			"ORDER BY tg.name", tid );
 }
@@ -263,8 +263,8 @@ int track_tagged( int tid, int id )
 {
 	PGresult *res;
 
-	res = db_query( "SELECT tag_id FROM mserv_titletag "
-			"WHERE title_id = %d AND tag_id = %d",
+	res = db_query( "SELECT tag_id FROM mserv_filetag "
+			"WHERE file_id = %d AND tag_id = %d",
 			tid,id);
 	if( ! res || PQresultStatus(res) != PGRES_TUPLES_OK ){
 		syslog( LOG_ERR, "track_tagged: %s", db_errstr());
@@ -306,7 +306,7 @@ int track_tagset( int tid, int id )
 	if( 0 < r )
 		return 0;
 
-	res = db_query( "INSERT INTO mserv_titletag( tag_id, title_id ) "
+	res = db_query( "INSERT INTO mserv_filetag( tag_id, file_id ) "
 			"VALUES( %d, %d )", id, tid );
 	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "track_tagset: %s", db_errstr());
@@ -322,8 +322,8 @@ int track_tagdel( int tid, int id )
 {
 	PGresult *res;
 
-	res = db_query( "DELETE FROM mserv_titletag "
-			"WHERE tag_id = %d AND title_id = %d ",
+	res = db_query( "DELETE FROM mserv_filetag "
+			"WHERE tag_id = %d AND file_id = %d ",
 			id, tid );
 	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "track_tagdel: %s", db_errstr());

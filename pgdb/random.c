@@ -20,17 +20,25 @@ static char *filter = NULL;
 	"SELECT "\
 		"t.id,"\
 		"t.album_id,"\
-		"t.nr,"\
-		"c.dur,"\
-		"time2unix(t.lastplay) AS lplay,"\
+		"t.album_pos,"\
+		"time2unix(t.duration) AS dur,"\
+		"c.lplay,"\
 		"t.title,"\
 		"t.artist_id,"\
 		"c.filename "\
-	"FROM mserv_cache c "\
-		"INNER JOIN mus_title t "\
-		"ON t.id = c.id "\
-	"WHERE "\
-		"t.available "
+	"FROM "\
+		"(SELECT * "\
+			"FROM mserv_cache "\
+			"ORDER by lplay "\
+			"LIMIT %d "\
+		") AS c "\
+			"INNER JOIN stor_file t "\
+			"ON t.id = c.id "\
+		"WHERE "\
+			"t.title NOTNULL "
+
+
+
 
 t_random_func random_func_filter = NULL;
 
@@ -51,7 +59,7 @@ int random_setfilter( const char *filt )
 	 * and further queries are still vaild */
 	res = db_query( "CREATE TEMP TABLE mserv_cache ("
 				"id INTEGER,"
-				"dur INTEGER,"
+				"lplay INTEGER,"
 				"filename VARCHAR"
 			")");
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK){
@@ -69,7 +77,8 @@ int random_setfilter( const char *filt )
 
 	/* fill cache - if possible */
 	res = db_query( "INSERT INTO mserv_cache "
-			"SELECT id, dur, filename FROM mserv_track "
+			"SELECT id, lplay, filename "
+			"FROM mserv_track "
 			"%s%s",
 			filt && *filt ? "WHERE " : "",
 			filt && *filt ? filt : ""
@@ -91,6 +100,23 @@ int random_setfilter( const char *filt )
 
 	return 0;
 }
+
+int random_cache_update( int id, int lplay )
+{
+	PGresult *res;
+
+	res = db_query( "UPDATE mserv_cache SET lplay = %d WHERE id = %d",
+			lplay, id );
+	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
+		syslog( LOG_ERR, "random_cache_update: %s", db_errstr());
+		PQclear(res);
+		return -1;
+	}
+
+	PQclear(res);
+	return 0;
+}
+
 
 int random_filterstat( void )
 {
@@ -117,8 +143,7 @@ const char *random_filter( void )
 
 it_track *random_top( int num )
 {
-	return db_iterate( (db_convert)track_convert, CACHE_QUERY
-			"ORDER BY lastplay LIMIT %d", num );
+	return db_iterate( (db_convert)track_convert, CACHE_QUERY, num );
 }
 
 t_track *random_fetch( void )
@@ -135,7 +160,7 @@ t_track *random_fetch( void )
 		num = 1;
 
 	/* get first tracks matching filter */
-	res = db_query( CACHE_QUERY "ORDER BY lplay LIMIT %d", num );
+	res = db_query( CACHE_QUERY, num );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "random_fetch: %s", db_errstr());
 		PQclear(res);

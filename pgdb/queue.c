@@ -41,8 +41,8 @@ static t_queue *queue_convert( PGresult *res, int tup )
 	GETFIELD(f,"queued", clean1 );
 	q->queued = pgint(res, tup, f );
 
-	/* when there is a title_id, fetch this track seperately */
-	if( -1 != (f = PQfnumber(res,"title_id"))){
+	/* when there is a file_id, fetch this track seperately */
+	if( -1 != (f = PQfnumber(res,"file_id"))){
 		q->_track = track_get(pgint(res,tup,f));
 
 	/* otherwise try to get the data from current result */
@@ -96,7 +96,7 @@ t_queue *queue_get( int id )
 
 	res = db_query( "SELECT "
 				"id AS qid,"
-				"title_id,"
+				"file_id,"
 				"time2unix(added) as queued,"
 				"user_id "
 			"FROM mserv_queue "
@@ -120,7 +120,7 @@ t_queue *queue_fetch( void )
 
 	res = db_query( "SELECT "
 				"id AS qid,"
-				"title_id,"
+				"file_id,"
 				"time2unix(added) as queued,"
 				"user_id "
 			"FROM mserv_queue "
@@ -157,8 +157,8 @@ it_queue *queue_list( void )
 				"t.* "
 			"FROM mserv_queue q "
 				"INNER JOIN mserv_track t "
-				"ON t.id = q.title_id "
-			"ORDER BY id" );
+				"ON t.id = q.file_id "
+			"ORDER BY q.id" );
 }
 
 int queue_add( int trackid, int uid )
@@ -179,7 +179,7 @@ int queue_add( int trackid, int uid )
 	}
 	PQclear(res);
 
-	res = db_query( "INSERT INTO mserv_queue(id, title_id, user_id) "
+	res = db_query( "INSERT INTO mserv_queue(id, file_id, user_id) "
 			"VALUES( %d, %d, %d )", qid, trackid, uid );
 	if( !res || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "queue_add: %s", db_errstr());
