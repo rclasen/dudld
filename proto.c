@@ -27,7 +27,6 @@
  *
  */
 
-#define _GNU_SOURCE 1
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -148,9 +147,10 @@ static char *mkclient( t_client *c )
 /* make a reply string from track data */
 static char *mktrack( t_track *t )
 {
-	char *buffer;
+	static char buffer[2048];
+	int r;
 
-	asprintf( &buffer, "%d\t%d\t%d\t%s\t%d\t%d\t%d", 
+	r = snprintf( buffer, 2048, "%d\t%d\t%d\t%s\t%d\t%d\t%d", 
 			t->id,
 			t->albumid,
 			t->albumnr,
@@ -159,6 +159,8 @@ static char *mktrack( t_track *t )
 			t->duration,
 			t->lastplay
 			);
+	if( r < 0 || r > 100 )
+		return NULL;
 
 	return buffer;
 }
@@ -342,12 +344,9 @@ CMD(cmd_kick)
 static void proto_bcast_player_newtrack( void )
 {
 	t_track *track;
-	char *buf;
 
 	track = player_track();
-	buf = mktrack(track);
-	proto_bcast( r_guest, "640", "%s", buf );
-	free(buf);
+	proto_bcast( r_guest, "640", "%s", mktrack(track) );
 }
 
 static void proto_bcast_player_stop( void )
@@ -506,21 +505,15 @@ CMD(cmd_trackget)
 		return;
 	}
 
-	buf = mktrack(t);
-	RLAST( "210", "%s", buf );
+	RLAST( "210", "%s", mktrack(t) );
 }
 
 static void dump_tracks( t_client *client, const char *code, it_track *it )
 {
 	t_track *t;
-	char *buf;
 
 	for( t = it_track_begin(it); t; t = it_track_next(it) ){
-		if( NULL == (buf = mktrack(t)))
-			break;
-
-		RLINE(code,"%s", buf );
-		free(buf);
+		RLINE(code,"%s", mktrack(t) );
 	}
 	it_track_done(it);
 
@@ -640,11 +633,7 @@ CMD(cmd_randomtop)
 
 	it = random_top(num);
 	for( t = it_track_begin(it); t; t = it_track_next(it) ){
-		if( NULL == (buf = mktrack(t)))
-			break;
-
-		RLINE("252","%s", buf );
-		free(buf);
+		RLINE("252","%s", mktrack(t) );
 	}
 	it_track_done(it);
 
