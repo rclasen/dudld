@@ -40,6 +40,7 @@
 
 #include "user.h"
 #include "history.h"
+#include "random.h"
 #include "player.h"
 #include "proto.h"
 

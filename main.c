@@ -12,6 +12,7 @@
 
 #include "client.h"
 #include "proto.h"
+#include "random.h"
 #include "player.h"
 #include "opt.h"
 

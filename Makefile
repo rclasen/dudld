@@ -27,7 +27,7 @@ OBJ	:=
 # db
 
 ifeq ($(DBDIR),pgdb)
-src		:= user.c track.c history.c queue.c db.c
+src		:= user.c track.c random.c history.c queue.c db.c
 SRC_db		:= $(patsubst %,$(DBDIR)/%,$(src))
 OBJ_db		:= $(patsubst %.c,%.o,$(SRC_db))
 LIBS		+= -lpq
@@ -55,12 +55,12 @@ cmd.list: proto.c
 ############################################################
 # testdb
 
-SRC_testdb	:= testdb.c 
-OBJ_testdb	:= $(patsubst %.c,%.o,$(SRC_testdb))
-LNK += testdb
-SRC += $(SRC_testdb)
-OBJ += $(OBJ_testdb)
-testdb: $(OBJ_testdb) $(OBJ_db) opt.o
+#SRC_testdb	:= testdb.c 
+#OBJ_testdb	:= $(patsubst %.c,%.o,$(SRC_testdb))
+#LNK += testdb
+#SRC += $(SRC_testdb)
+#OBJ += $(OBJ_testdb)
+#testdb: $(OBJ_testdb) $(OBJ_db) opt.o
 
 
 ############################################################

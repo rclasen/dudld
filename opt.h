@@ -2,6 +2,7 @@
 #define _OPT_H
 
 extern int opt_gap;
+extern int opt_random;
 extern char *opt_filter;
 extern char *opt_player;
 

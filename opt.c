@@ -1,5 +1,6 @@
 
 int opt_gap = 0;
+int opt_random = 1;
 char *opt_filter = "";
 char *opt_player = "/home/bj/.mserv/player";
 

@@ -14,6 +14,7 @@
 
 #include "opt.h"
 #include "track.h"
+#include "random.h"
 #include "queue.h"
 #include "history.h"
 #include "player.h"
