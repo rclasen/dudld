@@ -200,7 +200,7 @@ int queue_add( int trackid, int uid )
 	return qid;
 }
 
-int queue_del( int queueid )
+int queue_del( int queueid, int uid )
 {
 	PGresult *res;
 	t_queue *q;
@@ -208,7 +208,14 @@ int queue_del( int queueid )
 	if( queue_func_del )
 		q = queue_get(queueid);
 
-	res = db_query( "DELETE FROM mserv_queue WHERE id = %d", queueid );
+	if( uid ){
+		res = db_query( "DELETE FROM mserv_queue "
+				"WHERE id = %d and uid = %d", 
+				queueid, uid );
+	} else {
+		res = db_query( "DELETE FROM mserv_queue WHERE id = %d", 
+				queueid );
+	}
 	if( !res || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "queue_del: %s", db_errstr());
 		PQclear(res);
