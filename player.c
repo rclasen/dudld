@@ -57,7 +57,7 @@ t_player_func_update player_func_random = NULL;
  */
 static t_playstatus update_status( t_playstatus *wantstat )
 {
-	int failed = 0;
+	static int died_unexpected = 0;
 	int oldpid = curpid;
 	int pid;
 	int rv;
@@ -70,10 +70,20 @@ static t_playstatus update_status( t_playstatus *wantstat )
 
 	last = curstat;
 
-	/* several (bogus??) sigchilds might have queued up */
+	/*
+	 * the external player was run in a process group. Try to reap all
+	 * children from this group.
+	 *
+	 * We pick the exit status from only from the main process.
+	 *
+	 * so we might end up with:
+	 *  - main process is dead, but its children are still playing
+	 *  - a child of the main process died and we have to reap it
+	 *    unexpectedly
+	 */
 	while( 0 < (pid = waitpid( -oldpid, &rv, WNOHANG | WUNTRACED) ) ){
 
-		/* so - what did I tell you about bogus? *g* */
+		/* ignore exit status of non-main children */
 		if( pid != oldpid )
 			continue;
 
@@ -97,9 +107,10 @@ static t_playstatus update_status( t_playstatus *wantstat )
 		/* normal exit */
 		if( WIFEXITED(rv) ){
 			if( WEXITSTATUS(rv)){
-				syslog( LOG_ERR, "player returned %d, "
-						"stopping", WEXITSTATUS(rv));
-				failed ++;
+				syslog( LOG_ERR, "player %d returned %d",
+						oldpid, WEXITSTATUS(rv));
+				//TODO: kill group, master is dead
+				died_unexpected ++;
 			}
 
 		/* terminated by signal */
@@ -115,51 +126,56 @@ static t_playstatus update_status( t_playstatus *wantstat )
 				break;
 
 			  default:
-				syslog( LOG_ERR, "player got signal %d, "
-						"stopping", WTERMSIG(rv));
-				failed ++;
+				syslog( LOG_ERR, "player %d got signal %d",
+						oldpid, WTERMSIG(rv));
+				died_unexpected ++;
+				//TODO: kill group, master is dead
 			}
 
 		}
 
-		curpid = 0;
-		curstat = pl_stop;
 	} 
 	
-	if( pid < 0 ){
-		if( errno != ECHILD ) {
-			/* fatal waitpid failure - shouldn't happen */
-			syslog( LOG_CRIT, "fatal waitpid error: %m" );
-			exit( 1 );
-		}
+	/* pid > 0 is handled above */
 
-		/* no child found - we are definatly stopped */
-		if( curpid ){
-			syslog( LOG_NOTICE, "player pid not found" );
-			curstat = pl_stop;
-		}
+	/* there are outstanding children */
+	if( pid == 0 ) {
+		return curstat;
+	} 
+
+	/* pid is < 0 -> waitpid had problems finding our children */
+
+	if( errno != ECHILD ) {
+		/* fatal waitpid failure - shouldn't happen */
+		syslog( LOG_CRIT, "fatal waitpid error: %m" );
+		exit( 1 );
 	}
 
-	/* when signals arrived our of order, a SIGSTOP might have
-	 * overwritten curstop */
-	if( failed ){
-		curstat = pl_stop;
+	/* no children left - player definetly stopped */
+	curstat = pl_stop;
+	curpid = 0;
+
+	if( died_unexpected ){
+		syslog( LOG_ERR, "player %d died unexpected - "
+				"stopping playback", oldpid );
+
+		/* don't go to the next track when the player died */
 		*wantstat = pl_stop;
 		nextstart = 0;
+	} else {
+		syslog( LOG_DEBUG, "player %d terminated", oldpid );
 	}
 
-	if( curstat == pl_stop ){
-		curpid = 0;
-		if( curtrack ){
-			if( ! failed ){
-				history_add(curtrack, curuid );
-			}
-			track_free( curtrack );
-			curtrack = NULL;
-			curuid = 0;
+	/* cleanup things I remembered */
+	if( curtrack ){
+		if( ! died_unexpected ){
+			history_add(curtrack, curuid );
 		}
-
+		track_free( curtrack );
+		curtrack = NULL;
+		curuid = 0;
 	}
+	died_unexpected = 0;
 
 	/* send broadcasts for what is detectable from here */
 	if( last != curstat ){
@@ -185,25 +201,23 @@ static t_playerror terminate( t_playstatus *wantstat )
 	}
 
 	for( i = 0; pl_stop != update_status(wantstat) && i < 5; ++i ){
-
 		if( i == 0 ){
-			/* try to kill the process and all of its
-			 * children. Do not kill the process itself - this
-			 * will fool the waitpid() */
-			kill( -curpid, SIGTERM );
-			/* and wake it up in case it was stopped */
+			/* give the main child the chance to cleanup
+			 * itself and wakeup the whole group */
+			kill( curpid, SIGTERM );
 			kill( -curpid, SIGCONT );
 
-		} else if( i == 1 ){
-			/* give it some time to terminate */
-			sleep(1);
-
 		} else if( i < 4 ){
+			struct timeval tv;
+
 			/* did not terminate yet, try to kill again and
 			 * give it some time */
 			kill( -curpid, SIGCONT );
 			kill( -curpid, SIGTERM );
-			sleep(1);
+
+			tv.tv_sec = 0;
+			tv.tv_usec = 1000;
+			select( 0, NULL, NULL, NULL, &tv );
 
 		} else {
 			/* ok, it's not nice to me, so I'm not, too. 
@@ -321,6 +335,10 @@ static t_playerror startplay( void )
 
 	if( player_func_newtrack )
 		(*player_func_newtrack)();
+
+	/* wait a little to ensure waitpid works for this child */
+	while( 0 > waitpid( -pid, NULL, WNOHANG | WUNTRACED) 
+			&& errno == ECHILD );
 
 
 	/* we cannot tell, if the start worked - update_status has to deal
