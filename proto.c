@@ -441,7 +441,8 @@ CMD(cmd_pass, r_any, p_user, arg_need )
 	client->pstate = p_idle;
 	client->right = u->right;
 
-	syslog( LOG_INFO, "user %s logged in", (char*)client->pdata );
+	syslog( LOG_INFO, "con #%d: user %s logged in", 
+			client->id, (char*)client->pdata );
 	RLAST( "221", "successfully logged in" );
 	proto_bcast_login(client);
 
@@ -458,7 +459,7 @@ clean1:
 	client->pstate = p_open;
 	client->right = r_any;
 	client->uid = 0;
-	syslog( LOG_NOTICE, "login failed" );
+	syslog( LOG_NOTICE, "con #%d: login failed", client->id );
 	RLAST("521", "login failed" );
 }
 
@@ -1915,7 +1916,7 @@ static void cmd( t_client *client, char *line )
 static void proto_newclient( t_client *client )
 {
 	RLAST( "220", "hello" );
-	syslog( LOG_DEBUG, "new connection %d from %s", client->id,
+	syslog( LOG_DEBUG, "con #%d: new connection from %s", client->id,
 			inet_ntoa(client->sin.sin_addr ));
 }
 
@@ -1924,7 +1925,7 @@ static void proto_newclient( t_client *client )
  */
 static void proto_delclient( t_client *client )
 {
-	syslog( LOG_DEBUG, "lost connection %d to %s", client->id,
+	syslog( LOG_DEBUG, "con #%d: lost connection to %s", client->id,
 			inet_ntoa(client->sin.sin_addr ));
 
 	if( client->pstate != p_open )
