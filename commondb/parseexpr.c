@@ -621,6 +621,13 @@ expr *parse_expr( parse_stat *i )
 	if( NULL == (a = parse_one_expr(i)))
 		goto clean1;
 
+	if( ')' == parse_nonspace(i) ){
+		PI_UNDO(i->in);
+		return a;
+	}
+	PI_UNDO(i->in);
+	
+
 	if( op_none == (op = parse_operator(i))) {
 		if( ! PI_EOF(i->in)){
 			parse_error( i, "invalid operator" );
