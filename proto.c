@@ -182,6 +182,9 @@ static int mkvtab( char *buffer, int len, const char *fmt, va_list ap )
 	buffer[--len] = 0;
 
 	for( ; *fmt; ++fmt ){
+		if( used )
+			EADDC(len,used,buffer,'\t');
+
 		if( *fmt == 's' ){
 			l = ecpy( buffer, len -used, va_arg( ap, char *));
 			used += l;
@@ -205,7 +208,6 @@ static int mkvtab( char *buffer, int len, const char *fmt, va_list ap )
 			EADDC(len,used,buffer,'?');
 
 		}
-		EADDC(len,used,buffer,'\t');
 	}
 	if( len > used )
 		*buffer++ = 0;
@@ -238,14 +240,13 @@ static inline char *mkclient( char *buffer, int len, t_client *c )
 /* make a reply string from track data */
 static inline char *mktrack( char *buffer, int len, t_track *t )
 {
-	if( len < mktab( buffer, len, "dddsddd", 
+	if( len < mktab( buffer, len, "dddsdd", 
 				t->id, 
 				t->albumid, 
 				t->albumnr, 
 				t->title, 
 				t->artistid, 
-				t->duration, 
-				t->lastplay))
+				t->duration))
 		return NULL;
 
 	return buffer;
@@ -256,15 +257,16 @@ static inline char *mkhistory( char *buf, int len, t_history *h )
 	t_track *t;
 
 	t = history_track( h );
-	if( len < mktab( buf, len, "ddddsddd",
+	if( len < mktab( buf, len, "dddddsdd",
 				h->uid,
+				h->played,
 				t->id,
 				t->albumid, 
 				t->albumnr, 
 				t->title, 
 				t->artistid, 
-				t->duration,
-				h->played)){
+				t->duration
+				)){
 		track_free(t);
 		return NULL;
 	}
@@ -278,7 +280,7 @@ static inline char *mkqueue( char *buf, int len, t_queue *q )
 	t_track *t;
 
 	t = queue_track(q);
-	if( len < mktab(buf, len, "ddddddsddd",
+	if( len < mktab(buf, len, "ddddddsdd",
 				q->id,
 				q->uid,
 				q->queued,
@@ -287,8 +289,7 @@ static inline char *mkqueue( char *buf, int len, t_queue *q )
 				t->albumnr, 
 				t->title, 
 				t->artistid, 
-				t->duration,
-				t->lastplay)){
+				t->duration)){
 		track_free(t);
 		return NULL;
 	}
@@ -1092,7 +1093,9 @@ static void proto_delclient( t_client *client )
 {
 	syslog( LOG_DEBUG, "lost connection %d to %s", client->id,
 			inet_ntoa(client->sin.sin_addr ));
-	proto_bcast_logout( client );
+
+	if( client->pstate != p_open )
+		proto_bcast_logout( client );
 }
 
 /************************************************************
