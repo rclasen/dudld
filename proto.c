@@ -48,6 +48,7 @@
 #include "queue.h"
 #include "player.h"
 #include "sleep.h"
+#include "tag.h"
 #include "proto.h"
 
 typedef enum {
@@ -61,6 +62,7 @@ typedef enum {
 #define BUFLENLINE	10240
 #define BUFLENWHO	100
 #define BUFLENTRACK	1024
+#define BUFLENTAG	100
 
 static int proto_vline( t_client *client, int last, const char *code, 
 		const char *fmt, va_list ap )
@@ -302,6 +304,15 @@ static inline char *mkqueue( char *buf, int len, t_queue *q )
 	track_free(t);
 	return buf;
 }
+
+static inline char *mktag( char *buf, int len, t_tag *t )
+{
+	if( len < mktab(buf, len, "dss", t->id, t->name, t->desc ))
+		return NULL;
+
+	return buf;
+}
+
 
 // TODO: this file is too large. Split out cmds
 
@@ -710,7 +721,6 @@ static void dump_tracks( t_client *client, const char *code, it_track *it )
 		RLINE(code,"%s", mktrack(buf, BUFLENTRACK, t) );
 		track_free(t);
 	}
-	it_track_done(it);
 
 	RLAST(code, "" );
 }
@@ -734,6 +744,7 @@ CMD(cmd_tracksearch, r_guest, p_idle, arg_need )
 
 	it = tracks_search(line);
 	dump_tracks( client, "211", it );
+	it_track_done(it);
 }
 
 CMD(cmd_tracksalbum, r_guest, p_idle, arg_need )
@@ -750,6 +761,7 @@ CMD(cmd_tracksalbum, r_guest, p_idle, arg_need )
 
 	it = tracks_albumid(id);
 	dump_tracks( client, "212", it );
+	it_track_done(it);
 }
 
 CMD(cmd_tracksartist, r_guest, p_idle, arg_need )
@@ -766,6 +778,7 @@ CMD(cmd_tracksartist, r_guest, p_idle, arg_need )
 
 	it = tracks_artistid(id);
 	dump_tracks( client, "213", it );
+	it_track_done(it);
 }
 
 CMD(cmd_trackid, r_guest, p_idle, arg_need )
@@ -868,6 +881,7 @@ CMD(cmd_randomtop, r_guest, p_idle, arg_opt )
 
 	it = random_top(num);
 	dump_tracks( client, "252", it );
+	it_track_done(it);
 }
 
 
@@ -884,7 +898,6 @@ static void dump_history( t_client *client, const char *code, it_history *it )
 		RLINE(code,"%s", mkhistory(buf, BUFLENTRACK, t) );
 		history_free(t);
 	}
-	it_history_done(it);
 
 	RLAST(code, "" );
 }
@@ -905,6 +918,7 @@ CMD(cmd_history, r_guest, p_idle, arg_opt )
 
 	it = history_list( num );
 	dump_history( client, "260", it );
+	it_history_done(it);
 }
 
 CMD(cmd_historytrack, r_guest, p_idle, arg_need )
@@ -937,6 +951,7 @@ CMD(cmd_historytrack, r_guest, p_idle, arg_need )
 
 	it = history_tracklist( id, num );
 	dump_history( client, "260", it );
+	it_history_done(it);
 }
 
 
@@ -1059,6 +1074,237 @@ CMD(cmd_queueget, r_user, p_idle, arg_need)
 	RLAST( "264", "%s", mkqueue(buf,BUFLENTRACK, q ));
 	queue_free(q);
 }
+
+/************************************************************
+ * commands: tag
+ */
+
+static void dump_tags( t_client *client, const char *code, it_tag *it )
+{
+	char buf[BUFLENTAG];
+	t_tag *t;
+
+	for( t = it_tag_begin(it); t; t = it_tag_next(it) ){
+		RLINE(code,"%s", mktag(buf, BUFLENTAG, t) );
+		tag_free(t);
+	}
+
+	RLAST(code, "" );
+}
+
+CMD(cmd_taglist, r_guest, p_idle, arg_none )
+{
+	it_tag *it;
+
+	(void)line;
+	it = tags_list();
+	dump_tags( client, "xxx", it );
+	it_tag_done(it );
+}
+
+CMD(cmd_tagget, r_guest, p_idle, arg_need )
+{
+	char buf[BUFLENTAG];
+	t_tag *t;
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "ecpecting a tag ID" );
+		return;
+	}
+
+	if( NULL == (t = tag_get( id ))){
+		RLAST("511", "no such tag" );
+		return;
+	}
+
+	RLAST("xxx", "%s", mktag(buf, BUFLENTAG, t));
+}
+
+CMD(cmd_tagname, r_guest, p_idle, arg_need )
+{
+	char buf[BUFLENTAG];
+	t_tag *t;
+
+	if( NULL == (t = tag_getname( line ))){
+		RLAST("511", "no such tag" );
+		return;
+	}
+	RLAST("xxx", "%s", mktag(buf, BUFLENTAG, t));
+}
+
+CMD(cmd_tagadd, r_guest, p_idle, arg_need )
+{
+	int id;
+
+	if( 0 > (id = tag_add( line ))){
+		RLAST("xxx", "failed" );
+		return;
+	}
+
+	RLAST( "xxx", "%d", id );
+}
+
+CMD(cmd_tagsetname, r_guest, p_idle, arg_need )
+{
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( line == end ){
+		RBADARG( "ecpecting a tag ID" );
+		return;
+	}
+
+	end += strspn(end, " \t" );
+	if( tag_setname(id, end )){
+		RLAST("xxx", "failed" );
+		return;
+	}
+
+	RLAST("xxx", "name changed" );
+}
+
+CMD(cmd_tagsetdesc, r_guest, p_idle, arg_need )
+{
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( line == end ){
+		RBADARG( "ecpecting a tag ID" );
+		return;
+	}
+
+	end += strspn(end, " \t" );
+	if( tag_setdesc(id, end )){
+		RLAST("xxx", "failed" );
+		return;
+	}
+
+	RLAST("xxx", "desc changed" );
+}
+
+CMD(cmd_tagdel, r_user, p_idle, arg_need )
+{
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "ecpecting a tag ID" );
+		return;
+	}
+
+	if( tag_del( id )){
+		RLAST("xxx", "failed" );
+		return;
+	}
+
+	RLAST("xxx", "deleted" );
+}
+
+CMD(cmd_tracktags, r_guest, p_idle, arg_need )
+{
+	it_tag *it;
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( line == end ){
+		RBADARG( "ecpecting a tag ID" );
+		return;
+	}
+
+	it = track_tags(id);
+	dump_tags( client, "xxx", it );
+	it_tag_done(it );
+}
+
+CMD(cmd_tracktagset, r_guest, p_idle, arg_need )
+{
+	char *s, *e;
+	int trackid;
+	int tagid;
+
+	trackid = strtol(line, &e, 10 );
+	if( line == e ){
+		RBADARG( "missing/invalid track id");
+		return;
+	}
+
+	s = e + strspn(e, "\t " );
+	tagid = strtol(s, &e, 10 );
+	if( *e ){
+		RBADARG( "missing/invalid tag id");
+		return;
+	}
+
+	if( track_tagset(trackid,tagid)){
+		RLAST("xxx", "failed" );
+		return;
+	}
+
+	RLAST("xxx", "tag added to track (or already exists)" );
+}
+
+CMD(cmd_tracktagdel, r_guest, p_idle, arg_need )
+{
+	char *s, *e;
+	int trackid;
+	int tagid;
+
+	trackid = strtol(line, &e, 10 );
+	if( line == e ){
+		RBADARG( "missing/invalid track id");
+		return;
+	}
+
+	s = e + strspn(e, "\t " );
+	tagid = strtol(s, &e, 10 );
+	if( *e ){
+		RBADARG( "missing/invalid tag id");
+		return;
+	}
+
+	if( track_tagdel(trackid,tagid)){
+		RLAST("xxx", "failed" );
+		return;
+	}
+
+	RLAST("xxx", "tag deleted from track" );
+}
+
+CMD(cmd_tracktagged, r_guest, p_idle, arg_need )
+{
+	char *s, *e;
+	int trackid;
+	int tagid;
+	int r;
+
+	trackid = strtol(line, &e, 10 );
+	if( line == e ){
+		RBADARG( "missing/invalid track id");
+		return;
+	}
+
+	s = e + strspn(e, "\t " );
+	tagid = strtol(s, &e, 10 );
+	if( *e ){
+		RBADARG( "missing/invalid tag id");
+		return;
+	}
+
+	if( 0 > (r = track_tagged(trackid,tagid))){
+		RLAST("xxx", "failed" );
+		return;
+	}
+
+	RLAST("xxx", "%d", r );
+}
+
 
 /************************************************************
  * command array
