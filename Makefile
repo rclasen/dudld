@@ -40,7 +40,7 @@ endif
 # xmserv
 
 SRC_xmserv	:= client.c proto.c \
-		opt.c player.c main.c
+		opt.c player.c sleep.c main.c
 OBJ_xmserv	:= $(patsubst %.c,%.o,$(SRC_xmserv))
 LNK += xmserv
 SRC += $(SRC_xmserv)

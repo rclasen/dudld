@@ -14,6 +14,7 @@
 #include "proto.h"
 #include "random.h"
 #include "player.h"
+#include "sleep.h"
 #include "opt.h"
 
 int check_child = 0;
@@ -55,6 +56,7 @@ static int loop( void )
 		tvp = NULL;
 		wakeup = 0;
 		earliest( &wakeup, player_wakeuptime() );
+		earliest( &wakeup, sleep_get() );
 		// TODO: check other scheduled events
 
 
@@ -89,6 +91,8 @@ static int loop( void )
 			client_poll( client, &fdread );
 			proto_input( client );
 		}
+
+		sleep_check();
 
 		// TODO: do other things
 

@@ -47,6 +47,7 @@
 #include "random.h"
 #include "queue.h"
 #include "player.h"
+#include "sleep.h"
 #include "proto.h"
 
 typedef enum {
@@ -642,6 +643,32 @@ CMD(cmd_randomset, r_user, p_idle, arg_need )
 }
 
 /************************************************************
+ * commands: sleep 
+ */
+
+CMD(cmd_sleep, r_guest, p_idle, arg_none )
+{
+	(void)line;
+	RLAST( "215", "%d", sleep_remain() );
+}
+
+CMD(cmd_sleepset, r_user, p_idle, arg_need )
+{
+	int sec;
+	char *end;
+
+	sec = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid time" );
+		return;
+	}
+
+	sleep_in( sec );
+	RLAST( "216", "ok, will stop in %d seconds", sec);
+}
+
+
+/************************************************************
  * commands: track 
  */
 
@@ -974,6 +1001,7 @@ CMD(cmd_queuedel, r_user, p_idle, arg_need)
 {
 	int id;
 	char *end;
+	int uid;
 
 	id = strtol( line, &end, 10 );
 	if( *end ){
@@ -981,7 +1009,11 @@ CMD(cmd_queuedel, r_user, p_idle, arg_need)
 		return;
 	}
 
-	if( queue_del( id )){
+	uid = client->uid;
+	if( client->right == r_master )
+		uid = 0;
+
+	if( queue_del( id, uid )){
 		RLAST("562", "failed to delete from queue" );
 		return;
 	}
