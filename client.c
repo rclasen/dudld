@@ -1,3 +1,15 @@
+/*
+ * module to manage TCP clients.
+ *
+ * a listening socket is opened and clients are added/removed as they go.
+ *
+ * a line oriented ASCII protocol is assumed:
+ *
+ * Received data is combined to complete lines. Each line must be retrieved
+ * seperately from the client (_getline).
+ *
+ * on the other hand you can send arbitrary strings to the client.
+ */
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -7,6 +19,7 @@
 #include <netdb.h>
 
 #include "client.h"
+
 
 
 t_client *clients = NULL;
@@ -48,15 +61,8 @@ int clients_init( int port )
 }
 
 /*
- * close all sockets
- */
-void clients_done( void )
-{
-	// TODO: clients_done
-}
-
-/*
  * if there are pending connections, accept one
+ * yes, you must use select and pass the read fdset to this function.
  */
 t_client *client_accept( fd_set *read )
 {
@@ -136,8 +142,9 @@ void clients_clean( void )
 
 /*
  * write a message to a client
+ * shouldn't block - untested.
  */
-int client_send( t_client *c, char *buf )
+int client_send( t_client *c, const char *buf )
 {
 	int len = strlen(buf);
 
@@ -154,12 +161,16 @@ int client_send( t_client *c, char *buf )
 
 /*
  * get new input
+ * yes, you must use select and pass the read fdset to this function.
  */
-void client_poll( t_client *c )
+void client_poll( t_client *c, fd_set *read )
 {
 	int len;
 
 	if( c->close )
+		return;
+
+	if( ! FD_ISSET(c->sock,read))
 		return;
 
 	if( 0 > (len = recv( c->sock, 
@@ -179,6 +190,9 @@ void client_poll( t_client *c )
 /* 
  * find first complete line and return a newly allocated copy
  * removes this line from the clients buffer
+ *
+ * you must free() the line yourself
+ * invoke this repeatedly, untill it returns NULL
  */
 char *client_getline( t_client *c )
 {
@@ -231,6 +245,7 @@ static inline void largest( int *a, int b )
 
 /*
  * add sockets to FD_SETs for select()
+ * don't forget to initialize/reset the varialbles 
  */
 void clients_fdset( fd_set *read, fd_set *write, int *maxfd )
 {
@@ -248,4 +263,21 @@ void clients_fdset( fd_set *read, fd_set *write, int *maxfd )
 		largest( maxfd, c->sock );
 	}
 }
+
+/*
+ * close all sockets
+ */
+void clients_done( void )
+{
+	t_client *c;
+
+	for( c = clients; c; c = c->next )
+		client_close( c );
+	
+	clients_clean();
+
+	close(lsocket);
+	lsocket=0;
+}
+
 

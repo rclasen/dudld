@@ -4,8 +4,7 @@
 #include <netinet/in.h>
 
 #define CLIENT_BACKLOG 10
-//#define CLIENT_BUFLEN 10240
-#define CLIENT_BUFLEN 10
+#define CLIENT_BUFLEN 10240
 
 typedef struct _t_client {
 	struct _t_client *next;
@@ -23,8 +22,8 @@ void clients_done( void );
 t_client *client_accept( fd_set *read );
 void client_close( t_client *c );
 void clients_clean( void );
-int client_send( t_client *c, char *buf );
-void client_poll( t_client *c );
+int client_send( t_client *c, const char *buf );
+void client_poll( t_client *c, fd_set *read );
 char *client_getline( t_client *c );
 void clients_fdset( fd_set *read, fd_set *write, int *maxfd );
 
