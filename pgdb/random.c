@@ -158,25 +158,17 @@ expr *random_filter( void )
 it_track *random_top( int num )
 {
 	return db_iterate( (db_convert)track_convert, 
-			"SELECT "
-				"t.id,"
-				"t.album_id,"
-				"t.album_pos,"
-				"time2unix(t.duration) AS dur,"
-				"c.lplay,"
-				"t.title,"
-				"t.artist_id,"
-				"c.filename "
+			"SELECT t.*, "
+				"c.lplay "
 			"FROM "
 				"( SELECT * "
 					"FROM juke_cache "
 					"ORDER by lplay "
 					"LIMIT %d "
 				") AS c "
-					"INNER JOIN stor_file t "
-					"ON t.id = c.id "
-			"WHERE "
-				"t.title NOTNULL ", num );
+					"INNER JOIN mserv_track t "
+					"ON t.id = c.id ",
+				num );
 }
 
 t_track *random_fetch( void )
