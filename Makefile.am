@@ -24,8 +24,11 @@ dudld_SOURCES= client.c \
 
 proto.o: cmd.list
 cmd.list: proto.c
-	$(SHELL) mkcmdlist.sh < $< > $@
+	sed -ne '/^CMD/s/.*\(cmd_\([a-z]*\)[^)]*\).*/	{"\2", \1 },/p' $^ > $@
 
+commands.txt: proto.c
+	sed -ne 's/.*\(cmd_[a-z]*\).*/\1/p' $^ | sort -u > $@
+	
 CLEANFILES=cmd.list
 EXTRA_DIST=mkcmdlist.sh
 

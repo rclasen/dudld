@@ -8,6 +8,7 @@ typedef struct _t_queue {
 	int id;
 	t_track *_track;
 	int uid;
+	// TODO: include user details in t_queue
 	time_t queued;
 	int _refs;
 } t_queue;

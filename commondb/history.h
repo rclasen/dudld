@@ -9,6 +9,7 @@ typedef struct _t_history {
 	t_track *_track;
 	time_t played;
 	int uid;
+	// TODO: include user details in t_history
 } t_history;
 
 int history_add( t_track *t, int uid );

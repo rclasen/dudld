@@ -21,6 +21,7 @@ typedef struct _t_track {
 			unsigned int artistid:1;
 		} m;
 	} modified;
+	// TODO: include artist and album details in t_track
 } t_track;
 
 #define it_track it_db

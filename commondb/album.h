@@ -7,6 +7,7 @@ typedef struct _t_album {
 	int id;
 	char *album;
 	int artistid;
+	// TODO: include artist details in t_album
 } t_album;
 
 #define it_album it_db

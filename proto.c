@@ -1645,6 +1645,8 @@ CMD(cmd_albumsearch, r_guest, p_idle, arg_need )
 	it_album_done(it);
 }
 
+// TODO: cmd_albumsearchf
+
 CMD(cmd_albumsetname, r_user, p_idle, arg_need )
 {
 	char *end;
