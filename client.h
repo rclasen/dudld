@@ -6,6 +6,8 @@
 #define CLIENT_BACKLOG 10
 #define CLIENT_BUFLEN 10240
 
+// TODO: move protocol stuff to proto module
+
 typedef enum {
 	p_any, /* as allowed level for commands */
 	p_open,
@@ -34,7 +36,11 @@ typedef struct _t_client {
 	void *pdata;
 } t_client;
 
+typedef void (*t_client_func)( t_client *client );
+
 extern t_client *clients;
+extern t_client_func client_func_connect;
+extern t_client_func client_func_disconnect;
 
 int clients_init( int port );
 void clients_done( void );

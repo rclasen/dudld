@@ -26,6 +26,9 @@
 
 t_client *clients = NULL;
 
+t_client_func client_func_connect = NULL;
+t_client_func client_func_disconnect = NULL;
+
 static int maxid = 0;
 static int lsocket = 0;
 
@@ -97,12 +100,20 @@ t_client *client_accept( fd_set *read )
 	c->close = 0;
 	c->uid = 0;
 	c->ilen = 0;
-	c->right = r_user; // TODO: right = r_any;
-	c->pstate = p_idle; // TODO: pstate = p_open;
+#if 1
+	c->right = r_any;
+	c->pstate = p_open;
+#else
+	c->right = r_user;
+	c->pstate = p_idle;
+#endif
 	c->pdata = NULL;
 
 	c->next = clients;
 	clients = c;
+
+	if( client_func_connect )
+		(*client_func_connect)( c );
 
 	return c;
 }
@@ -149,6 +160,10 @@ void clients_clean( void )
 			} else {
 				clients = c;
 			}
+
+			s->next = NULL;
+			if( client_func_disconnect )
+				(*client_func_disconnect)( c );
 
 			client_free( s );
 
