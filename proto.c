@@ -19,10 +19,14 @@
  * x0z: syntax
  * x1z: information
  * x2z: Connection
+ *
  * x3z: users
  * x4z: player
- * x5z: queue/filter
- * x6z: database
+ * x5z: filter
+ * x6z: queue
+ * x7z:
+ * x8z:
+ * x9z:
  *
  */
 
@@ -731,6 +735,37 @@ CMD(cmd_tracksartist, r_guest, p_idle, arg_need )
 	dump_tracks( client, "213", it );
 }
 
+CMD(cmd_trackid, r_guest, p_idle, arg_need )
+{
+	char *s;
+	char *e;
+	int albumid;
+	int num;
+	int id;
+
+	s = line;
+	albumid = strtol(s, &e, 10 );
+	if( s == e ){
+		RBADARG( "expecting an album ID" );
+		return;
+	}
+
+	s = e + strspn(e, "\t ");
+	num = strtol(s, &e, 10 );
+	if( s==e || *e ){
+		RBADARG( "expecting a title number for this album" );
+		return;
+	}
+
+	if( 0 > (id = track_id( albumid, num))){
+		RBADARG( "no such track found" );
+		return;
+	}
+
+	RLAST( "214", "%d", id );
+}
+
+
 CMD(cmd_trackalter, r_user, p_idle, arg_need )
 {
 	(void)line;
@@ -876,6 +911,11 @@ CMD(cmd_historytrack, r_guest, p_idle, arg_need )
  * commands: queue
  */
 
+static void proto_bcast_queue_fetch( t_queue *q )
+{
+	proto_bcast( r_guest, "660", "%d", q->id );
+}
+
 static void proto_bcast_queue_add( int qid )
 {
 	char buf[BUFLENTRACK];
@@ -884,23 +924,19 @@ static void proto_bcast_queue_add( int qid )
 	if( NULL == (q = queue_get( qid )))
 		return;
 
-	proto_bcast( r_guest, "xxx", "%s", mkqueue(buf,BUFLENTRACK,q) );
+	proto_bcast( r_guest, "661", "%s", mkqueue(buf,BUFLENTRACK,q) );
 	queue_free(q);
 }
 
 static void proto_bcast_queue_del( t_queue *q )
 {
-	proto_bcast( r_guest, "xxx", "%d", q->id );
+	char buf[BUFLENTRACK];
+	proto_bcast( r_guest, "662", "%s", mkqueue(buf,BUFLENTRACK,q));
 }
 
 static void proto_bcast_queue_clear( void )
 {
-	proto_bcast( r_guest, "xxx", "queue cleared" );
-}
-
-static void proto_bcast_queue_fetch( t_queue *q )
-{
-	proto_bcast( r_guest, "xxx", "%d", q->id );
+	proto_bcast( r_guest, "663", "queue cleared" );
 }
 
 CMD(cmd_queue, r_guest, p_idle, arg_none)
@@ -912,11 +948,11 @@ CMD(cmd_queue, r_guest, p_idle, arg_none)
 	(void)line;
 	it = queue_list();
 	for( q = it_queue_begin(it); q; q = it_queue_next(it)){
-		RLINE("xxx", "%s", mkqueue(buf, BUFLENTRACK, q ));
+		RLINE("260", "%s", mkqueue(buf, BUFLENTRACK, q ));
 		queue_free(q);
 	}
 	it_queue_done(it);
-	RLAST("xxx","");
+	RLAST("260","");
 }
 
 CMD(cmd_queueadd, r_user, p_idle, arg_need)
@@ -932,11 +968,11 @@ CMD(cmd_queueadd, r_user, p_idle, arg_need)
 	}
 
 	if( -1 == (qid = queue_add(id, client->uid))){
-		RLAST( "xxx", "failed to add track to queue" );
+		RLAST( "561", "failed to add track to queue" );
 		return;
 	}
 
-	RLAST( "xxx", "queued as queue ID %d", qid );
+	RLAST( "261", "%d", qid );
 }
 
 CMD(cmd_queuedel, r_user, p_idle, arg_need)
@@ -951,22 +987,44 @@ CMD(cmd_queuedel, r_user, p_idle, arg_need)
 	}
 
 	if( queue_del( id )){
-		RLAST("xxx", "failed to delete from queue" );
+		RLAST("562", "failed to delete from queue" );
 		return;
 	}
 
-	RLAST("xxx", "track removed from queue" );
+	RLAST("262", "track removed from queue" );
 }
 
 CMD(cmd_queueclear, r_master, p_idle, arg_none)
 {
 	(void)line;
 	if( queue_clear() ){
-		RLAST("xxx", "failed to clear queue" );
+		RLAST("563", "failed to clear queue" );
 		return;
 	}
 
-	RLAST("xxx", "queue cleared" );
+	RLAST("263", "queue cleared" );
+}
+
+CMD(cmd_queueget, r_user, p_idle, arg_need)
+{
+	char buf[BUFLENTRACK];
+	int id;
+	char *end;
+	t_queue *q;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "ecpecting a queue ID" );
+		return;
+	}
+
+	if( NULL == (q = queue_get(id))){
+		RBADARG( "queue entry not found" );
+		return;
+	}
+
+	RLAST( "264", "%s", mkqueue(buf,BUFLENTRACK, q ));
+	queue_free(q);
 }
 
 /************************************************************

@@ -39,8 +39,8 @@ int track_setartist( t_track *t, int artistid );
 int track_save( t_track *t );
 
 int tracks( void );
+int track_id( int album_id, int num );
 t_track *track_get( int id );
-// TODO: t_track *track_getalbumnr( int albumid, int albumnr );
 
 it_track *tracks_albumid( int albumid );
 it_track *tracks_artistid( int artistid );
