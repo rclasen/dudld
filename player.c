@@ -419,6 +419,9 @@ t_playerror player_stop( void )
 {
 	t_playstatus wantstatus = pl_stop;
 
+	if( curstat == pl_stop )
+		return PE_NOTHING;
+
 	return terminate( &wantstatus );
 }
 
