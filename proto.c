@@ -12,8 +12,7 @@
  *
  * 2yz: ok
  * 3yz: ok, but need more data
- * 4yz: failure (temporary or non-fatal)
- * 5yz: error (permanent fatal for requested operation)
+ * 5yz: error
  *
  * 6yz: broadcast message
  *
@@ -48,16 +47,20 @@ typedef enum {
 
 #define STRERR strerror(errno)
 
+#define BUFLENLINE	10240
+#define BUFLENWHO	100
+#define BUFLENTRACK	1024
+
 static int proto_vline( t_client *client, int last, const char *code, 
 		const char *fmt, va_list ap )
 {
-	char buffer[10240];
+	char buffer[BUFLENLINE];
 	int r;
 
 	sprintf( buffer, "%3.3s%c", code, last ? ' ' : '-' );
 
-	r = vsnprintf( buffer + 4, 10240 - 5, fmt, ap );
-	if( r < 0 || r > 10240 - 5 )
+	r = vsnprintf( buffer + 4, BUFLENLINE - 5, fmt, ap );
+	if( r < 0 || r > BUFLENLINE - 5 )
 		return -1;
 
 	r+=4;
@@ -136,40 +139,107 @@ static void proto_bcast( t_rights right, const char *code,
  * helper
  */
 
-/* TODO: mktab */
-// TODO: escape tabs in output 
+#define EADDC(len,used,buf,c) if(len > used++ ){ *buf++ = c; }
+#define EADD(len,used,buf,c) \
+	if( c == '\t' ){\
+		EADDC(len, used, buf, '\\' );\
+		EADDC(len, used, buf, 't' );\
+	} else if( c == '\\' ){\
+		EADDC(len, used, buf, '\\' );\
+		EADDC(len, used, buf, '\\' );\
+	} else {\
+		EADDC(len, used, buf, c );\
+	}
 
 
-/* make a reply string from client data */
-static char *mkclient( t_client *c )
+static int ecpy( char *buffer, int len, const char *in )
 {
-	static char buffer[100];
+	int used = 0;
+
+	buffer[--len] = 0;
+
+	for( ; *in; ++in ){
+		EADD(len, used, buffer, *in );
+
+	}
+	if( len > used )
+		*buffer++ = 0;
+
+	return used;
+}
+
+static int mkvtab( char *buffer, int len, const char *fmt, va_list ap )
+{
+	int used = 0;
+	int l;
+
+	buffer[--len] = 0;
+
+	for( ; *fmt; ++fmt ){
+		if( *fmt == 's' ){
+			l = ecpy( buffer, len -used, va_arg( ap, char *));
+			used += l;
+			buffer += l;
+
+		} else if( *fmt == 'c' ) {
+			char c = va_arg( ap, char );
+			EADD(len, used, buffer, c );
+
+		} else if( *fmt == 'd' ) {
+			l = snprintf( buffer, len -used, "%d", 
+					va_arg(ap, int));
+			if( l < 0 )
+				l = 0;
+
+			used += l;
+			buffer += l;
+
+		} else {
+			syslog( LOG_CRIT, "inalid format %c in mkvtab", *fmt );
+			EADDC(len,used,buffer,'?');
+
+		}
+		EADDC(len,used,buffer,'\t');
+	}
+	if( len > used )
+		*buffer++ = 0;
+
+	return used;
+}
+
+static int mktab( char *buffer, int len, const char *fmt, ... )
+{
+	va_list ap;
 	int r;
 
-	r = snprintf( buffer, 100, "%d\t%d\t%s",
-			c->id, c->uid, inet_ntoa(c->sin.sin_addr));
-	if( r < 0 || r > 100 )
+	va_start( ap, fmt );
+	r = mkvtab( buffer, len, fmt, ap );
+	va_end( ap );
+
+	return r;
+}
+
+/* make a reply string from client data */
+static inline char *mkclient( char *buffer, int len, t_client *c )
+{
+	if( len < mktab( buffer, len, "dds",
+				c->id, c->uid, inet_ntoa(c->sin.sin_addr)))
 		return NULL;
 
 	return buffer;
 }
 
 /* make a reply string from track data */
-static char *mktrack( t_track *t )
+static inline char *mktrack( char *buffer, int len, t_track *t )
 {
-	static char buffer[2048];
-	int r;
-
-	r = snprintf( buffer, 2048, "%d\t%d\t%d\t%s\t%d\t%d\t%d", 
-			t->id,
-			t->albumid,
-			t->albumnr,
-			t->title,
-			t->artistid,
-			t->duration,
-			t->lastplay
-			);
-	if( r < 0 || r > 100 )
+	if( len < mktab( buffer, len, "dddsddd", 
+				t->id, 
+				t->albumid, 
+				t->albumnr, 
+				t->title, 
+				t->artistid, 
+				t->duration, 
+				t->lastplay))
 		return NULL;
 
 	return buffer;
@@ -226,12 +296,16 @@ CMD(cmd_disconnect, r_master, p_idle, arg_need )
 
 static void proto_bcast_login( t_client *client )
 {
-	proto_bcast( r_user, "630", "%s", mkclient(client));
+	char buf[BUFLENWHO];
+
+	proto_bcast( r_user, "630", "%s", mkclient(buf, BUFLENWHO, client));
 }
 
 static void proto_bcast_logout( t_client *client )
 {
-	proto_bcast( r_user, "631", "%s", mkclient(client));
+	char buf[BUFLENWHO];
+
+	proto_bcast( r_user, "631", "%s", mkclient(buf, BUFLENWHO, client));
 }
 
 CMD(cmd_user, r_any, p_open, arg_need )
@@ -266,6 +340,7 @@ CMD(cmd_pass, r_any, p_user, arg_need )
 
 CMD(cmd_who, r_user, p_idle, arg_none )
 {
+	char buf[BUFLENWHO];
 	t_client *c;
 
 	(void)line;
@@ -273,7 +348,7 @@ CMD(cmd_who, r_user, p_idle, arg_none )
 		if( c->close )
 			continue;
 
-		RLINE( "230", "%s", mkclient(c));
+		RLINE( "230", "%s", mkclient(buf, BUFLENWHO, c));
 	}
 	RLAST( "230", "");
 }
@@ -316,10 +391,12 @@ CMD(cmd_kick, r_master, p_idle, arg_need )
 
 static void proto_bcast_player_newtrack( void )
 {
+	char buf[BUFLENTRACK];
 	t_track *track;
 
 	track = player_track();
-	proto_bcast( r_guest, "640", "%s", mktrack(track) );
+	proto_bcast( r_guest, "640", "%s", mktrack(buf, BUFLENTRACK, track) );
+	track_free(track);
 }
 
 static void proto_bcast_player_stop( void )
@@ -335,6 +412,11 @@ static void proto_bcast_player_pause( void )
 static void proto_bcast_player_resume( void )
 {
 	proto_bcast( r_guest, "643", "resumed" );
+}
+
+static void proto_bcast_player_random( void )
+{
+	proto_bcast( r_guest, "646", "%d", player_random() );
 }
 
 static void reply_player( t_client *client, int r )
@@ -446,15 +528,24 @@ CMD(cmd_status, r_guest, p_idle, arg_none )
 
 CMD(cmd_curtrack, r_guest, p_idle, arg_none )
 {
+	char buf[BUFLENTRACK];
+	t_track *t;
+
 	(void)line;
 
-	RBADARG( "TODO: curtrack" );
+	if( ! (t = player_track())){
+		RLAST("541", "nothing playing (maybe in a gap?)" );
+		return;
+	}
+
+	RLAST( "248", "%s", mktrack(buf, BUFLENTRACK, t) );
+	track_free(t);
 }
 
 CMD(cmd_gap, r_guest, p_idle, arg_none )
 {
 	(void)line;
-	RLAST( "xxx", "%d", player_gap() );
+	RLAST( "244", "%d", player_gap() );
 }
 
 CMD(cmd_gapset, r_user, p_idle, arg_need )
@@ -469,7 +560,19 @@ CMD(cmd_gapset, r_user, p_idle, arg_need )
 	}
 
 	player_setgap( gap );
-	RLAST( "xxx", "gap adjusted" );
+	RLAST( "245", "gap adjusted" );
+}
+
+CMD(cmd_random, r_guest, p_idle, arg_none )
+{
+	(void)line;
+	RLAST( "246", "%d", player_random() );
+}
+
+CMD(cmd_randomset, r_user, p_idle, arg_need )
+{
+	player_setrandom( 0 == strcasecmp(line, "on") );
+	RLAST( "247", "random adjusted" );
 }
 
 /************************************************************
@@ -479,12 +582,13 @@ CMD(cmd_gapset, r_user, p_idle, arg_need )
 
 CMD(cmd_trackget, r_guest, p_idle, arg_need )
 {
-	char *buf;
+	char buf[BUFLENTRACK];
+	char *end;
 	int id;
 	t_track *t;
 
-	id = strtol(line, &buf, 10);
-	if( *buf ){
+	id = strtol(line, &end, 10);
+	if( *end ){
 		RBADARG( "expecting only a track ID");
 		return;
 	}
@@ -494,15 +598,18 @@ CMD(cmd_trackget, r_guest, p_idle, arg_need )
 		return;
 	}
 
-	RLAST( "210", "%s", mktrack(t) );
+	RLAST( "210", "%s", mktrack(buf, BUFLENTRACK, t) );
+	track_free(t);
 }
 
 static void dump_tracks( t_client *client, const char *code, it_track *it )
 {
+	char buf[BUFLENTRACK];
 	t_track *t;
 
 	for( t = it_track_begin(it); t; t = it_track_next(it) ){
-		RLINE(code,"%s", mktrack(t) );
+		RLINE(code,"%s", mktrack(buf, BUFLENTRACK, t) );
+		track_free(t);
 	}
 	it_track_done(it);
 
@@ -565,8 +672,7 @@ CMD(cmd_tracksartist, r_guest, p_idle, arg_need )
 CMD(cmd_trackalter, r_user, p_idle, arg_need )
 {
 	(void)line;
-	// TODO: do something
-	RBADARG("blurb");
+	RBADARG("TODO: trackalter");
 }
 
 /************************************************************
@@ -616,14 +722,13 @@ CMD(cmd_filterstat, r_guest, p_idle, arg_none )
 
 CMD(cmd_randomtop, r_guest, p_idle, arg_opt )
 {
-	it_track *it;
-	t_track *t;
 	int num;
-	char *buf;
+	char *end;
+	it_track *it;
 
 	if( *line ){
-		num = strtol(line, &buf, 10);
-		if( *buf ){
+		num = strtol(line, &end, 10);
+		if( *end ){
 			RBADARG( "expecting only a number");
 			return;
 		}
@@ -632,20 +737,15 @@ CMD(cmd_randomtop, r_guest, p_idle, arg_opt )
 	}
 
 	it = random_top(num);
-	for( t = it_track_begin(it); t; t = it_track_next(it) ){
-		RLINE("252","%s", mktrack(t) );
-	}
-	it_track_done(it);
-
-	RLAST("252", "" );
+	dump_tracks( client, "252", it );
 }
 
-// TODO: cmd_randomset, r_user },
-// TODO: cmd_random, r_user },
 
 /************************************************************
  * command array
  */
+
+CMD(cmd_help, r_any, p_any, arg_none );
 
 typedef void (*t_func_cmd)( t_client *client, char *line );
 
@@ -661,6 +761,24 @@ static t_cmd proto_cmds[] = {
 #include "cmd.list"
 	{ NULL, NULL, 0, 0, 0 }
 };
+
+
+static void cmd_help( t_client *client, char *line )
+{
+	t_cmd *c;
+
+	(void)line;
+	for( c = proto_cmds; c && c->name; ++c ){
+		if( client->pstate != c->state )
+			continue;
+		
+		if( client->right < c->right )
+			continue;
+
+		RLINE("219", c->name );
+	}
+	RLAST( "219", "" );
+}
 
 /*
  * find apropriate command entry
@@ -758,6 +876,7 @@ static void proto_delclient( t_client *client )
 			inet_ntoa(client->sin.sin_addr ));
 	proto_bcast_logout( client );
 }
+
 /************************************************************
  * interface functions
  */
@@ -775,6 +894,7 @@ void proto_init( void )
 	player_func_pause = proto_bcast_player_pause;
 	player_func_resume = proto_bcast_player_resume;
 	player_func_stop = proto_bcast_player_stop;
+	player_func_random = proto_bcast_player_random;
 
 	random_func_filter = proto_bcast_filter;
 }
