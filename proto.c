@@ -33,9 +33,13 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include "user.h"
+#include "player.h"
 #include "proto.h"
+
+#define STRERR strerror(errno)
 
 static int proto_vline( t_client *client, int last, const char *code, 
 		const char *fmt, va_list ap )
@@ -90,11 +94,17 @@ static int proto_rlast( t_client *client, const char *code,
 	return r;
 }
 
+/*
+ * standard reply when a command was invoked with wrong args 
+ */
 static void proto_badarg( t_client *client, const char *desc )
 {
 	proto_rlast( client, "501", desc );
 }
 
+/*
+ * broadcast a reply to all clients with at least "right" rights.
+ */
 static void proto_bcast( t_rights right, const char *code, 
 		const char *fmt, ... )
 {
@@ -116,22 +126,37 @@ static void proto_bcast( t_rights right, const char *code,
 
 
 /************************************************************
- * broadcasts
+ * helper
  */
 
-static void proto_bcast_login( t_client *client )
+/* make a reply string from client data */
+static char *mkclient( t_client *c )
 {
-	proto_bcast( r_user, "630", "%d\t%d\t%s", client->id, client->uid, 
-			inet_ntoa(client->sin.sin_addr) );
+	static char buffer[100];
+	int r;
+
+	r = snprintf( buffer, 100, "%d\t%d\t%s",
+			c->id, c->uid, inet_ntoa(c->sin.sin_addr));
+	if( r < 0 || r > 100 )
+		return NULL;
+
+	return buffer;
 }
 
-static void proto_bcast_logout( t_client *client )
+/* make a reply string from track data */
+static char *mktrack( t_track *t )
 {
-	proto_bcast( r_user, "631", "%d\t%d\t%s", client->id, client->uid, 
-			inet_ntoa(client->sin.sin_addr) );
+	static char buffer[10];
+	int r;
+
+	r = snprintf( buffer, 10, "%d", t->id );
+	if( r < 0  || r > 10 )
+		return NULL;
+
+	return buffer;
 }
 
-// TODO: more broadcasts
+
 
 
 /************************************************************
@@ -158,6 +183,10 @@ static void proto_bcast_logout( t_client *client )
 		RLAST("520", "waiting for other input" ); \
 		return; \
 	}
+
+/************************************************************
+ * commands: connection
+ */
 
 CMD(cmd_quit)
 {
@@ -193,6 +222,20 @@ CMD(cmd_disconnect)
 	}
 
 	RLAST( "530", "session not found" );
+}
+
+/************************************************************
+ * commands: user + auth
+ */
+
+static void proto_bcast_login( t_client *client )
+{
+	proto_bcast( r_user, "630", "%s", mkclient(client));
+}
+
+static void proto_bcast_logout( t_client *client )
+{
+	proto_bcast( r_user, "631", "%s", mkclient(client));
 }
 
 CMD(cmd_user)
@@ -249,8 +292,7 @@ CMD(cmd_who)
 		if( c->close )
 			continue;
 
-		RLINE( "230", "%d\t%d\t%s", c->id, c->uid, 
-				inet_ntoa(c->sin.sin_addr));
+		RLINE( "230", "%s", mkclient(client));
 	}
 	RLAST( "230", "");
 }
@@ -286,17 +328,146 @@ CMD(cmd_kick)
 		RLAST( "530", "user not found" );
 }
 
+/************************************************************
+ * commands: player
+ */
+
+static void proto_bcast_player_newtrack( void )
+{
+	t_track *track;
+
+	track = player_track();
+	proto_bcast( r_guest, "640", "%s", mktrack(track) );
+}
+
+static void proto_bcast_player_stop( void )
+{
+	proto_bcast( r_guest, "641", "stopped" );
+}
+
+static void proto_bcast_player_pause( void )
+{
+	proto_bcast( r_guest, "642", "paused" );
+}
+
+static void proto_bcast_player_resume( void )
+{
+	proto_bcast( r_guest, "643", "resumed" );
+}
+
+#define RPMISC(r)	\
+	if( r == PE_SYS ){ \
+		RLAST("540", "player error: %s", STRERR); \
+		return; \
+	}\
+	if( r != PE_OK ){ \
+		RLAST( "541", "player error" ); \
+		return; \
+	} \
+
+
 CMD(cmd_play)
 {
+	int r;
+
 	IDLE;
 	RNOARGS;
 
-	RLAST( "541", "player error" );
+	r = player_start();
+
+	if( r == PE_NOTHING ){
+		RLAST( "541", "nothing to play" );
+		return;
+	}
+
+	if( r == PE_BUSY ){
+		RLAST( "541", "already playing" );
+		return;
+	}
+
+	RPMISC(r);
+	RLAST( "240", "playing" );
+}
+
+CMD(cmd_stop)
+{
+	int r;
+
+	IDLE;
+	RNOARGS;
+
+	r = player_stop();
+
+	if( r == PE_NOTHING ){
+		RLAST( "541", "nothing playing" );
+		return;
+	}
+
+	RPMISC(r);
+	RLAST( "241", "stopped" );
+}
+
+CMD(cmd_next)
+{
+	int r;
+
+	IDLE;
+	RNOARGS;
+
+	r = player_next();
+
+	if( r == PE_NOTHING  ){
+		RLAST( "541", "nothing to play" );
+		return;
+	}
+
+	RPMISC(r);
+	RLAST( "240", "playing" );
+}
+
+CMD(cmd_prev)
+{
+	int r;
+
+	IDLE;
+	RNOARGS;
+
+	r = player_prev();
+
+	if( r == PE_NOTHING ){
+		RLAST( "541", "nothing to play" );
+		return;
+	}
+
+	RPMISC(r);
+	RLAST( "240", "playing" );
+}
+
+CMD(cmd_pause)
+{
+	int r;
+
+	IDLE;
+	RNOARGS;
+
+	r = player_pause();
+
+	if( r == PE_NOTHING ){
+		RLAST( "541", "nothing playing" );
+		return;
+	}
+
+	if( r == PE_BUSY ){
+		RLAST( "541", "already paused" );
+		return;
+	}
+
+	RPMISC(r);
+	RLAST( "242", "paused" );
 }
 
 
 
-	
 /************************************************************
  * command array
  */
@@ -309,21 +480,32 @@ typedef struct _t_cmd {
 	t_rights right;
 } t_cmd;
 
-
 static t_cmd proto_cmds[] = {
 	{ "QUIT", cmd_quit, r_any },
 	{ "DISCONNECT", cmd_disconnect, r_master },
+
 	{ "USER", cmd_user, r_any },
 	{ "PASS", cmd_pass, r_any },
 	//{ "USERS", cmd_users, r_user },
 	//{ "USERGETID", cmd_usergetid, r_user },
 	{ "WHO", cmd_who, r_user },
 	{ "KICK", cmd_kick, r_master },
+
 	{ "PLAY", cmd_play, r_user },
+	{ "STOP", cmd_stop, r_user },
+	{ "NEXT", cmd_next, r_user },
+	{ "PREV", cmd_prev, r_user },
+	{ "PAUSE", cmd_pause, r_user },
 
 	{ NULL, NULL, 0 }
 };
 
+/*
+ * find apropriate command entry
+ * check permissions
+ * strip command from line leaving only args
+ * and pass args to apropriate function
+ */
 static void cmd( t_client *client, char *line )
 {
 	t_cmd *c;
@@ -354,6 +536,22 @@ static void cmd( t_client *client, char *line )
  * interface functions
  */
 
+/*
+ * initialize protocol
+ */
+
+void proto_init( void )
+{
+	player_func_newtrack = proto_bcast_player_newtrack;
+	player_func_pause = proto_bcast_player_pause;
+	player_func_resume = proto_bcast_player_resume;
+	player_func_stop = proto_bcast_player_stop;
+}
+
+
+/*
+ * process each incoming line
+ */
 void proto_input( t_client *client )
 {
 	char *line;
@@ -375,17 +573,21 @@ void proto_input( t_client *client )
 	} 
 }
 
+/*
+ * initialize protocol for a newly connected client
+ */
 void proto_newclient( t_client *client )
 {
 	RLAST( "220", "hello" );
 	printf( "new client\n");
 }
 
+/*
+ * cleanup proto when a client disconnected
+ */
 void proto_delclient( t_client *client )
 {
 	printf( "a client is gone\n" );
 	proto_bcast_logout( client );
 }
 
-// TODO: greeting
-// TODO: auth
