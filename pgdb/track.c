@@ -267,7 +267,7 @@ int tracks( void )
 	int num;
 
 	res = db_query( "SELECT count(*) FROM stor_file "
-			"WHERE title NOTNULL" );
+			"WHERE title NOTNULL AND NOT broken" );
 	if( ! res || PGRES_TUPLES_OK !=  PQresultStatus(res) ){
 		syslog( LOG_ERR, "tracks: %s", db_errstr() );
 		PQclear(res);

@@ -189,7 +189,7 @@ int client_send( t_client *c, const char *buf )
 	if( c->close )
 		return -1;
 
-	if( 0 > send( c->sock, buf, len, MSG_DONTWAIT )){
+	if( len != send( c->sock, buf, len, MSG_DONTWAIT )){
 		client_close(c);
 		return -1;
 	}

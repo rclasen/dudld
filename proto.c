@@ -63,6 +63,7 @@ typedef enum {
 #define BUFLENWHO	100
 #define BUFLENTRACK	1024
 #define BUFLENTAG	1024
+#define BUFLENUSER	512
 
 static int proto_vline( t_client *client, int last, const char *code, 
 		const char *fmt, va_list ap )
@@ -315,6 +316,15 @@ static inline char *mktag( char *buf, int len, t_tag *t )
 	return buf;
 }
 
+static inline char *mkuser( char *buf, int len, t_user *u )
+{
+	if( len < mktab(buf, len, "dsd", u->id, u->name, u->right ))
+		return NULL;
+
+	return buf;
+}
+
+
 
 // TODO: this file is too large. Split out cmds
 
@@ -389,24 +399,40 @@ CMD(cmd_user, r_any, p_open, arg_need )
 
 CMD(cmd_pass, r_any, p_user, arg_need )
 {
-	if( ! user_ok( client->pdata, line )){
-		client->pstate = p_open;
-		client->right = r_any;
-		client->uid = 0;
-		RLAST("52x", "login failed" );
+	int uid;
+	t_user *u;
+
+	if( 0 > ( uid = user_getname( client->pdata )))
+		goto failed;
+
+	if( NULL == ( u = user_get( uid )))
+		goto failed;
+
+	if( ! user_ok( u, line ))
+		goto failed;
+
 	
-	} else {
-		client->uid = 1;
-		client->pstate = p_idle;
-		client->right = r_master;
+	client->uid = u->id;
+	client->pstate = p_idle;
+	client->right = u->right;
 
-		syslog( LOG_INFO, "user %s logged in", (char*)client->pdata );
-		RLAST( "221", "successfully logged in" );
-		proto_bcast_login(client);
-	}
+	syslog( LOG_INFO, "user %s logged in", (char*)client->pdata );
+	RLAST( "221", "successfully logged in" );
+	proto_bcast_login(client);
 
+	goto clean;
+
+failed:
+	client->pstate = p_open;
+	client->right = r_any;
+	client->uid = 0;
+	syslog( LOG_NOTICE, "login failed" );
+	RLAST("521", "login failed" );
+
+clean:
 	free( client->pdata );
 	client->pdata = NULL;
+	user_free(u);
 }
 
 CMD(cmd_who, r_user, p_idle, arg_none )
@@ -452,9 +478,137 @@ CMD(cmd_kick, r_master, p_idle, arg_need )
 		RLAST( "530", "user not found" );
 }
 
-// TODO: cmd_users, r_user },
-// TODO: cmd_userget, r_user },
+CMD(cmd_userget, r_user, p_idle, arg_need )
+{
+	int uid;
+	char *end;
+	t_user *u;
+	char buf[BUFLENUSER];
 
+	uid = strtol(line, &end, 10 );
+	if( *end ){
+		RBADARG("invalid user ID" );
+		return;
+	}
+
+	if( NULL == (u = user_get(uid))){
+		RBADARG("no such user");
+		return;
+	}
+
+	RLAST( "2xx", "%s", mkuser(buf, BUFLENUSER, u ));
+	user_free(u);
+}
+
+
+CMD(cmd_usergetname, r_user, p_idle, arg_need )
+{
+	int uid;
+
+	if( 0 > ( uid = user_getname(line))){
+		RBADARG("no such user");
+		return;
+	}
+
+	RLAST("2xx", "%d", uid);
+}
+
+static void dump_users( t_client *client, const char *code, it_user *it )
+{
+	char buf[BUFLENUSER];
+	t_user *t;
+
+	for( t = it_user_begin(it); t; t = it_user_next(it) ){
+		RLINE(code,"%s", mkuser(buf, BUFLENUSER, t) );
+		user_free(t);
+	}
+
+	RLAST(code, "" );
+}
+
+CMD(cmd_users, r_user, p_idle, arg_none )
+{
+	it_user *it;
+
+	(void)line;
+	it = users_list();
+	dump_users( client, "2xx", it );
+	it_user_done( it );
+}
+
+CMD(cmd_usersetpass, r_master, p_idle, arg_need )
+{
+	int uid;
+	char *end;
+	t_user *u;
+
+	uid = strtol(line, &end, 10 );
+	if( line == end ){
+		RBADARG("invalid user ID" );
+		return;
+	}
+
+	if( NULL == (u = user_get(uid))){
+		RBADARG("no such user");
+		return;
+	}
+
+	end += strspn( end, " \t");
+
+	if( 0 > user_setpass(u, end) ){
+		RLAST( "5xx", "failed");
+	} else {
+		RLAST( "2xx", "password changed" );
+		user_save(u);
+	}
+	user_free(u);
+}
+
+CMD(cmd_usersetright, r_master, p_idle, arg_need )
+{
+	int uid, right;
+	char *end, *s;
+	t_user *u;
+
+	uid = strtol(line, &end, 10 );
+	if( line == end ){
+		RBADARG("invalid user ID" );
+		return;
+	}
+
+	s = end + strspn( end, " \t");
+	right = strtol( s, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid right number" );
+		return;
+	}
+
+	if( NULL == (u = user_get(uid))){
+		RBADARG("no such user");
+		return;
+	}
+
+
+	if( 0 > user_setright(u, right) ){
+		RLAST( "5xx", "failed");
+	} else {
+		RLAST( "2xx", "right changed" );
+		user_save(u);
+	}
+	user_free(u);
+}
+
+CMD(cmd_useradd, r_master, p_idle, arg_need )
+{
+	int uid;
+
+	if( 0 > ( uid = user_add(line, 1, ""))){
+		RLAST( "5xx", "failed" );
+		return;
+	} 
+
+	RLAST( "2xx", "%d", uid );
+}
 
 /************************************************************
  * commands: player
