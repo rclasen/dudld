@@ -25,16 +25,18 @@ char *progname = NULL;
 int check_child = 0;
 int terminate = 0;
 
+/*
 static void sig_child( int sig )
 {
 	check_child++;
 	signal( sig, sig_child );
 }
+*/
 
 static void sig_term( int sig )
 {
 	terminate++;
-	signal( sig, sig_child );
+	signal( sig, sig_term );
 }
 
 static void earliest( time_t *a, time_t b )
@@ -54,7 +56,7 @@ static void loop( void )
 	while( !terminate ){
 		/* handle flag set by SIGCHLD handler */
 		if( check_child ){
-			player_check();
+			player_check(NULL);
 			check_child = 0;
 		}
 
@@ -62,6 +64,7 @@ static void loop( void )
 		FD_ZERO( &fdread );
 		maxfd = 0;
 		clients_fdset( &maxfd, &fdread );
+		player_fdset( &maxfd, &fdread );
 		maxfd++;
 
 		/* set timeout for select */
@@ -96,6 +99,7 @@ static void loop( void )
 			continue;
 		}
 
+		player_check( &fdread );
 		for( client = clients; client; client = client->next ){
 			if( client->close )
 				continue;
@@ -191,7 +195,7 @@ int main( int argc, char **argv )
 	// TODO: use sigaction
 	signal( SIGTERM, sig_term );
 	signal( SIGINT, sig_term );
-	signal( SIGCHLD, sig_child );
+	signal( SIGCHLD, SIG_IGN /*sig_child*/ );
 	signal( SIGPIPE, SIG_IGN );
 
 	if( clients_init( port ) ){
@@ -213,7 +217,7 @@ int main( int argc, char **argv )
 
 	db_init();
 	random_init();
-	//player_init();
+	player_init();
 	player_setgap( opt_gap );
 	player_setrandom( opt_random );
 	proto_init();

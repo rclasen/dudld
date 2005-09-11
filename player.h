@@ -1,6 +1,7 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
+#include <sys/types.h>
 #include "commondb/track.h"
 
 typedef enum {
@@ -40,6 +41,8 @@ t_playerror player_next( void );
 t_playerror player_prev( void );
 t_playerror player_pause( void );
 
-void player_check( void );
+void player_init( void );
+t_playerror player_check( fd_set *read );
+void player_fdset( int *maxfd, fd_set *read );
 time_t player_wakeuptime( void );
 #endif

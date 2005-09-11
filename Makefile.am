@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS=foreign
 
 AM_CFLAGS=-g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
 
-SUBDIRS=commondb pgdb
+SUBDIRS=commondb pgdb wpipe # wgst
 
 sbin_PROGRAMS=dudld
 
