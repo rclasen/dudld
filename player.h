@@ -41,9 +41,7 @@ t_playerror player_next( void );
 t_playerror player_prev( void );
 t_playerror player_pause( void );
 
+const void *player_popt_table( void );
 void player_init( void );
-void player_checkout( fd_set *read );
-void player_checkgap( void );
-void player_fdset( int *maxfd, fd_set *read );
-time_t player_wakeuptime( void );
+void player_done( void );
 #endif

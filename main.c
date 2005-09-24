@@ -10,7 +10,8 @@
 #include <signal.h>
 #include <time.h>
 #include <errno.h>
-#include <getopt.h>
+#include <glib.h>
+#include <popt.h>
 
 #include <libncc/pidfile.h>
 
@@ -22,90 +23,12 @@
 #include "opt.h"
 
 char *progname = NULL;
-int check_player = 0; 
-int terminate = 0;
+GMainLoop *gmain = NULL;
 
 static void sig_term( int sig )
 {
-	terminate++;
-	signal( sig, sig_term );
-}
-
-static void earliest( time_t *a, time_t b )
-{
-	if( b && b > *a )
-		*a = b;
-}
-
-static void loop( void )
-{
-	fd_set fdread;
-	int maxfd;
-	time_t wakeup;
-	struct timeval tv, *tvp;
-	t_client *client;
-
-	while( !terminate ){
-		if( check_player ){
-			player_checkgap();
-			check_player = 0;
-		}
-
-		/* initialize fdsets for select */
-		FD_ZERO( &fdread );
-		maxfd = 0;
-		clients_fdset( &maxfd, &fdread );
-		player_fdset( &maxfd, &fdread );
-		maxfd++;
-
-		/* set timeout for select */
-		tvp = NULL;
-		wakeup = 0;
-		earliest( &wakeup, player_wakeuptime() );
-		earliest( &wakeup, sleep_get() );
-		// TODO: check other scheduled events
-
-
-		if( wakeup ){
-			check_player++;
-
-			wakeup -= time(NULL);
-			if( wakeup < 0 )
-				wakeup = 0;
-			tv.tv_sec = wakeup;
-			tv.tv_usec = 0;
-			tvp = &tv;
-		}
-
-		if( 0 > select( maxfd, &fdread, NULL, NULL, tvp )){
-			if( errno != EINTR ){
-				syslog( LOG_CRIT, "select failed: %m" );
-				exit( 1 );
-			}
-
-			/* 
-			 * we got a signal, restart loop as fdsets are
-			 * invalid
-			 */
-			continue;
-		}
-
-		player_checkout( &fdread );
-		for( client = clients; client; client = client->next ){
-			if( client->close )
-				continue;
-
-			client_poll( client, &fdread );
-			proto_input( client );
-		}
-
-		sleep_check();
-
-		// TODO: do other things
-
-		clients_clean();
-		client_accept( &fdread );
-	}
+	(void)sig;
+	g_main_loop_quit(gmain);
 }
 
 // TODO: config file
@@ -122,13 +45,18 @@ int main( int argc, char **argv )
 	int port = 4445;
 	int c;
 	int needhelp = 0;
-	struct option lopts[] = {
-		{ "help", no_argument, NULL, 'h' },
-		{ "foreground", no_argument, NULL, 'f' },
-		{ "debug", no_argument, NULL, 'd' },
-		{ "port", required_argument, NULL, 'p' },
-		{ "pidfile", required_argument, NULL, 'i' },
+	struct poptOption popt[] = {
+		{ NULL,	0, POPT_ARG_INCLUDE_TABLE, NULL, 0, "GStreamer", NULL},
+		{ "help",	'h', POPT_ARG_NONE,	NULL, 'h', NULL, NULL },
+		{ "foreground",	'f', POPT_ARG_NONE,	NULL, 'f', NULL, NULL  },
+		{ "debug",	'd', POPT_ARG_NONE,	NULL, 'd', NULL, NULL  },
+		{ "port",	'p', POPT_ARG_INT,	NULL, 'p', NULL, NULL  },
+		{ "pidfile",	'i', POPT_ARG_STRING,	NULL, 'i', NULL, NULL  },
+		POPT_TABLEEND
 	};
+	poptContext pctx;
+
+	popt[0].arg = player_popt_table();
 
 	progname = strrchr( argv[0], '/' );
 	if( NULL != progname ){
@@ -138,9 +66,11 @@ int main( int argc, char **argv )
 	}
 	pid = getpid();
 
-	while( -1 != ( c = getopt_long( argc, argv, "hfdp:i:",
-					lopts, NULL ))){
+	pctx = poptGetContext( NULL, argc, (const char**) argv, popt, 0 );
+	while( 0 < (c = poptGetNextOpt(pctx))){
+		const char *optarg;
 
+		optarg = poptGetOptArg(pctx);
 		switch(c){
 		  case 'h':
 			  usage();
@@ -160,7 +90,7 @@ int main( int argc, char **argv )
 			  break;
 
 		  case 'i':
-			  pidfile = optarg;
+			  pidfile = strdup(optarg);
 			  break;
 
 		  default:
@@ -168,6 +98,8 @@ int main( int argc, char **argv )
 			  break;
 		}
 	}
+	poptFreeContext(pctx);
+
 	if( needhelp ){
 		fprintf( stderr, "use --help for usage information\n" );
 		exit( 1 );
@@ -233,10 +165,12 @@ int main( int argc, char **argv )
 
 
 	syslog(LOG_INFO, "waiting" );
-	loop();
+
+	gmain = g_main_loop_new(NULL,0);
+	g_main_loop_run(gmain);
 
 	syslog(LOG_INFO, "terminating" );
-	player_stop();
+	player_done();
 	clients_done();
 	db_done();
 	pidfile_funlock(pidfile);

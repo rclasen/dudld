@@ -69,7 +69,7 @@ typedef enum {
 #define BUFLENALBUM	512
 #define BUFLENARTIST	512
 
-static int proto_vline( t_client *client, int last, const char *code, 
+static char *proto_fmtline( int last, const char *code, 
 		const char *fmt, va_list ap )
 {
 	char buffer[BUFLENLINE];
@@ -79,13 +79,24 @@ static int proto_vline( t_client *client, int last, const char *code,
 
 	r = vsnprintf( buffer + 4, BUFLENLINE - 5, fmt, ap );
 	if( r < 0 || r > BUFLENLINE - 5 )
-		return -1;
+		return NULL;
 
 	r+=4;
 	buffer[r++] = '\n';
 	buffer[r++] = 0;
+	return strdup(buffer);
+}
 
-	client_send( client, buffer );
+static int proto_vline( t_client *client, int last, const char *code, 
+		const char *fmt, va_list ap )
+{
+	char *line;
+
+	if( NULL == ( line = proto_fmtline( last, code, fmt, ap )))
+		return -1;
+
+	client_send( client, line );
+	free(line);
 
 	return 0;
 }
@@ -136,20 +147,15 @@ static void proto_badarg( t_client *client, const char *desc )
 static void proto_bcast( t_rights right, const char *code, 
 		const char *fmt, ... )
 {
-	t_client *c;
+	char *line;
 	va_list ap;
 
-	va_start( ap, fmt );
-	for( c = clients; c; c = c->next ){
-		if( c->close )
-			continue;
-
-		if( ( c->user ? c->user->right : r_any ) < right )
-			continue;
-
-		proto_vline( c, 1, code, fmt, ap );
+	va_start(ap, fmt);
+	if( NULL != (line = proto_fmtline(1, code, fmt, ap))){
+		client_bcast_perm(line, right);
+		free(line);
 	}
-	va_end( ap );
+	va_end(ap);
 }
 
 
@@ -359,17 +365,16 @@ CMD(cmd_clientclose, r_master, p_idle, arg_need )
 		return;
 	}
 
-	for( c = clients; c; c = c->next ){
-		if( c->id == id ){
-			proto_rlast( c, "632", "disconnected" );
-			client_close( c );
-
-			RLAST( "232", "disconnected" );
-			return;
-		}
+	if( NULL == (c = client_get( id ))){
+		RLAST( "530", "session not found" );
+		return;
 	}
 
-	RLAST( "530", "session not found" );
+	proto_rlast( c, "632", "disconnected" );
+	client_close( c );
+	client_delref(c);
+
+	RLAST( "232", "disconnected" );
 }
 
 /************************************************************
@@ -438,24 +443,26 @@ final:
 CMD(cmd_clientlist, r_user, p_idle, arg_none )
 {
 	char buf[BUFLENWHO];
-	t_client *c;
+	it_client *it;
+	t_client *t;
 
 	(void)line;
-	for( c = clients; c; c = c->next ){
-		if( c->close )
-			continue;
-
-		mkclient(buf, BUFLENWHO, c);
+	it = clients_list();
+	for( t = it_client_begin(it); t; t = it_client_next(it) ){
+		mkclient(buf, BUFLENWHO, t);
 		RLINE( "230", "%s", buf ); 
+		client_delref(t);
 	}
 	RLAST( "230", "");
+	it_client_done(it);
 }
 
 CMD(cmd_clientcloseuser, r_master, p_idle, arg_need )
 {
 	int uid;
 	char *end;
-	t_client *c;
+	it_client *it;
+	t_client *t;
 	int found = 0;
 
 	uid = strtol( line, &end, 10 );
@@ -464,18 +471,20 @@ CMD(cmd_clientcloseuser, r_master, p_idle, arg_need )
 		return;
 	}
 
-	for( c = clients; c; c = c->next ){
-		if( c->user->id == uid ){
-			proto_rlast( c, "632", "kicked" );
-			client_close( c );
+	if( NULL == (it = clients_uid(uid))){
+		return;
+	}
 
-			found++;
-		}
+	for( t = it_client_begin(it); t; t = it_client_next(it) ){
+		proto_rlast( t, "632", "kicked" );
+		client_close( t );
+		client_delref(t);
+		found++;
 	}
 
 	if( found )
 		RLINE( "231", "kicked" );
-	else 
+	else
 		RLAST( "530", "user not found" );
 }
 
@@ -643,7 +652,9 @@ static void proto_bcast_player_newtrack( void )
 	char buf[BUFLENTRACK];
 	t_track *track;
 
-	track = player_track();
+	if( NULL == (track = player_track() ))
+		return;
+
 	mktrack(buf, BUFLENTRACK, track);
 	proto_bcast( r_guest, "640", "%s", buf ); 
 	track_free(track);
@@ -1922,11 +1933,36 @@ static void cmd( t_client *client, char *line )
 
 
 /*
+ * process each incoming line
+ */
+static void proto_input( t_client *client )
+{
+	char *line;
+
+	while( NULL != (line = client_getline( client) )){
+		int l = strlen(line);
+
+		/* strip trailing whitespace */
+		while( --l >= 0 && isspace(line[l]) ){
+			line[l] = 0;
+		}
+			
+		if( l >= 0 )
+			cmd( client, line );
+		else
+			RLAST( "500", "no command" );
+
+		free(line);
+	} 
+}
+
+/*
  * initialize protocol for a newly connected client
  */
 static void proto_newclient( t_client *client )
 {
 	// TODO: make greeting versioned
+	client->ifunc = (void*)proto_input;
 	RLAST( "220", "dudld" );
 	syslog( LOG_DEBUG, "con #%d: new connection from %s", client->id,
 			inet_ntoa(client->sin.sin_addr ));
@@ -1976,29 +2012,5 @@ void proto_init( void )
 	tag_func_del = proto_bcast_tag_del;
 }
 
-
-/*
- * process each incoming line
- */
-void proto_input( t_client *client )
-{
-	char *line;
-
-	while( NULL != (line = client_getline( client) )){
-		int l = strlen(line);
-
-		/* strip trailing whitespace */
-		while( --l >= 0 && isspace(line[l]) ){
-			line[l] = 0;
-		}
-			
-		if( l >= 0 )
-			cmd( client, line );
-		else
-			RLAST( "500", "no command" );
-
-		free(line);
-	} 
-}
 
 

@@ -7,8 +7,8 @@
 #define CLIENT_BACKLOG 10
 #define CLIENT_BUFLEN 10240
 
-// TODO: move protocol stuff to proto module
 
+// TODO: move protocol stuff to proto module
 typedef enum {
 	p_any, /* as allowed level for commands */
 	p_open,
@@ -17,33 +17,52 @@ typedef enum {
 } t_protstate;
 
 typedef struct _t_client {
-	struct _t_client *next;
+	int sock;
 	int id;
 	t_user *user;
-	int close;
-	int sock;
 	struct sockaddr_in sin;
 	char ibuf[CLIENT_BUFLEN+1];
 	int ilen;
 	t_protstate pstate;
 	void *pdata;
+	void *ifunc;
+	int _refs;
+	int del;
 } t_client;
+
+typedef struct _it_client {
+	t_client **clients;
+	int num;
+	int cur;
+} it_client;
 
 typedef void (*t_client_func)( t_client *client );
 
-extern t_client *clients;
 extern t_client_func client_func_connect;
 extern t_client_func client_func_disconnect;
 
+
 int clients_init( int port );
 void clients_done( void );
-t_client *client_accept( fd_set *read );
-void client_close( t_client *c );
-void clients_clean( void );
-int client_send( t_client *c, const char *buf );
-void client_poll( t_client *c, fd_set *read );
-char *client_getline( t_client *c );
-void clients_fdset( int *maxfd, fd_set *read );
 
+typedef int (*t_client_want_func)( t_client *client, void *data );
+int client_bcast( const char *buf, t_client_want_func func, void *data );
+int client_bcast_perm( const char *buf, t_rights minperm );
+
+t_client *it_client_begin( it_client *it );
+t_client *it_client_cur( it_client *it );
+t_client *it_client_next( it_client *it );
+void it_client_done( it_client *it );
+
+it_client *clients_list( void );
+
+int client_send( t_client *c, const char *buf );
+char *client_getline( t_client *c );
+void client_close( t_client *c );
+
+void client_addref( t_client *c );
+void client_delref( t_client *c );
+t_client *client_get( int id );
+it_client *clients_uid( int uid );
 
 #endif

@@ -1,8 +1,10 @@
 AUTOMAKE_OPTIONS=foreign
 
-AM_CFLAGS=-g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
+AM_CFLAGS=-g $(shell pkg-config --cflags gstreamer-0.8 glib) -Wall -W -Wunused -Wmissing-prototypes -Wno-cast-qual -Wcast-align
 
-SUBDIRS=commondb pgdb wpipe # wgst
+AM_LDFLAGS=$(shell pkg-config --libs gstreamer-0.8 glib)
+
+SUBDIRS=commondb pgdb # wpipe # wgst
 
 sbin_PROGRAMS=dudld
 
