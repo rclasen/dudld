@@ -25,19 +25,10 @@
 
 #define LINELEN 4096
 
-typedef enum {
-	ple_none,
-	ple_open,
-	ple_read,
-	ple_decode,
-	ple_output,
-} t_pl_err;
-
 static int pl_rfd = -1;
 static int pl_wfd = -1;
 static int pl_pid = 0;
 static char pl_buf[LINELEN] = "";
-static t_pl_err pl_error = ple_none; /* last track's error */
 static t_playstatus pl_mode = pl_stop; /* what the backend is doing */
 
 static int do_random = 1;
@@ -199,184 +190,110 @@ static void pl_close( void )
 	*pl_buf = 0;
 }
 
-static void pl_bcast( char *line )
-{
-	if( 0 == strncmp(line, "601", 3)){
-		pl_mode = pl_stop;
-
-	} else if( 0 == strncmp(line, "602", 3)){
-		pl_mode = pl_pause;
-		// TODO: elapsed
-
-	} else if( 0 == strncmp(line, "603", 3)){
-		pl_mode = pl_play;
-		// TODO: elapsed
-
-	} else if( 0 == strncmp(line, "62", 2)){
-		pl_error = ple_read;
-
-	} else if( 0 == strncmp(line, "63", 2)){
-		pl_error = ple_decode;
-
-	} else if( 0 == strncmp(line, "64", 2)){
-		pl_error = ple_output;
-
-	} else {
-		syslog( LOG_NOTICE, "unknown worker broadcast: %s", line );
-	}
-}
-
 static char *pl_getl( void )
 {
-	char *ntok = pl_buf;
-	int tlen = 0;
-	char *line = NULL;
+	char *ntok;
+	char *line;
 
-	for(; *ntok != '\n'; ntok++, tlen++ ){
-
-		/* reached end of string without newline */
-		if( ! *ntok ){
-			int rv;
-
-			if( tlen >= LINELEN ){
-				syslog(LOG_ERR, "worker output line too long" );
-				pl_close();
-				return NULL;
-			}
-
-			rv = read( pl_rfd, ntok, LINELEN - tlen );
-			if( rv == -1 ){
-				syslog( LOG_ERR, "reading worker: %m");
-				pl_close();
-				return NULL;
-			} else if( rv == 0 ){
-				syslog( LOG_ERR, "worker died" );
-				pl_close();
-			}
-
-			ntok[rv] = 0;
+	if( NULL == (ntok = index(pl_buf, '\n' ))){
+		if( strlen(pl_buf) +1 >= LINELEN ){
+			syslog(LOG_ERR, "worker output line too long" );
+			pl_close();
 		}
+		return NULL;
 	}
 
 	*(ntok++) = 0;
 	line = strdup(pl_buf);
-	memmove(pl_buf,ntok,strlen(ntok)+1);
 	syslog(LOG_DEBUG, "pl_getl: %s", line );
+
+	memmove(pl_buf,ntok,strlen(ntok)+1);
 	return(line);
 }
 
-static char *pl_get( char *cmd )
+static void pl_read( void )
+{
+	int len;
+	int rv;
+	char *line;
+
+	len = strlen(pl_buf);
+	rv = read( pl_rfd, pl_buf+len, LINELEN - len );
+	if( rv == -1 ){
+		syslog( LOG_ERR, "reading worker: %m");
+		pl_close();
+		return;
+	} else if( rv == 0 ){
+		syslog( LOG_ERR, "worker died" );
+		pl_close();
+		return;
+	}
+
+	while( NULL != (line = pl_getl())){
+
+		if( 0 == strncmp(line, "601", 3)){
+			pl_mode = pl_stop;
+
+		} else if( 0 == strncmp(line, "602", 3)){
+			// TODO: elapsed
+			pl_mode = pl_pause;
+
+		} else if( 0 == strncmp(line, "603", 3)){
+			// TODO: elapsed
+			pl_mode = pl_play;
+
+		} else if( 0 == strncmp(line, "61", 2)){
+			if( mode != pl_stop && player_func_stop )
+				(*player_func_stop)();
+			mode = pl_stop;
+			db_finish(0);
+
+		} else if( 0 == strncmp(line, "62", 2)){
+			if( mode != pl_stop && player_func_stop )
+				(*player_func_stop)();
+			mode = pl_stop;
+			db_finish(0);
+
+		} else if( 0 == strncmp(line, "63", 2)){
+			if( mode != pl_stop && player_func_stop )
+				(*player_func_stop)();
+			mode = pl_stop;
+			db_finish(0);
+
+		} else if( 0 == strncmp(line, "64", 2)){
+			if( mode != pl_pause && player_func_pause )
+				(*player_func_pause)();
+			mode =  pl_pause;
+
+		} else {
+			syslog( LOG_NOTICE, "unknown worker message: %s", line );
+		}
+		free(line);
+	}
+}
+
+static t_playerror pl_send( char *cmd )
 {
 	char buf[LINELEN];
-	char *line = NULL;
 
 	if( ! pl_pid && PE_OK != pl_open() )
-		return NULL;
+		return PE_SYS;
 
-	syslog( LOG_DEBUG, "pl_get: %s", cmd );
+	syslog( LOG_DEBUG, "pl_send: %s", cmd );
 	snprintf( buf, LINELEN, "%s\n", cmd );
 	if( -1 == write( pl_wfd, buf, strlen(buf))){
 		syslog( LOG_ERR, "writing worker: %m");
 		pl_close();
-		return NULL;
+		return PE_SYS;
 	}
 
-	while( NULL != ( line = pl_getl() )){
-		
-		if( *line != '6' ) 
-			return line;
-
-		pl_bcast( line );
-		free(line);
-	}
-	return NULL;
+	return PE_OK;
 }
 
-static t_playerror pl_cmd( char *cmd )
-{
-	char *line;
-	t_playerror rv;
-
-	if( NULL == (line = pl_get( cmd )))
-		return PE_FAIL;
-
-	if( *line == '2' ){
-		rv = PE_OK;
-
-	} else if( 0 == strncmp(line,"401",3)){
-		rv = PE_NOSUP;
-
-	} else {
-		rv = PE_FAIL;
-	}
-
-	free(line);
-	return rv;
-}
-
-static void pl_check( void )
-{
-	char *line;
-
-	if( NULL == (line = pl_get( "status" )))
-		return;
-
-	if( 0 == strncmp(line, "201", 3 )){
-		pl_mode = pl_stop;
-
-	} else if( 0 == strncmp(line, "202", 3 )){
-		pl_mode = pl_pause;
-		// TODO: elapsed
-
-	} else if( 0 == strncmp(line, "203", 3 )){
-		pl_mode = pl_play;
-		// TODO: elapsed
-
-	}
-	free(line);
-}
-
-static t_playerror do_pause( t_playstatus oldmode )
-{
-	if( mode != oldmode && player_func_pause )
-		(*player_func_pause)();
-
-	if( pl_mode != pl_pause )
-		return pl_cmd("pause");
-
-	return PE_BUSY;
-}
-
-static t_playerror do_stop( t_playstatus oldmode )
-{
-	if( mode != oldmode && player_func_stop )
-		(*player_func_stop)();
-
-	if( pl_mode != pl_stop )
-		return pl_cmd("stop");
-
-	return PE_BUSY;
-}
-
-
-static t_playerror do_play( t_playstatus oldmode )
+static t_playerror pl_playnext( void )
 {
 	char cmd[MAXPATHLEN];
 	time_t now;
-
-	switch(pl_mode){
-		case pl_play:
-			return PE_BUSY;
-
-		case pl_pause:
-			if( mode != oldmode && player_func_resume )
-				(*player_func_resume)();
-			return pl_cmd("unpause");
-
-		default:
-			break;
-	}
-
 
 	/* play next file? */
         now = time(NULL);
@@ -393,9 +310,6 @@ static t_playerror do_play( t_playstatus oldmode )
 	/* get next track */
 	db_getnext();
 	if( NULL == curtrack ){
-		mode = pl_stop;
-		if( mode != oldmode && player_func_stop )
-			(*player_func_stop)();
 		return PE_NOTHING;
 	}
 
@@ -403,36 +317,10 @@ static t_playerror do_play( t_playstatus oldmode )
 	strcpy(cmd, "play ");
 	track_mkpath(cmd+5, MAXPATHLEN-5, curtrack);
 
-	if( PE_OK != pl_cmd(cmd) ){
-		return PE_FAIL;
-	}
-
-	if( player_func_newtrack )
-		(*player_func_newtrack)();
-
-	/* we cannot tell, if the start worked - update_status has to deal
-	 * with this */
-	return PE_OK;
+	return pl_send(cmd);
 }
 
-static t_playerror pl_gomode( t_playstatus oldmode )
-{
-	/* track finished playing */
-	if( oldmode != pl_stop && pl_mode == pl_stop )
-		db_finish( mode != pl_stop );
 
-	switch(mode){
-		case pl_play:
-			return do_play( oldmode );
-
-		case pl_pause:
-			return do_pause( oldmode );
-
-		case pl_stop:
-			return do_stop( oldmode );
-	}
-	return PE_FAIL;
-}
 
 
 /************************************************************
@@ -504,47 +392,68 @@ time_t player_wakeuptime( void )
 
 t_playerror player_pause( void )
 {
-	t_playstatus oldmode = mode;
+	if( mode != pl_pause && player_func_pause )
+		(*player_func_pause)();
 	mode = pl_pause;
-	return pl_gomode(oldmode);
+
+	return pl_send("pause");
+}
+
+static t_playerror player_playnext( void )
+{
+	t_playerror rv;
+
+	rv = pl_playnext();
+	if( rv == PE_OK ){
+		mode = pl_play;
+		if( player_func_newtrack )
+			(*player_func_newtrack)();
+
+	} else if( mode != pl_stop ){
+		if( player_func_stop )
+			(*player_func_stop)();
+		mode = pl_stop;
+		db_finish(0);
+	}
+
+	return rv;
 }
 
 /* unpause or start playing */
 t_playerror player_start( void )
 {
-	t_playstatus oldmode = mode;
-	mode = pl_play;
-	return pl_gomode(oldmode);
+	if( mode == pl_play )
+		return PE_NOTHING;
+
+	if( mode == pl_pause )
+		if( player_func_resume ){
+			(*player_func_resume)();
+		return pl_send("unpause");
+	}
+
+	return player_playnext();
 }
 
 t_playerror player_next( void )
 {
-	t_playstatus oldmode = mode;
-	mode = pl_play;
-	pl_cmd("stop"); // TODO: HACK
-	return pl_gomode(oldmode);
+	db_finish(1);
+	return player_playnext();
 }
 
 t_playerror player_prev( void )
 {
-#if TODO_prev
-	t_playstatus oldmode = mode;
-	mode = pl_play;
-	/* TODO: queue last item */
-	if( PE_OK != _player_stop() )
-		return PE_FAIL;
-	return pl_gomode(oldmode);
-#else
-	return PE_NOSUP;
-#endif
+	/* TODO: player_prev */
+	return PE_NOTHING;
 }
 
 
 t_playerror player_stop( void )
 {
-	t_playstatus oldmode = mode;
+	db_finish(1);
+	if( mode != pl_stop && player_func_stop )
+		(*player_func_stop)();
 	mode = pl_stop;
-	return pl_gomode(oldmode);
+	return pl_send("stop");
 }
 
 /*
@@ -566,47 +475,50 @@ void player_fdset( int *maxfd, fd_set *rfds )
 	}
 }
 
-t_playerror player_check( fd_set *rfds )
+static t_playerror player_keepplay( void )
 {
-	t_playstatus oldmode = mode;
+	syslog(LOG_DEBUG,"player_keepplay: mode=%d pl_mode=%d", 
+			 mode, pl_mode );
 
+	if( mode != pl_play ){
+		if( mode != pl_mode ){
+			/* TODO: */
+			syslog( LOG_NOTICE, "playmode confusion: mode=%d pl_mode=%d",
+				mode, pl_mode );
+			mode = pl_play;
+		}
+		return PE_NOTHING;
+	}
+
+	if( pl_mode == pl_play )
+		return PE_NOTHING;
+
+	if( pl_mode == pl_stop ){
+		db_finish(1);
+		return player_playnext();
+	}
+	
+	if( pl_mode == pl_pause ){
+		/* TODO: broadcas */
+		mode = pl_pause;
+	}
+
+	return PE_NOTHING;
+}
+
+void player_checkgap( void )
+{
+	player_keepplay();
+}
+
+void player_checkout( fd_set *rfds )
+{
 	/* update pl_mode */
 	if( rfds && pl_rfd >= 0 && FD_ISSET(pl_rfd,rfds)){
-		char *line = NULL;
-
-		if( NULL == ( line = pl_getl() ))
-			return PE_FAIL
-				;
-		if( *line == '6' ) {
-			pl_bcast( line );
-		} else {
-			syslog( LOG_ERR, "unexpected worker output: %s", line );
-		}
-		free(line);
-
-
-	} else {
-		// TODO: waitpid(pl_pid) ??
-		pl_check();
+		pl_read();
 	}
 
-	switch( pl_error ){
-		case ple_open:
-		case ple_read:
-		case ple_decode:
-			mode = pl_stop;
-			break;
-
-		case ple_output:
-			mode =  pl_pause;
-			break;
-
-		default:
-			break;
-	}
-	pl_error = ple_none;
-
-	return pl_gomode(oldmode);
+	player_keepplay();
 }
 
 

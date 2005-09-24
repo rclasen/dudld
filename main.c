@@ -22,16 +22,8 @@
 #include "opt.h"
 
 char *progname = NULL;
-int check_child = 0;
+int check_player = 0; 
 int terminate = 0;
-
-/*
-static void sig_child( int sig )
-{
-	check_child++;
-	signal( sig, sig_child );
-}
-*/
 
 static void sig_term( int sig )
 {
@@ -54,10 +46,9 @@ static void loop( void )
 	t_client *client;
 
 	while( !terminate ){
-		/* handle flag set by SIGCHLD handler */
-		if( check_child ){
-			player_check(NULL);
-			check_child = 0;
+		if( check_player ){
+			player_checkgap();
+			check_player = 0;
 		}
 
 		/* initialize fdsets for select */
@@ -76,7 +67,7 @@ static void loop( void )
 
 
 		if( wakeup ){
-			check_child++;
+			check_player++;
 
 			wakeup -= time(NULL);
 			if( wakeup < 0 )
@@ -93,13 +84,13 @@ static void loop( void )
 			}
 
 			/* 
-			 * we got a signal - maybe sigchild. 
-			 * as fdsets are invalid anyways, we restart again
+			 * we got a signal, restart loop as fdsets are
+			 * invalid
 			 */
 			continue;
 		}
 
-		player_check( &fdread );
+		player_checkout( &fdread );
 		for( client = clients; client; client = client->next ){
 			if( client->close )
 				continue;
@@ -195,7 +186,7 @@ int main( int argc, char **argv )
 	// TODO: use sigaction
 	signal( SIGTERM, sig_term );
 	signal( SIGINT, sig_term );
-	signal( SIGCHLD, SIG_IGN /*sig_child*/ );
+	signal( SIGCHLD, SIG_IGN );
 	signal( SIGPIPE, SIG_IGN );
 
 	if( clients_init( port ) ){

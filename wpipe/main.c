@@ -38,19 +38,15 @@
  *
  */
 
-/* seconds: */
-#define PROGRES_INTERVAL 5
 /* bytes: */
 #define BUFLEN 4096
 
-#define send_out(fmt...)	printf(fmt); fflush(stdout);
+#define send_out(fmt...)	printf(fmt); fflush(stdout); syslog(LOG_DEBUG,fmt);
 
 int input=-1, output=-1;
 int paused = 0;
 int elapsed = 0; /* msec */
 int child = 0;
-
-int got_sigalrm = 0;
 
 // TODO: get exit status
 
@@ -126,22 +122,14 @@ static void close_output( void )
 	child=0;
 }
 
-static void sig_alarm( int sig )
-{
-	++got_sigalrm;
-	if( input >= 0 && ! paused )
-		alarm(PROGRES_INTERVAL);
-	signal(sig, sig_alarm);
-}
-
-static void do_status(int code)
+static void do_status( void )
 {
 	if( input < 0 ){
-		send_out( "%d01 stop\n", code );
+		send_out( "601 stop\n");
 	} else if( paused ){
-		send_out( "%d02 %d pause\n", code, elapsed );
+		send_out( "602 %d pause\n", elapsed );
 	} else {
-		send_out( "%d03 %d play\n", code, elapsed );
+		send_out( "603 %d play\n", elapsed );
 	}
 }
 
@@ -149,20 +137,16 @@ static void do_pause( void )
 {
 	if( input >= 0 ){
 		++paused;
-		alarm(0);
 		pause_output();
 	}
-	do_status(6);
 }
 
 static void do_unpause( void )
 {
 	paused = 0;
 	if( input >= 0 ){
-		alarm(PROGRES_INTERVAL);
 		unpause_output();
 	}
-	do_status(6);
 }
 
 static void do_stop( void )
@@ -173,10 +157,8 @@ static void do_stop( void )
 
 	close_output();
 
-	alarm(0);
 	elapsed = 0;
 	paused = 0;
-	do_status(6);
 }
 
 static int do_play( char *fname )
@@ -190,14 +172,11 @@ static int do_play( char *fname )
 
 	if( -1 == ( input = open( fname, O_RDONLY))){
 		syslog( LOG_ERR, "open failed: %m" );
-		send_out( "510 %s\n", strerror(errno));
-		alarm(0);
+		send_out( "610 %s\n", strerror(errno));
 		return -1;
 	} else {
-		alarm(PROGRES_INTERVAL);
 		unpause_output();
 	}
-	do_status(6);
 
 	return 0;
 }
@@ -228,34 +207,27 @@ static void handle_stdin( void )
 		exit( 1 );
 	}
 	line[--len] = 0; /* strip trailing newline */
+	syslog(LOG_DEBUG, "%s", line );
 
 	if( 0 == strncmp(line, "status", 6 )){
-		do_status(2);
 	} else if( 0 == strncmp(line, "play ", 5) ){
-		if( -1 != do_play( line+5 )){
-			send_out("200 ok\n");
-		}
+		do_play( line+5 );
 	} else if( 0 == strncmp(line, "stop", 4 ) ){
 		do_stop();
-		send_out("200 ok\n");
 	} else if( 0 == strncmp(line, "pause", 5 )){
 		do_pause();
-		send_out("200 ok\n");
 	} else if( 0 == strncmp(line, "unpause", 7 )){
 		do_unpause();
-		send_out("200 ok\n");
 	} else if( 0 == strncmp(line, "seek ", 5 )){
 		int offset = atoi(line+5);
 		do_seek(offset);
-		send_out("200 ok\n");
 	} else if( 0 == strncmp(line, "jump ", 5 )){
 		int offset = atoi(line+5);
 		do_jump(offset);
-		send_out("200 ok\n");
 	} else {
-		send_out("500 unknown command\n" );
-
+		syslog(LOG_NOTICE,"unknown command: %s", line );
 	}
+	do_status();
 
 	free(line);
 }
@@ -275,7 +247,6 @@ int main( int argc, char **argv )
 		command = opt_player;
 	}
 
-	signal(SIGALRM, sig_alarm );
 	signal(SIGCHLD, SIG_IGN );
 	signal(SIGPIPE, SIG_IGN );
 
@@ -284,13 +255,6 @@ int main( int argc, char **argv )
 	while(1){
 		int maxfd = 0;
 		fd_set fdread, fdwrite;
-
-		/* deal with signals that interrupted select() */
-
-		if( got_sigalrm ){
-			do_status(6);
-			got_sigalrm = 0;
-		}
 
 		/* try to (re-)open output program */
 		if( output < 0){
@@ -331,9 +295,11 @@ int main( int argc, char **argv )
 				syslog(LOG_ERR, "reading failed: %m");
 				send_out("620 %s\n", strerror(errno));
 				do_stop();
+				do_status();
 
 			} else if( bufed == 0 ){ /* eof */
 				do_stop();
+				do_status();
 
 			}
 
@@ -348,12 +314,14 @@ int main( int argc, char **argv )
 				send_out("640 %s\n", strerror(errno));
 				close_output();
 				do_pause();
+				do_status();
 
 			} else if( written != bufed ){
 				syslog(LOG_ERR, "write failed: partial buffer written" );
 				send_out("641 partial buffer written\n");
 				close_output();
 				do_pause();
+				do_status();
 
 			} else {
 				elapsed += bufed; /* TODO: elapsed = time */
