@@ -1,3 +1,10 @@
+dudld (0.1.5) unstable; urgency=low
+
+  * converted to glib main-loop
+  * converted to Gstreamer
+
+ -- Rainer Clasen <bj@zuto.de>  Sun, 25 Sep 2005 19:07:44 +0200
+
 dudld (0.1.4) unstable; urgency=low
 
   * split player(-control) into dedicated worker process
