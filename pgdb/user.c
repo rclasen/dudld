@@ -5,6 +5,7 @@
 #include <syslog.h>
 #include <crypt.h>
 
+#include <config.h>
 #include "dudldb.h"
 #include "user.h"
 

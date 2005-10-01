@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <syslog.h>
 
+#include <config.h>
 #include <commondb/random.h>
 #include "dudldb.h"
 #include "track.h"

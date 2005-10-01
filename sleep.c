@@ -2,6 +2,7 @@
 #include <glib.h>
 #include <syslog.h>
 
+#include <config.h>
 #include "player.h"
 #include "sleep.h"
 

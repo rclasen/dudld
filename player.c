@@ -17,6 +17,7 @@
 #include <string.h>
 #include <gst/gst.h>
 
+#include <config.h>
 #include "opt.h"
 #include "commondb/track.h"
 #include "commondb/random.h"

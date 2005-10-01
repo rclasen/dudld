@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <syslog.h>
 
+#include <config.h>
 #include "dudldb.h"
 #include "filter.h"
 

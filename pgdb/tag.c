@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <syslog.h>
 
+#include <config.h>
 #include <commondb/tag.h>
 #include "dudldb.h"
 #include "track.h"

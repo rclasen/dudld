@@ -6,6 +6,7 @@
 #include <stdarg.h>
 
 // TODO: do not use opt.c directly
+#include <config.h>
 #include <opt.h>
 #include "dudldb.h"
 

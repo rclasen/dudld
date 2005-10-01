@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <config.h>
 #include "parsebuf.h"
 
 void pi_free( parser_input *i )

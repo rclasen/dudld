@@ -23,6 +23,7 @@
 #include <syslog.h>
 #include <glib.h>
 
+#include <config.h>
 #include "client.h"
 
 

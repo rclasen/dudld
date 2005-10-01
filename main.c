@@ -15,6 +15,7 @@
 
 #include <libncc/pidfile.h>
 
+#include <config.h>
 #include "client.h"
 #include "proto.h"
 #include "commondb/random.h"

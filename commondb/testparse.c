@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <config.h>
 #include "parseexpr.h"
 
 int main( int argc, char **argv )

@@ -29,7 +29,7 @@ proto.o: cmd.list
 cmd.list: proto.c
 	sed -ne '/^CMD/s/.*\(cmd_\([a-z0-9]*\)[^)]*\).*/	{"\2", \1 },/p' $^ > $@
 
-commands.txt: proto.c
+cmds.txt: proto.c
 	sed -ne 's/.*\(cmd_[a-z0-9]*\).*/\1/p' $^ | sort -u > $@
 	
 CLEANFILES=cmd.list

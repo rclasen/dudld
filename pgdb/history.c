@@ -3,6 +3,7 @@
 #include <syslog.h>
 #include <time.h>
 
+#include <config.h>
 #include <commondb/history.h>
 #include <commondb/random.h>
 #include "dudldb.h"

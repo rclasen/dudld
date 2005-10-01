@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <config.h>
 #include "parseexpr.h"
 
 #ifdef DEBUG

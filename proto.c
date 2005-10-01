@@ -42,6 +42,7 @@
 #include <syslog.h>
 #include <errno.h>
 
+#include <config.h>
 #include "commondb/album.h"
 #include "commondb/artist.h"
 #include "commondb/user.h"
