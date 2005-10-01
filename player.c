@@ -148,7 +148,7 @@ static int bp_start(void)
 	strcpy(uri, "file://");
 	track_mkpath(uri+7, MAXPATHLEN-7, curtrack);
 
-	syslog(LOG_ERR, "play_gst: uri >%s<", uri);
+	syslog(LOG_DEBUG, "play_gst: uri >%s<", uri);
         g_object_set (G_OBJECT (play), "uri", uri, NULL);
         if( gst_element_set_state( play, GST_STATE_PLAYING ) 
 		!= GST_STATE_SUCCESS ){
