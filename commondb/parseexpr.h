@@ -65,6 +65,7 @@ typedef struct s_expr {
 		valtest *val;
 		struct s_expr *expr[2];
 	} data;
+	int _refs;
 } expr;
 	
 expr *expr_parse( int *line, int *col, char **msg, parser_input *i );
@@ -72,5 +73,6 @@ expr *expr_parse_str( int *col, char **msg, char *i );
 
 int expr_fmt( char *buf, size_t len, expr *e );
 void expr_free( expr *e );
+expr *expr_copy( expr *e );
 
 #endif

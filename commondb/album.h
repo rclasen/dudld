@@ -24,6 +24,7 @@ it_album *albums_list( void );
 it_album *albums_artistid( int artistid );
 it_album *albums_search( const char *substr );
 
+// TODO: use id for set() instead of ptr, remove _save
 int album_setname( t_album *t, const char *name );
 int album_setartist( t_album *t, int artistid );
 int album_save( t_album *t );

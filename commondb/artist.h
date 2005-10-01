@@ -21,8 +21,10 @@ t_artist *artist_get( int id );
 it_artist *artist_list( void );
 it_artist *artist_search( const char *substr );
 
+// TODO: use id for set() instead of ptr, remove _save
 int artist_setname( t_artist *t, const char *name );
 int artist_save( t_artist *t );
 
+int artist_merge( int fromid, int toid );
 
 #endif

@@ -37,6 +37,7 @@ void track_free( t_track *t );
 int track_mkpath( char *buf, int len, t_track *t );
 int track_exists( t_track *t );
 
+// TODO: use id for set() instead of ptr, remove _save
 int track_settitle( t_track *t, const char *title );
 int track_setartist( t_track *t, int artistid );
 int track_save( t_track *t );

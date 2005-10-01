@@ -114,6 +114,55 @@ int artist_save( t_artist *t )
 	return 0;
 }
 
+int artist_merge( int fromid, int toid )
+{
+	PGresult *res;
+
+	res = db_query( "BEGIN" );
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res))
+		goto clean1;
+
+	res = db_query( "UPDATE stor_file "
+			"SET artist_id = %d "
+			"WHERE artist_id = %d",
+			toid, fromid );
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res))
+		goto clean2;
+
+	res = db_query( "UPDATE mus_album "
+			"SET artist_id = %d "
+			"WHERE artist_id = %d",
+			toid, fromid );
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res))
+		goto clean2;
+
+	res = db_query( "DELETE FROM mus_artist "
+			"WHERE id = %d",
+			fromid );
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res))
+		goto clean2;
+
+	res = db_query( "COMMIT" );
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res))
+		goto clean2;
+
+
+	return 0;
+
+clean1:
+	syslog( LOG_ERR, "artist_merge: %s", db_errstr());
+	PQclear(res);
+	return -1;
+
+clean2:
+	syslog( LOG_ERR, "artist_merge: %s", db_errstr());
+	PQclear(res);
+
+	res = db_query( "ROLLBACK" );
+	PQclear(res);
+	return 1;
+}
+
 t_artist *artist_get( int id )
 {
 	PGresult *res;

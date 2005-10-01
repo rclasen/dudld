@@ -554,6 +554,7 @@ static expr *parse_expr_val( parse_stat *i )
 		goto clean1;
 	}
 	e->op = op_self;
+	e->_refs = 1;
 
 	if( NULL == (e->data.val = parse_valtest(i)))
 		goto clean2;
@@ -575,6 +576,7 @@ static expr *parse_expr_not( parse_stat *i)
 		goto clean1;
 	}
 	e->op = op_not;
+	e->_refs = 1;
 
 	if( NULL == (*e->data.expr = parse_one_expr(i))){
 		parse_error(i, "expecting an expression" );
@@ -690,6 +692,7 @@ expr *parse_expr( parse_stat *i )
 	e->op = op;
 	e->data.expr[0] = a;
 	e->data.expr[1] = b;
+	e->_refs = 1;
 
 	return e;
 
@@ -785,6 +788,12 @@ int expr_fmt( char *buf, size_t len, expr *e )
 
 void expr_free( expr *e )
 {
+	if( ! e )
+		return;
+
+	if( -- e->_refs > 0 )
+		return;
+
 	switch( e->op ){
 	  case op_self:
 		  valtest_free( e->data.val );
@@ -806,4 +815,12 @@ void expr_free( expr *e )
 	free(e);
 }
 
+expr *expr_copy( expr *e )
+{
+	if( ! e )
+		return NULL;
+
+	e->_refs++;
+	return e;
+}
 

@@ -1055,7 +1055,6 @@ static void proto_bcast_filter( void )
 		expr_fmt( buf, 1024, e );
 
 	proto_bcast( r_guest, "650", "%s", e ? buf : "" );
-	expr_free(e);
 }
 
 
@@ -1070,7 +1069,6 @@ CMD(cmd_filter, r_guest, p_idle, arg_none )
 		expr_fmt( buf, 1024, e );
 
 	RLAST( "250", "%s", e ? buf : "" );
-	expr_free(e);
 }
 
 CMD(cmd_filterset, r_user, p_idle, arg_opt )
@@ -1104,7 +1102,7 @@ CMD(cmd_filterstat, r_guest, p_idle, arg_none )
 
 	(void)line;
 	if( 0 > ( matches = random_filterstat())){
-		RLAST( "550", "filter error" );
+		RLAST( "511", "filter error" );
 		return;
 	}
 
@@ -1816,6 +1814,33 @@ CMD(cmd_artistsetname, r_admin, p_idle, arg_need )
 	RLAST("293", "name changed" );
 }
 
+CMD(cmd_artistmerge, r_admin, p_idle, arg_need )
+{
+	char *s, *e;
+	int fromid;
+	int toid;
+
+	fromid = strtol(line, &e, 10 );
+	if( line == e ){
+		RBADARG( "bad from_artist_id");
+		return;
+	}
+
+	s = e + strspn(e, "\t " );
+	toid = strtol(s, &e, 10 );
+	if( *e ){
+		RBADARG( "bad to_artist_id");
+		return;
+	}
+
+	if( artist_merge(fromid, toid )){
+		RLAST("511", "failed" );
+		return;
+	}
+
+	RLAST("294", "merged artist %d into %d", fromid, toid );
+}
+
 CMD(cmd_artistadd, r_admin, p_idle, arg_need )
 {
 	RLAST( "555", "TODO: artistadd");
@@ -1875,7 +1900,7 @@ CMD(cmd_sfilterget, r_guest, p_idle, arg_need )
 	}
 
 	mksfilter(buf, BUFLENTAG, t);
-	RLAST("271", "%s", buf ); 
+	RLAST("254", "%s", buf ); 
 	sfilter_free(t);
 }
 
@@ -1887,7 +1912,7 @@ CMD(cmd_sfilter2id, r_guest, p_idle, arg_need )
 		RLAST("511", "no such sfilter" );
 		return;
 	}
-	RLAST("272", "%d", t);
+	RLAST("255", "%d", t);
 }
 
 CMD(cmd_sfilteradd, r_admin, p_idle, arg_need )
@@ -1899,7 +1924,7 @@ CMD(cmd_sfilteradd, r_admin, p_idle, arg_need )
 		return;
 	}
 
-	RLAST( "273", "%d", id );
+	RLAST( "256", "%d", id );
 }
 
 CMD(cmd_sfiltersetname, r_admin, p_idle, arg_need )
@@ -1919,7 +1944,7 @@ CMD(cmd_sfiltersetname, r_admin, p_idle, arg_need )
 		return;
 	}
 
-	RLAST("274", "name changed" );
+	RLAST("257", "name changed" );
 }
 
 CMD(cmd_sfiltersetfilter, r_admin, p_idle, arg_need )
@@ -1949,7 +1974,7 @@ CMD(cmd_sfiltersetfilter, r_admin, p_idle, arg_need )
 	}
 
 	expr_free(e);
-	RLAST("275", "filter changed" );
+	RLAST("258", "filter changed" );
 }
 
 CMD(cmd_sfilterdel, r_admin, p_idle, arg_need )
@@ -1968,7 +1993,7 @@ CMD(cmd_sfilterdel, r_admin, p_idle, arg_need )
 		return;
 	}
 
-	RLAST("276", "deleted" );
+	RLAST("259", "deleted" );
 }
 
 /************************************************************

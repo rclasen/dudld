@@ -36,6 +36,7 @@ int user_id( const char *name );
 int user_ok( t_user *u, const char *pass );
 
 it_user *users_list( void );
+// TODO: use id for set() instead of ptr, remove _save
 int user_setright( t_user *u, t_rights right );
 int user_setpass( t_user *u, const char *newpass );
 int user_save( t_user *u );

@@ -77,10 +77,8 @@ int random_setfilter( expr *filt )
 	/* flush old filter */
 	res = db_query( "DROP TABLE juke_cache" );
 	PQclear(res);
-	if( filter ){
-		expr_free( filter );
-		filter = NULL;
-	}
+	expr_free( filter );
+	filter = NULL;
 
 	if( create_cache() )
 		return 1;
@@ -90,15 +88,12 @@ int random_setfilter( expr *filt )
 		if( ! filt )
 			goto clean1;
 
-		expr_free(filt);
-		filt = NULL;
+		filter = NULL;
 		if( fill_cache(NULL) )
 			goto clean1;
+	} else {
+		filter = expr_copy(filt);
 	}
-
-	/* remember filter string */
-	// TODO: copy filter
-	filter = filt;
 
 	if( random_func_filter )
 		(*random_func_filter)();

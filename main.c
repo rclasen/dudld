@@ -52,10 +52,13 @@ static void load_filter( void )
 	if( NULL == (sf = sfilter_get( id )))
 		goto done;
 
-	e = expr_parse_str( &pos, &msg, sf->filter );
-	if( e == NULL ){
-		syslog( LOG_ERR, "startup filter failed at %d: %s",
+	if( sf->filter && *sf->filter ){
+		syslog( LOG_INFO, "loading filter >%s<", sf->filter );
+		e = expr_parse_str( &pos, &msg, sf->filter );
+		if( e == NULL ){
+			syslog( LOG_ERR, "startup filter failed at %d: %s",
 				pos, msg );
+		}
 	}
 	sfilter_free(sf);
 
