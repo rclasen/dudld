@@ -1,6 +1,6 @@
 
-#ifndef _PARSEBUF_H
-#define _PARSEBUF_H
+#ifndef _COMMONDB_PARSEBUF_H
+#define _COMMONDB_PARSEBUF_H
 
 /************************************************************
  *

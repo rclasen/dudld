@@ -1,14 +1,15 @@
-#ifndef _USER_H
-#define _USER_H
+#ifndef _COMMONDB_USER_H
+#define _COMMONDB_USER_H
 
 #include "dudldb.h"
 //#include "client.h"
 
 typedef enum {
 	r_any,
-	r_guest,
-	r_user,
-	r_master,
+	r_guest,	/* read only access */
+	r_user,		/* player/queue control */
+	r_admin,	/* Database modification */
+	r_master,	/* everything else */
 } t_rights;
 
 typedef struct {

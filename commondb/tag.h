@@ -1,5 +1,5 @@
-#ifndef _TAG_H
-#define _TAG_H
+#ifndef _COMMONDB_TAG_H
+#define _COMMONDB_TAG_H
 
 #include "dudldb.h"
 

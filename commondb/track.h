@@ -1,5 +1,5 @@
-#ifndef _TRACK_H
-#define _TRACK_H
+#ifndef _COMMONDB_TRACK_H
+#define _COMMONDB_TRACK_H
 
 #include "dudldb.h"
 #include "parseexpr.h"

@@ -1,5 +1,5 @@
-#ifndef _ARTIST_H
-#define _ARTIST_H
+#ifndef _COMMONDB_ARTIST_H
+#define _COMMONDB_ARTIST_H
 
 #include "dudldb.h"
 

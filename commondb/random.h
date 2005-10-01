@@ -1,5 +1,5 @@
-#ifndef _RANDOM_H
-#define _RANDOM_H
+#ifndef _COMMONDB_RANDOM_H
+#define _COMMONDB_RANDOM_H
 
 #include "track.h"
 #include "parseexpr.h"

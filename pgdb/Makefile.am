@@ -14,6 +14,7 @@ libdudldb_a_SOURCES= \
 	queue.c \
 	random.c \
 	tag.c \
+	sfilter.c \
 	\
 	dudldb.h \
 	filter.h \

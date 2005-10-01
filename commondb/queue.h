@@ -1,5 +1,5 @@
-#ifndef _QUEUE_H
-#define _QUEUE_H
+#ifndef _COMMONDB_QUEUE_H
+#define _COMMONDB_QUEUE_H
 
 #include "track.h"
 #include "user.h"

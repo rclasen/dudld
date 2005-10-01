@@ -1,5 +1,5 @@
-#ifndef _HISTORY_H
-#define _HISTORY_H
+#ifndef _COMMONDB_HISTORY_H
+#define _COMMONDB_HISTORY_H
 
 #include <time.h>
 
