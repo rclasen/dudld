@@ -81,6 +81,7 @@ static void it_client_del( it_client *it )
 {
 	t_client *c;
 	t_client **tmp;
+	int remain;
 
 	if( ! it )
 		return;
@@ -91,10 +92,12 @@ static void it_client_del( it_client *it )
 	c = it->clients[it->cur];
 	client_delref(c);
 
-	if( it->cur < it->num -1 )
-		memmove(it->clients + (it->cur +1) * (sizeof(t_client*)), 
-				it->clients + it->cur * (sizeof(t_client*)),
-				(it->num - it->cur -1) * (sizeof(t_client*)) );
+	remain = it->num - it->cur -1;
+	if( remain > 0 )
+		memmove( it->clients + it->cur,
+			it->clients + (it->cur +1),
+			remain * sizeof(t_client*));
+
 	it->num--;
 
 	if( it->num == 0 )
