@@ -3,7 +3,7 @@
 
 extern int opt_gap;
 extern int opt_random;
-extern char *opt_filter;
+extern char *opt_sfilter;
 extern char *opt_path_tracks;
 
 extern char *opt_db_host;

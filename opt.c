@@ -1,8 +1,7 @@
 
 int opt_gap = 0;
 int opt_random = 1;
-char *opt_filter = "! tag IN \"doppelt\", \"bad\",\"junk\",\"norandom\" & "
-	"tag IN \"metal\",\"rock\",\"indie\"";
+char *opt_sfilter = "init";
 char *opt_path_tracks = "/pub/fun/mp3/CD";
 
 char *opt_db_host = "";

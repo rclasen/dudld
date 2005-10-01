@@ -49,6 +49,7 @@
 #include "commondb/random.h"
 #include "commondb/queue.h"
 #include "commondb/tag.h"
+#include "commondb/sfilter.h"
 #include "player.h"
 #include "sleep.h"
 #include "proto.h"
@@ -331,6 +332,11 @@ static inline int mkqueue( char *buf, int len, t_queue *q )
 	return used;
 }
 
+static inline int mksfilter( char *buf, int len, t_sfilter *t )
+{
+	return mktab(buf, len, "dss", t->id, t->name, t->filter );
+}
+
 
 
 // TODO: this file is too large. Split out cmds
@@ -486,6 +492,7 @@ CMD(cmd_clientcloseuser, r_master, p_idle, arg_need )
 		RLINE( "231", "kicked" );
 	else
 		RLAST( "530", "user not found" );
+	it_client_done(it);
 }
 
 CMD(cmd_userget, r_user, p_idle, arg_need )
@@ -622,7 +629,7 @@ CMD(cmd_useradd, r_master, p_idle, arg_need )
 	RLAST( "238", "%d", uid );
 }
 
-CMD(cmd_userdel, r_user, p_idle, arg_need )
+CMD(cmd_userdel, r_master, p_idle, arg_need )
 {
 	int uid;
 	char *end;
@@ -943,7 +950,7 @@ CMD(cmd_tracksearch, r_guest, p_idle, arg_need )
 	it_track_done(it);
 }
 
-CMD(cmd_tracksearchf, r_user, p_idle, arg_need )
+CMD(cmd_tracksearchf, r_guest, p_idle, arg_need )
 {
 	expr *e = NULL;
 	char *msg;
@@ -1028,7 +1035,7 @@ CMD(cmd_track2id, r_guest, p_idle, arg_need )
 }
 
 
-CMD(cmd_trackalter, r_user, p_idle, arg_need )
+CMD(cmd_trackalter, r_admin, p_idle, arg_need )
 {
 	(void)line;
 	RBADARG("TODO: trackalter");
@@ -1048,6 +1055,7 @@ static void proto_bcast_filter( void )
 		expr_fmt( buf, 1024, e );
 
 	proto_bcast( r_guest, "650", "%s", e ? buf : "" );
+	expr_free(e);
 }
 
 
@@ -1056,12 +1064,13 @@ CMD(cmd_filter, r_guest, p_idle, arg_none )
 	char buf[1024];
 	expr *e;
 
+	(void)line;
 	e = random_filter();
 	if( e )
 		expr_fmt( buf, 1024, e );
 
 	RLAST( "250", "%s", e ? buf : "" );
-	(void)line;
+	expr_free(e);
 }
 
 CMD(cmd_filterset, r_user, p_idle, arg_opt )
@@ -1080,10 +1089,12 @@ CMD(cmd_filterset, r_user, p_idle, arg_opt )
 
 	/* at least initialize with an empty filter */
 	if( random_setfilter(e)){
+		expr_free(e);
 		RLAST( "511", "failed to apply (correct) filter" );
 		return;
 	}
 
+	expr_free(e);
 	RLAST( "251", "filter changed" );
 }
 
@@ -1383,6 +1394,7 @@ CMD(cmd_tagget, r_guest, p_idle, arg_need )
 
 	mktag(buf, BUFLENTAG, t);
 	RLAST("271", "%s", buf ); 
+	tag_free(t);
 }
 
 CMD(cmd_tag2id, r_guest, p_idle, arg_need )
@@ -1396,7 +1408,7 @@ CMD(cmd_tag2id, r_guest, p_idle, arg_need )
 	RLAST("272", "%d", t);
 }
 
-CMD(cmd_tagadd, r_user, p_idle, arg_need )
+CMD(cmd_tagadd, r_admin, p_idle, arg_need )
 {
 	int id;
 
@@ -1408,7 +1420,7 @@ CMD(cmd_tagadd, r_user, p_idle, arg_need )
 	RLAST( "273", "%d", id );
 }
 
-CMD(cmd_tagsetname, r_user, p_idle, arg_need )
+CMD(cmd_tagsetname, r_admin, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1428,7 +1440,7 @@ CMD(cmd_tagsetname, r_user, p_idle, arg_need )
 	RLAST("274", "name changed" );
 }
 
-CMD(cmd_tagsetdesc, r_user, p_idle, arg_need )
+CMD(cmd_tagsetdesc, r_admin, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1448,7 +1460,7 @@ CMD(cmd_tagsetdesc, r_user, p_idle, arg_need )
 	RLAST("275", "desc changed" );
 }
 
-CMD(cmd_tagdel, r_user, p_idle, arg_need )
+CMD(cmd_tagdel, r_admin, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1484,7 +1496,7 @@ CMD(cmd_tracktaglist, r_guest, p_idle, arg_need )
 	it_tag_done(it );
 }
 
-CMD(cmd_tracktagset, r_user, p_idle, arg_need )
+CMD(cmd_tracktagset, r_admin, p_idle, arg_need )
 {
 	char *s, *e;
 	int trackid;
@@ -1511,7 +1523,7 @@ CMD(cmd_tracktagset, r_user, p_idle, arg_need )
 	RLAST("278", "tag added to track (or already exists)" );
 }
 
-CMD(cmd_tracktagdel, r_user, p_idle, arg_need )
+CMD(cmd_tracktagdel, r_admin, p_idle, arg_need )
 {
 	char *s, *e;
 	int trackid;
@@ -1619,7 +1631,7 @@ CMD(cmd_albumlist, r_guest, p_idle, arg_none )
 	it_album_done(it);
 }
 
-CMD(cmd_albumsartist, r_guest, p_idle, arg_need )
+CMD(cmd_albumsartist, r_admin, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1647,7 +1659,7 @@ CMD(cmd_albumsearch, r_guest, p_idle, arg_need )
 
 // TODO: cmd_albumsearchf
 
-CMD(cmd_albumsetname, r_user, p_idle, arg_need )
+CMD(cmd_albumsetname, r_admin, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1676,7 +1688,7 @@ CMD(cmd_albumsetname, r_user, p_idle, arg_need )
 	RLAST("283", "name changed" );
 }
 
-CMD(cmd_albumsetartist, r_user, p_idle, arg_need )
+CMD(cmd_albumsetartist, r_admin, p_idle, arg_need )
 {
 	char *s, *e;
 	int album;
@@ -1775,7 +1787,7 @@ CMD(cmd_artistsearch, r_guest, p_idle, arg_need )
 	it_artist_done(it);
 }
 
-CMD(cmd_artistsetname, r_user, p_idle, arg_need )
+CMD(cmd_artistsetname, r_admin, p_idle, arg_need )
 {
 	char *end;
 	int id;
@@ -1804,16 +1816,159 @@ CMD(cmd_artistsetname, r_user, p_idle, arg_need )
 	RLAST("293", "name changed" );
 }
 
-CMD(cmd_artistadd, r_user, p_idle, arg_need )
+CMD(cmd_artistadd, r_admin, p_idle, arg_need )
 {
 	RLAST( "555", "TODO: artistadd");
 	(void)line;
 }
 
-CMD(cmd_artistdel, r_user, p_idle, arg_need )
+CMD(cmd_artistdel, r_admin, p_idle, arg_need )
 {
 	RLAST( "555", "TODO: artisdel");
 	(void)line;
+}
+
+/************************************************************
+ * commands: sfilter
+ */
+
+static void dump_sfilters( t_client *client, const char *code, it_sfilter *it )
+{
+	char buf[BUFLENTAG];
+	t_sfilter *t;
+
+	for( t = it_sfilter_begin(it); t; t = it_sfilter_next(it) ){
+		mksfilter(buf, BUFLENTAG, t) ;
+		RLINE(code,"%s", buf ); 
+		sfilter_free(t);
+	}
+
+	RLAST(code, "" );
+}
+
+CMD(cmd_sfilterlist, r_guest, p_idle, arg_none )
+{
+	it_sfilter *it;
+
+	(void)line;
+	it = sfilters_list();
+	dump_sfilters( client, "270", it );
+	it_sfilter_done(it );
+}
+
+CMD(cmd_sfilterget, r_guest, p_idle, arg_need )
+{
+	char buf[BUFLENTAG];
+	t_sfilter *t;
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "ecpecting a sfilter ID" );
+		return;
+	}
+
+	if( NULL == (t = sfilter_get( id ))){
+		RLAST("511", "no such sfilter" );
+		return;
+	}
+
+	mksfilter(buf, BUFLENTAG, t);
+	RLAST("271", "%s", buf ); 
+	sfilter_free(t);
+}
+
+CMD(cmd_sfilter2id, r_guest, p_idle, arg_need )
+{
+	int t;
+
+	if( 0 > (t = sfilter_id( line ))){
+		RLAST("511", "no such sfilter" );
+		return;
+	}
+	RLAST("272", "%d", t);
+}
+
+CMD(cmd_sfilteradd, r_admin, p_idle, arg_need )
+{
+	int id;
+
+	if( 0 > (id = sfilter_add( line ))){
+		RLAST("511", "failed" );
+		return;
+	}
+
+	RLAST( "273", "%d", id );
+}
+
+CMD(cmd_sfiltersetname, r_admin, p_idle, arg_need )
+{
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( line == end ){
+		RBADARG( "ecpecting a sfilter ID" );
+		return;
+	}
+
+	end += strspn(end, " \t" );
+	if( sfilter_setname(id, end )){
+		RLAST("511", "failed" );
+		return;
+	}
+
+	RLAST("274", "name changed" );
+}
+
+CMD(cmd_sfiltersetfilter, r_admin, p_idle, arg_need )
+{
+	char *end;
+	int id;
+	expr *e = NULL;
+	char *msg;
+	int pos;
+
+	id = strtol( line, &end, 10 );
+	if( line == end ){
+		RBADARG( "ecpecting a sfilter ID" );
+		return;
+	}
+
+	end += strspn(end, " \t" );
+	if( NULL == (e = expr_parse_str( &pos, &msg, end ))){
+		RLAST( "511", "error at pos %d in filter: %s", pos, msg );
+		return;
+	}
+
+	if( sfilter_setfilter(id, end )){
+		expr_free(e);
+		RLAST("511", "failed" );
+		return;
+	}
+
+	expr_free(e);
+	RLAST("275", "filter changed" );
+}
+
+CMD(cmd_sfilterdel, r_admin, p_idle, arg_need )
+{
+	char *end;
+	int id;
+
+	id = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "ecpecting a sfilter ID" );
+		return;
+	}
+
+	if( sfilter_del( id )){
+		RLAST("511", "failed" );
+		return;
+	}
+
+	RLAST("276", "deleted" );
 }
 
 /************************************************************

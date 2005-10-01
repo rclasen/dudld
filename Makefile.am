@@ -1,5 +1,7 @@
 AUTOMAKE_OPTIONS=foreign
 
+# TODO: properly test for glib and gstreamer
+
 AM_CFLAGS=-g $(shell pkg-config --cflags gstreamer-0.8 glib) -Wall -W -Wunused -Wmissing-prototypes -Wno-cast-qual -Wcast-align
 
 AM_LDFLAGS=$(shell pkg-config --libs gstreamer-0.8 glib)

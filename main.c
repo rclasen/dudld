@@ -18,6 +18,7 @@
 #include "client.h"
 #include "proto.h"
 #include "commondb/random.h"
+#include "commondb/sfilter.h"
 #include "player.h"
 #include "sleep.h"
 #include "opt.h"
@@ -33,6 +34,55 @@ static void sig_term( int sig )
 
 // TODO: config file
 // TODO: sighup handler - reread config
+
+static void load_filter( void )
+{
+	int id;
+	t_sfilter *sf;
+	expr *e = NULL;
+	char *msg;
+	int pos;
+
+	if( ! opt_sfilter || ! *opt_sfilter )
+		goto done;
+
+	if( -1 == (id = sfilter_id( opt_sfilter )))
+		goto done;
+
+	if( NULL == (sf = sfilter_get( id )))
+		goto done;
+
+	e = expr_parse_str( &pos, &msg, sf->filter );
+	if( e == NULL ){
+		syslog( LOG_ERR, "startup filter failed at %d: %s",
+				pos, msg );
+	}
+	sfilter_free(sf);
+
+done:
+	/* at least initialize with an empty filter */
+	random_setfilter( e );
+	expr_free(e);
+}
+
+static void save_filter( void )
+{
+	char buf[4096];
+	expr *e;
+	int id;
+
+	if( ! opt_sfilter || ! *opt_sfilter )
+		return;
+
+	if( -1 == (id = sfilter_id( opt_sfilter )))
+		return;
+
+	if( NULL == (e = random_filter()))
+		return;
+
+	expr_fmt(buf, 4096, e );
+	sfilter_setfilter(id, buf);
+}
 
 static void usage( void );
 
@@ -145,23 +195,7 @@ int main( int argc, char **argv )
 	player_setrandom( opt_random );
 	proto_init();
 	
-	{
-		expr *e = NULL;
-		char *msg;
-		int pos;
-
-		if( opt_filter && *opt_filter ){
-			e = expr_parse_str( &pos, &msg, opt_filter );
-			if( e == NULL ){
-				syslog( LOG_ERR, "startup filter "
-						"failed at %d: %s",
-						pos, msg );
-			}
-		}
-
-		/* at least initialize with an empty filter */
-		random_setfilter( e );
-	}
+	load_filter();
 
 
 	syslog(LOG_INFO, "waiting" );
@@ -170,6 +204,8 @@ int main( int argc, char **argv )
 	g_main_loop_run(gmain);
 
 	syslog(LOG_INFO, "terminating" );
+	
+	save_filter();
 	player_done();
 	clients_done();
 	db_done();

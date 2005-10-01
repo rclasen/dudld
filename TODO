@@ -6,9 +6,9 @@ rename tables from mserv_<name> to juke_<name> or mus_<name>
 
 who caused a broadcast message ???
 
-complete filter / random.c
+complete parsexpr / filter / random
 
-rating
+rating: play some tracks more often
 
 multiple (anonymouse) instances not possible because:
  track.lastplay
@@ -19,7 +19,14 @@ multiple (anonymouse) instances not possible because:
 
 automatically skip silence at start/end of a file
 
-clean history
+Find way to play non-archived stuff, too.
 
-re-check tracks with available=false
+seeking
 
+progress indication
+
+go back to previous track
+
+artistmerge a, b
+
+gst sink selection: sinkadd/sinkdel
