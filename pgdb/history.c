@@ -116,7 +116,7 @@ it_history *history_tracklist( int trackid, int num )
 				"h.user_id "
 			"FROM "
 				"( SELECT * FROM mserv_hist "
-					"WHERE id = %d "
+					"WHERE file_id = %d "
 					"ORDER BY added DESC "
 					"LIMIT %d "
 				") AS h "
