@@ -21,3 +21,5 @@ config.sub
 config.guess
 dudld
 cmds.txt
+config.h.in
+stamp-h1
