@@ -490,7 +490,7 @@ CMD(cmd_clientcloseuser, r_master, p_idle, arg_need )
 	}
 
 	if( found )
-		RLINE( "231", "kicked" );
+		RLAST( "231", "kicked" );
 	else
 		RLAST( "530", "user not found" );
 	it_client_done(it);
