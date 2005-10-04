@@ -20,6 +20,7 @@ multiple (anonymouse) instances not possible because:
 automatically skip silence at start/end of a file
 
 Find way to play non-archived stuff, too.
+Find way to use dudld for test-listening and integrate it into renaming
 
 seeking
 
@@ -27,6 +28,10 @@ progress indication
 
 go back to previous track
 
-artistmerge a, b
+gst sink selection: sinkadd/sinkdel?
+ - ? local oss/alsa(/esd?) playback?
+ - LAN mcast audio/raw
+ - winamp conform inet stream
+   - ? http-proxied mp3 with low bitrate
+   - ? shoutcast
 
-gst sink selection: sinkadd/sinkdel
