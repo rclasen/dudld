@@ -34,7 +34,8 @@ static int gap_id = 0;
 static t_track *curtrack = NULL;
 static int curuid = 0;
 
-GstElement *play = NULL;
+GstElement *p_src = NULL;
+GstElement *p_pipe = NULL;
 
 /* used by player_start: */
 t_player_func_update player_func_resume = NULL;
@@ -116,13 +117,13 @@ static void gap_finish( void )
 
 static t_playstatus bp_status( void )
 {
-	if( GST_STATE(play) == GST_STATE_PLAYING )
+	if( GST_STATE(p_src) == GST_STATE_PLAYING )
 		return pl_play;
 
 	else if( gap_id )
 		return pl_play;
 
-	else if( GST_STATE(play) == GST_STATE_PAUSED )
+	else if( GST_STATE(p_src) == GST_STATE_PAUSED )
 		return pl_pause;
 
 	return pl_stop;
@@ -150,8 +151,8 @@ static int bp_start(void)
 	track_mkpath(uri+7, MAXPATHLEN-7, curtrack);
 
 	syslog(LOG_DEBUG, "play_gst: uri >%s<", uri);
-        g_object_set (G_OBJECT (play), "uri", uri, NULL);
-        if( gst_element_set_state( play, GST_STATE_PLAYING ) 
+	g_object_set( G_OBJECT( p_src), "uri", uri, NULL);
+	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
 		!= GST_STATE_SUCCESS ){
 
 		syslog(LOG_ERR, "play_gst: failed to play");
@@ -159,7 +160,7 @@ static int bp_start(void)
 
 		if( player_func_stop )
 			(*player_func_stop)();
-        }
+	}
 
 	if( player_func_newtrack )
 		(*player_func_newtrack)();
@@ -174,13 +175,14 @@ static void bp_finish( int complete )
 	if( gap_id )
 		gap_finish();
 
-        if( gst_element_set_state( play, GST_STATE_READY ) 
+	// TODO: needed??
+	if( gst_element_set_state( p_pipe, GST_STATE_READY ) 
 		!= GST_STATE_SUCCESS ){
 		
 		syslog(LOG_ERR, "play_gst: failed to finish");
 		db_finish(0);
 		return;
-        }
+	}
 
 	db_finish(complete);
 }
@@ -189,10 +191,10 @@ static int bp_resume( void )
 {
 	syslog(LOG_DEBUG, "bp_resume");
 
-	if( GST_STATE(play) != GST_STATE_PAUSED )
+	if( GST_STATE(p_src) != GST_STATE_PAUSED )
 		return -1;
 
-        if( gst_element_set_state( play, GST_STATE_PLAYING ) 
+	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
 		!= GST_STATE_SUCCESS ){
 		
 		syslog(LOG_ERR, "play_gst: failed to resume");
@@ -200,7 +202,7 @@ static int bp_resume( void )
 		if( player_func_stop )
 			(*player_func_stop)();
 		return -1;
-        }
+	}
 
 	if( player_func_resume )
 		(*player_func_resume)();
@@ -221,11 +223,11 @@ static int bp_pause( void )
 		return 0;
 	} 
 	
-	if( GST_STATE(play) != GST_STATE_PLAYING )
+	if( GST_STATE(p_src) != GST_STATE_PLAYING )
 		return -1;
 
 
-	if( gst_element_set_state( play, GST_STATE_PAUSED ) 
+	if( gst_element_set_state( p_pipe, GST_STATE_PAUSED ) 
 		!= GST_STATE_SUCCESS ){
 		
 		syslog(LOG_ERR, "play_gst: failed to finish");
@@ -275,24 +277,25 @@ static gint cb_error_idle( gpointer data )
 	(void)data;
 
 	bp_finish(0);
+	//TODO: stop on read/decode, otherwise pause
 	if( player_func_stop )
 		(*player_func_stop)();
 
 	return FALSE;
 }
 
-static void cb_error (GstElement *play,
-        GstElement *src,
-        GError     *err,
-        gchar      *debug,
-        gpointer    data)
+static void cb_error( GstElement *play,
+	GstElement *src,
+	GError     *err,
+	gchar      *debug,
+	gpointer    data)
 {
-        (void)play;
-        (void)src;
-        (void)err;
-        (void)debug;
-        (void)data;
-        syslog( LOG_ERR, "play_gst: %s", err->message);
+	(void)play;
+	(void)src;
+	(void)err;
+	(void)debug;
+	(void)data;
+	syslog( LOG_ERR, "play_gst: %d %d %s", err->domain, err->code, err->message);
 	/* forward this event to main-thread */
 	g_idle_add(cb_error_idle,err);
 }
@@ -437,22 +440,24 @@ t_playerror player_stop( void )
 
 const void *player_popt_table( void )
 {
-	return gst_init_get_popt_table ();
+	return gst_init_get_popt_table( );
 }
 
 void player_init( void )
 {
-	GstElement *out;
+	GstElement *p_out;
 	
-	// TODO: chcek retval
-        play = gst_element_factory_make ("playbin", "play");
-        out = gst_element_factory_make ("esdsink", "out" );
+	// TODO: check retval
+	p_src = p_pipe = gst_element_factory_make( "playbin", "p_pipe");
+	p_out = gst_element_factory_make( "esdsink", "p_out" );
 
-        g_signal_connect (play, "eos", G_CALLBACK (cb_eos), NULL);
-        g_signal_connect (play, "error", G_CALLBACK (cb_error), NULL);
-        g_object_set (G_OBJECT (play), "audio-sink", out, NULL);
+	g_signal_connect( p_pipe, "eos", G_CALLBACK( cb_eos), NULL);
+	g_signal_connect( p_pipe, "error", G_CALLBACK( cb_error), NULL);
 
-        if( gst_element_set_state( play, GST_STATE_READY ) 
+	g_object_set( G_OBJECT( p_pipe), "audio-sink", p_out, NULL);
+	//g_object_unref( G_OBJECT( p_out));
+
+	if( gst_element_set_state( p_pipe, GST_STATE_READY ) 
 		!= GST_STATE_SUCCESS ){
 		syslog(LOG_ERR, "failed to init Gst");
 	}
@@ -461,5 +466,6 @@ void player_init( void )
 void player_done( void )
 {
 	player_stop();
-	//TODO: deallocate
+	gst_element_set_state( p_pipe, GST_STATE_NULL);
+	gst_object_unref( GST_OBJECT( p_pipe));
 }
