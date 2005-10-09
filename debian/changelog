@@ -1,3 +1,13 @@
+dudld (0.1.7) unstable; urgency=low
+
+  * rewrote protocol parser
+  * renamed tracktagset->tracktagadd
+  * renamed randomtop->filtertop
+  * added seeking + position query
+  * some cleanups
+
+ -- Rainer Clasen <bj@zuto.de>  Mon, 10 Oct 2005 01:07:13 +0200
+
 dudld (0.1.6) unstable; urgency=low
 
   * added sfilter
