@@ -528,11 +528,6 @@ void player_init( void )
 	g_signal_connect( p_pipe, "error", G_CALLBACK(cb_error), NULL);
 	gst_bin_add_many( GST_BIN(p_pipe), p_src, p_dec, p_conv, p_out, NULL);
 
-	g_object_unref(G_OBJECT(p_src));
-	g_object_unref(G_OBJECT(p_dec));
-	g_object_unref(G_OBJECT(p_conv));
-	g_object_unref(G_OBJECT(p_out));
-
 	gst_element_set_state (p_pipe, GST_STATE_READY);
 }
 
