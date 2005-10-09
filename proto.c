@@ -688,6 +688,11 @@ static void proto_bcast_player_random( void )
 	proto_bcast( r_guest, "646", "%d", player_random() );
 }
 
+static void proto_bcast_player_elapsed( void )
+{
+	proto_bcast( r_guest, "646", "%d", player_elapsed() );
+}
+
 static void reply_player( t_client *client, int r )
 {
 	switch(r){ 
@@ -782,6 +787,32 @@ CMD(cmd_pause, r_user, p_idle, arg_none )
 	r = player_pause();
 	if( r == PE_OK ){
 		RLAST( "242", "paused" );
+		return;
+	}
+
+	RPLAYER(r);
+}
+
+CMD(cmd_elapsed, r_guest, p_idle, arg_none )
+{
+	(void)line;
+	RLAST( "249", "%d", player_elapsed() );
+}
+
+CMD(cmd_jump, r_user, p_idle, arg_need )
+{
+	char *end;
+	int to_sec;
+	int r;
+
+	to_sec = strtol( line, &end, 10 );
+	if( *end ){
+		RBADARG( "invalid time" );
+		return;
+	}
+
+	if( PE_OK == (r = player_jump(to_sec))){
+		RLAST("248", "jumped" );
 		return;
 	}
 
@@ -2179,6 +2210,7 @@ void proto_init( void )
 	player_func_resume = proto_bcast_player_resume;
 	player_func_stop = proto_bcast_player_stop;
 	player_func_random = proto_bcast_player_random;
+	player_func_elapsed = proto_bcast_player_elapsed;
 
 	sleep_func_set = proto_bcast_sleep;
 

@@ -35,3 +35,6 @@ gst sink selection: sinkadd/sinkdel?
    - ? http-proxied mp3 with low bitrate
    - ? shoutcast
 
+more queue controls
+ move
+ insert

@@ -35,6 +35,7 @@ static t_track *curtrack = NULL;
 static int curuid = 0;
 
 GstElement *p_src = NULL;
+GstElement *p_out = NULL;
 GstElement *p_pipe = NULL;
 
 /* used by player_start: */
@@ -46,6 +47,7 @@ t_player_func_update player_func_pause = NULL;
 t_player_func_update player_func_stop = NULL;
 /* used by player_random */
 t_player_func_update player_func_random = NULL;
+t_player_func_update player_func_elapsed = NULL;
 
 /************************************************************
  * database functions
@@ -131,7 +133,7 @@ static t_playstatus bp_status( void )
 
 static int bp_start(void)
 {
-	char uri[MAXPATHLEN];
+	char fname[MAXPATHLEN];
 
 	syslog(LOG_DEBUG, "bp_start");
 	if( bp_status() != pl_stop ){
@@ -147,11 +149,10 @@ static int bp_start(void)
 		return PE_NOTHING;
 	}
 
-	strcpy(uri, "file://");
-	track_mkpath(uri+7, MAXPATHLEN-7, curtrack);
+	track_mkpath(fname, MAXPATHLEN, curtrack);
 
-	syslog(LOG_DEBUG, "play_gst: uri >%s<", uri);
-	g_object_set( G_OBJECT( p_src), "uri", uri, NULL);
+	syslog(LOG_DEBUG, "play_gst: >%s<", fname);
+	g_object_set( G_OBJECT( p_src), "location", fname, NULL);
 	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
 		!= GST_STATE_SUCCESS ){
 
@@ -353,6 +354,33 @@ t_playerror player_setrandom( int r )
 	return PE_OK;
 }
 
+int player_elapsed( void )
+{
+	gint64 pos;
+	GstFormat fmt = GST_FORMAT_TIME;
+
+	if( pl_stop == bp_status() )
+		return 0;
+
+	if( ! gst_element_query( p_out, GST_QUERY_POSITION, &fmt, &pos))
+		return 0;
+
+	return pos / GST_SECOND;
+}
+
+t_playerror player_jump( int to_sec )
+{
+	gint64 nanoseconds = to_sec * GST_SECOND;
+
+	if( pl_stop == bp_status() )
+		return PE_NOTHING;
+
+	gst_element_seek( p_out, GST_SEEK_METHOD_SET | GST_FORMAT_TIME |
+			GST_SEEK_FLAG_FLUSH, nanoseconds);
+
+	return PE_OK;
+}
+
 
 /*
  ************************************************************
@@ -365,6 +393,7 @@ t_playerror player_setrandom( int r )
  * - set/del gap callback
  * - send bcast
  * - set gst status: bp_start/bp_finish/bp_pause
+ * TODO: - set/del elapsed broadcast timer
  */
 
 
@@ -445,22 +474,66 @@ const void *player_popt_table( void )
 
 void player_init( void )
 {
-	GstElement *p_out;
+	GstElement *p_dec;
+	GstElement *p_conv;
+	GstCaps *scaps;
 	
-	// TODO: check retval
-	p_src = p_pipe = gst_element_factory_make( "playbin", "p_pipe");
-	p_out = gst_element_factory_make( "esdsink", "p_out" );
 
-	g_signal_connect( p_pipe, "eos", G_CALLBACK( cb_eos), NULL);
-	g_signal_connect( p_pipe, "error", G_CALLBACK( cb_error), NULL);
-
-	g_object_set( G_OBJECT( p_pipe), "audio-sink", p_out, NULL);
-	//g_object_unref( G_OBJECT( p_out));
-
-	if( gst_element_set_state( p_pipe, GST_STATE_READY ) 
-		!= GST_STATE_SUCCESS ){
-		syslog(LOG_ERR, "failed to init Gst");
+	if( NULL == (p_src = gst_element_factory_make ("filesrc", "p_src"))){
+		syslog(LOG_ERR,"player: cannot create src object");
+		exit(1);
 	}
+
+	if( NULL == (p_dec = gst_element_factory_make ("mad", "p_dec"))){
+		syslog(LOG_ERR,"player: cannot create decode object");
+		exit(1);
+	}
+	gst_element_link( p_src, p_dec );
+
+	if( NULL == (p_conv = gst_element_factory_make ("audioconvert", "p_conv"))){
+		syslog(LOG_ERR,"player: cannot create convert object");
+		exit(1);
+	}
+	gst_element_link( p_dec, p_conv );
+
+	if( NULL == (scaps = gst_caps_new_simple ("audio/x-raw-int",
+		"format", G_TYPE_STRING, "int",
+		"endianness", G_TYPE_INT, 1234,
+		"signed", G_TYPE_BOOLEAN, "true",
+		"rate", G_TYPE_INT, 44100,
+		"channels", G_TYPE_INT, 2,
+		"width", G_TYPE_INT, 16,
+		"depth", G_TYPE_INT, 16,
+		NULL))){
+
+		syslog(LOG_ERR,"player: cannot create caps object");
+		exit(1);
+	}
+
+	if( NULL == (p_out = gst_element_factory_make ("udpsink", "p_out" ))){
+		syslog(LOG_ERR,"player: cannot create output object");
+		exit(1);
+	}
+	gst_util_set_object_arg(G_OBJECT(p_out), "host", "239.0.0.1" );
+	gst_util_set_object_arg(G_OBJECT(p_out), "port", "4953" );
+	gst_util_set_object_arg(G_OBJECT(p_out), "control", "1" );
+	gst_element_link_filtered( p_conv, p_out, scaps );
+
+	if( NULL == (p_pipe = gst_thread_new("p_pipe"))){
+		syslog(LOG_ERR,"player: cannot create pipe object");
+		exit(1);
+	}
+
+	g_signal_connect( p_pipe, "eos", G_CALLBACK(cb_eos), NULL);
+	g_signal_connect( p_pipe, "error", G_CALLBACK(cb_error), NULL);
+	gst_bin_add_many( GST_BIN(p_pipe), p_src, p_dec, p_conv, p_out, NULL);
+
+	g_object_unref(G_OBJECT(p_src));
+	g_object_unref(G_OBJECT(p_dec));
+	g_object_unref(G_OBJECT(p_conv));
+	g_object_unref(G_OBJECT(p_out));
+
+	gst_element_set_state (p_pipe, GST_STATE_READY);
 }
 
 void player_done( void )
