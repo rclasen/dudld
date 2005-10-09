@@ -32,7 +32,7 @@ int tag_setdesc( int id, const char *desc );
 int tag_del( int id );
 
 it_tag *track_tags( int tid );
-int track_tagset( int tid, int id );
+int track_tagadd( int tid, int id );
 int track_tagdel( int tid, int id );
 // TODO: track_tagsetf( expr *filt, int tagid ); or is this clients' task?
 

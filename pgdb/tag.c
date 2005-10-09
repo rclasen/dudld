@@ -286,7 +286,7 @@ int track_tagged( int tid, int id )
 	return 0;
 }
 
-int track_tagset( int tid, int id )
+int track_tagadd( int tid, int id )
 {
 	PGresult *res;
 	int r;
@@ -294,7 +294,7 @@ int track_tagset( int tid, int id )
 	/* does desired tag exist? */
 	res = db_query( "SELECT id FROM mserv_tag WHERE id = %d", id );
 	if( ! res || PQresultStatus(res) != PGRES_TUPLES_OK ){
-		syslog( LOG_ERR, "track_tagset: %s", db_errstr());
+		syslog( LOG_ERR, "track_tagadd: %s", db_errstr());
 		PQclear(res);
 		return -1;
 	}
@@ -315,7 +315,7 @@ int track_tagset( int tid, int id )
 	res = db_query( "INSERT INTO mserv_filetag( tag_id, file_id ) "
 			"VALUES( %d, %d )", id, tid );
 	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
-		syslog( LOG_ERR, "track_tagset: %s", db_errstr());
+		syslog( LOG_ERR, "track_tagadd: %s", db_errstr());
 		PQclear(res);
 		return -1;
 	}

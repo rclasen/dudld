@@ -25,7 +25,6 @@
 #include "commondb/history.h"
 #include "player.h"
 
-#define LINELEN 4096
 
 static int do_random = 1;
 static int gap = 0;

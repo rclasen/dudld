@@ -16,21 +16,58 @@ dudld_SOURCES= client.c \
 	main.c \
 	opt.c \
 	player.c \
+	proto_helper.c \
+	proto_fmt.c \
+	proto_bcast.c \
+	proto_val.c \
+	proto_args.c \
+	proto_cmdlist.c \
+	proto_cmd.c \
 	proto.c \
 	sleep.c \
 	\
 	client.h \
 	opt.h \
 	player.h \
+	proto_helper.h \
+	proto_fmt.h \
+	proto_bcast.h \
+	proto_val.h \
+	proto_arg.h \
+	proto_args.h \
+	proto_cmd.h \
 	proto.h \
 	sleep.h
 
-proto.o: cmd.list
-cmd.list: proto.c
-	sed -ne '/^CMD/s/.*\(cmd_\([a-z0-9]*\)[^)]*\).*/	{"\2", \1 },/p' $^ > $@
+CLEANFILES=proto_args.h \
+	proto_cmd.h \
+	proto_args.c \
+	proto_cmdlist.c \
+	proto_arg_tpl.h \
+	proto_cmd_tpl.c
 
-cmds.txt: proto.c
-	sed -ne 's/.*\(cmd_[a-z0-9]*\).*/\1/p' $^ | sort -u > $@
-	
-CLEANFILES=cmd.list
+proto_args.h: mkproto.pl
+	perl $^ srv-argshead > $@
+proto_cmd.h: mkproto.pl
+	perl $^ srv-cmdhead > $@
+
+proto_args.o: proto_args.h
+proto_args.c: mkproto.pl
+	perl $^ srv-args > $@
+proto_cmdlist.o: proto_cmd.h
+proto_cmdlist.c: mkproto.pl
+	perl $^ srv-cmdlist > $@
+
+
+tpl: proto_arg_tpl.h proto_cmd_tpl.c
+tpldiff: tpl
+	diff -u proto_arg_tpl.h proto_arg.h
+	diff -u proto_cmd_tpl.c proto_cmd.c
+
+proto_arg_tpl.h: mkproto.pl
+	perl $^ srv-argheadtpl > $@
+proto_cmd.o: proto_cmd.h
+proto_cmd_tpl.c: mkproto.pl
+	perl $^ srv-cmdtpl > $@
+
 

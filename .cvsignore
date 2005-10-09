@@ -20,6 +20,11 @@ dudld
 config.sub
 config.guess
 dudld
-cmds.txt
 config.h.in
 stamp-h1
+proto_args.h
+proto_args.c
+proto_cmd.h
+proto_cmdlist.c
+proto_arg_tpl.h
+proto_cmd_tpl.c
