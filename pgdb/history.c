@@ -9,15 +9,16 @@
 #include "dudldb.h"
 #include "track.h"
 
-int history_add( t_track *track, int uid )
+int history_add( t_track *track, int uid, int completed )
 {
 	PGresult *res;
 	time_t now;
 
 	now = time(NULL);
-	res = db_query( "INSERT INTO mserv_hist(file_id, user_id, added) "
-			"VALUES( %d, %d, unix2time(%d) )", 
-			track->id, uid, now );
+	res = db_query( "INSERT INTO mserv_hist("
+			"file_id, user_id, added, completed) "
+			"VALUES( %d, %d, unix2time(%d), %s )", 
+			track->id, uid, now, completed ? "true" : "false" );
 	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "history_add: %s", db_errstr() );
 		PQclear(res);

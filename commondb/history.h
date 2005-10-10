@@ -12,7 +12,7 @@ typedef struct _t_history {
 	t_user *user;
 } t_history;
 
-int history_add( t_track *t, int uid );
+int history_add( t_track *t, int uid, int completed );
 
 #define it_history it_db
 #define it_history_begin(x)	((t_history*)it_db_begin(x))

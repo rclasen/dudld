@@ -23,6 +23,7 @@
 #include "commondb/random.h"
 #include "commondb/queue.h"
 #include "commondb/history.h"
+#include "commondb/tag.h"
 #include "player.h"
 
 
@@ -98,8 +99,14 @@ static void db_finish( int completed )
 	if( ! curtrack )
 		return;
 
-	if( completed )
-		history_add( curtrack, curuid );
+	history_add( curtrack, curuid, completed );
+	if( ! completed ){
+		int tagid;
+
+		if( 0 < (tagid = tag_id("failed")))
+			track_tagadd(curtrack->id,tagid);
+	}
+
 
 	track_free( curtrack );
 	curtrack = NULL;
@@ -160,6 +167,8 @@ static int bp_start(void)
 
 		if( player_func_stop )
 			(*player_func_stop)();
+
+		return PE_FAIL;
 	}
 
 	if( player_func_newtrack )
@@ -295,7 +304,7 @@ static void cb_error( GstElement *play,
 	(void)err;
 	(void)debug;
 	(void)data;
-	syslog( LOG_ERR, "play_gst: %d %d %s", err->domain, err->code, err->message);
+	syslog( LOG_ERR, "play_gst: %s %d %d %s", GST_ELEMENT_NAME(src), err->domain, err->code, err->message);
 	/* forward this event to main-thread */
 	g_idle_add(cb_error_idle,err);
 }
