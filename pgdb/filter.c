@@ -5,6 +5,7 @@
 #include "dudldb.h"
 #include "filter.h"
 
+// TODO: report errors
 
 static int sql_value( char *buf, size_t len, value *v )
 {
@@ -22,7 +23,8 @@ static int sql_value( char *buf, size_t len, value *v )
 		  free(esc);
 		  break;
 
-	  default:
+	  case vt_list:
+		  // TODO: report error
 		  break;
 	}
 	return used;
@@ -110,7 +112,17 @@ static int sql_tag( char *buf, size_t len, valtest *vt )
 		  list = vt->val->val.list;
 		  break;
 
-	  default:
+	  case vo_none:
+	  case vo_max:
+		  // nothing to do
+		  break;
+
+	  case vo_lt:
+	  case vo_le:
+	  case vo_gt:
+	  case vo_ge:
+	  case vo_re:
+		  // TODO: report error
 		break;
 
 	}
@@ -234,6 +246,7 @@ int sql_expr( char *buf, size_t len, expr *e )
 		  break;
 
 	  case op_none:
+		  // nothing to do
 		  break;
 	}
 	return used;
