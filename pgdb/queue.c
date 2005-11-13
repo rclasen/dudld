@@ -264,6 +264,30 @@ int queue_clear( void )
 	return 0;
 }
 
+int queue_sum( void )
+{
+	PGresult *res;
+	int sum;
+
+	res = db_query( "SELECT SUM(time2unix(f.duration)) "
+			"FROM mserv_queue q "
+			"INNER JOIN stor_file f ON q.file_id = f.id" );
+	if( !res || PQresultStatus(res) != PGRES_TUPLES_OK ){
+		syslog( LOG_ERR, "queue_sum: %s", db_errstr());
+		PQclear(res);
+		return -1;
+	}
+
+	if( PQntuples(res) == 1 ){
+		sum = pgint(res,0,0);
+	} else {
+		sum = 0;
+	}
+	PQclear(res);
+
+	return sum;
+}
+
 
 
 

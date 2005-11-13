@@ -14,7 +14,7 @@ sub p_user { return "p_user" };
 sub p_idle { return "p_idle" };
 
 # TODO: cleanup codes
-# TODO: client args, ret
+# TODO: client stuff
 my @cmds = (
 	{
 		name	=> "quit",
@@ -396,6 +396,7 @@ my @cmds = (
 		cargs	=> [qw( num )],
 		cret	=> "it_history",
 	},
+	# TODO: historysearchf
 	{
 		name	=> "historytrack",
 		code	=> "260",
@@ -417,6 +418,7 @@ my @cmds = (
 		cargs	=> [qw( )],
 		cret	=> "it_queue",
 	},
+	# TODO: queuesearchf
 	{
 		name	=> "queueget",
 		code	=> "264",
@@ -436,7 +438,7 @@ my @cmds = (
 		cret	=> "id",
 	},
 	# TODO: queueinsert
-	# TODO: queuemove
+	# TODO**: queuemove
 	{
 		name	=> "queuedel",
 		code	=> "262",
@@ -450,6 +452,15 @@ my @cmds = (
 		name	=> "queueclear",
 		code	=> "263",
 		minpriv	=> r_master,
+		context	=> p_idle,
+		sargs	=> [qw( )],
+		cargs	=> [qw( )],
+		cret	=> "succ",
+	},
+	{
+		name	=> "queuesum",
+		code	=> "265",
+		minpriv	=> r_guest,
 		context	=> p_idle,
 		sargs	=> [qw( )],
 		cargs	=> [qw( )],
@@ -765,7 +776,7 @@ sub srv_argheadtpl {
 	my $arg = shift;
 
 	print "typedef void * t_arg_$arg;\n";
-	print "#define arg_$arg { \"$arg\", APARSE(val_$arg), /* TODO */ AFREE(NULL) }\n";
+	print "#define arg_$arg { \"$arg\", APARSE(val_$arg), /* TPL */ AFREE(NULL) }\n";
 	print "\n";
 }
 
@@ -822,25 +833,10 @@ EOF
 
 	print <<EOF;
 
-	/* TODO: cmd_$cmd->{name} */
+	/* TPL: cmd_$cmd->{name} */
 }
 
 EOF
-}
-
-sub cli_head {
-	my $cmd = shift;
-	# TODO
-}
-
-sub cli_list {
-	my $cmd = shift;
-	# TODO
-}
-
-sub cli_tpl {
-	my $cmd = shift;
-	# TODO
 }
 
 sub loop {
@@ -915,17 +911,6 @@ if( $what eq "srv-argheadtpl" ){
 	&loop( \&srv_cmdtpl);
 
 
-
-} elsif( $what eq "cli-header" ){
-	&loop( \&cli_head);
-
-} elsif( $what eq "cli-list" ){
-	print "{\n";
-	&loop( \&cli_list);
-	print "};\n";
-
-} elsif( $what eq "cli-template" ){
-	&loop( \&cli_tpl);
 
 } else {
 	print STDERR "invalid request\n";

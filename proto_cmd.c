@@ -560,6 +560,20 @@ void cmd_queueclear( t_client *client, char *code, void **argv )
 	proto_rlast(client,code, "queue cleared" );
 }
 
+void cmd_queuesum( t_client *client, char *code, void **argv )
+{
+	int sum;
+
+	(void)argv;
+
+	if( 0 > ( sum = queue_sum())){
+		proto_rlast(client, "510", "internal error" );
+		return;
+	}
+
+	proto_rlast(client, code, "%d", sum );
+}
+
 void cmd_taglist( t_client *client, char *code, void **argv )
 {
 	it_tag *it;

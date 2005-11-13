@@ -38,6 +38,7 @@ t_queue *queue_get( int id );
 int queue_add( int trackid, int uid );
 int queue_del( int queueid, int uid );
 int queue_clear( void );
+int queue_sum( void );
 
 it_queue *queue_list( void );
 
