@@ -73,6 +73,8 @@ static PGresult *db_vquery( char *query, va_list ap )
 		return NULL;
 	}
 
+	syslog( LOG_DEBUG, "db_vquery(%s)", buf );
+
 	/* we have a connecteio? try the query */
 	if( dbcon ){
 		res = PQexec( dbcon, buf );
@@ -117,7 +119,7 @@ _it_db *db_iterate( db_convert func, char *query, ... )
 	va_end( ap );
 
 	if( res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK ){
-		syslog( LOG_ERR, "query failed: %s", PQerrorMessage(dbcon));
+		syslog( LOG_ERR, "query >%s< failed: %s", query, PQerrorMessage(dbcon));
 		PQclear(res);
 		return NULL;
 	}
