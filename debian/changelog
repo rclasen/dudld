@@ -1,3 +1,17 @@
+dudld (0.1.8) unstable; urgency=low
+
+  * always add history entry - although with indication if track completed
+  * add "failed" tag if track caused playback errors
+  * cleaned up filter stuff - now properly discovers invalid statements
+  * renamed database user
+  * added queuesum command
+  * be more verbose, which track failed playing
+  * made code for elapsed bcast unique
+  * be more verbose about db errors/query debuging
+  * added regexp filter match for tags
+
+ -- Rainer Clasen <bj@zuto.de>  Sun, 13 Nov 2005 19:35:53 +0100
+
 dudld (0.1.7) unstable; urgency=low
 
   * rewrote protocol parser
