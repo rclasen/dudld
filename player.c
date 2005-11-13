@@ -99,6 +99,7 @@ static void db_finish( int completed )
 	if( ! curtrack )
 		return;
 
+	// TODO: set "complete" only when track was played at least 50%?
 	history_add( curtrack, curuid, completed );
 	if( ! completed ){
 		int tagid;
@@ -184,7 +185,7 @@ static void bp_finish( int complete )
 	if( gap_id )
 		gap_finish();
 
-	// TODO: needed??
+	// TODO: is stopping the pipe needed??
 	if( gst_element_set_state( p_pipe, GST_STATE_READY ) 
 		!= GST_STATE_SUCCESS ){
 		
@@ -285,6 +286,11 @@ static gint cb_error_idle( gpointer data )
 {
 	(void)data;
 
+	if( curtrack )
+		syslog(LOG_ERR, "play_gst: failed track id=%d %d/%d", 
+				curtrack->id, curtrack->album->id, 
+				curtrack->albumnr);
+
 	bp_finish(0);
 	//TODO: stop on read/decode, otherwise pause
 	if( player_func_stop )
@@ -322,6 +328,8 @@ t_track *player_track( void )
 	if( ! curtrack )
 		return NULL;
 
+	// TODO: player_track doesn't tell, who picked this track. This is
+	// hidden, till the track is added to the history
 	track_use(curtrack);
 	return curtrack;
 }
