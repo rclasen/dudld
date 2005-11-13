@@ -63,7 +63,7 @@ void proto_bcast_player_random( void )
 
 void proto_bcast_player_elapsed( void )
 {
-	proto_bcast( r_guest, "646", "%d", player_elapsed() );
+	proto_bcast( r_guest, "647", "%d", player_elapsed() );
 }
 
 void proto_bcast_sleep( void )
