@@ -7,7 +7,7 @@ char *opt_path_tracks = "/pub/fun/mp3/CD";
 char *opt_db_host = "";
 char *opt_db_port = "";
 char *opt_db_name = "dudl";
-char *opt_db_user = "mserv";
-char *opt_db_pass = "mserv";
+char *opt_db_user = "dudld";
+char *opt_db_pass = "dudld";
 
 
