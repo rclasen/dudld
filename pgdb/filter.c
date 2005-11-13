@@ -189,6 +189,26 @@ static int sql_vt_taglist( char *buf, size_t len, valtest *vt, char *row )
 	return sql_taglist( buf, len, vt->val->val.list );
 }
 
+static int sql_vt_tagre( char *buf, size_t len, valtest *vt, char *row )
+{
+	char *esc;
+	int used;
+
+	(void)row;
+	esc = db_escape(vt->val->val.string);
+	used = snprintf( buf, len,
+			"EXISTS( SELECT file_id "
+			"FROM mserv_filetag ft "
+				"INNER JOIN mserv_tag tag "
+				"ON ft.tag_id = tag.id "
+			"WHERE "
+				"t.id = ft.file_id AND "
+				"tag.name %s '%s')",
+			oper_names[vt->op], esc );
+	free(esc);
+	return used;
+}
+
 static int sql_vt_string( char *buf, size_t len, valtest *vt, char *row )
 {
 	char *esc;
@@ -231,7 +251,7 @@ static sql_valtestfmt_t sql_valtestfmt[] ={
 
 	{ vf_tag, vo_eq, vt_num, sql_vt_num, NULL},
 	{ vf_tag, vo_eq, vt_string, sql_vt_tag, NULL},
-	// TODO: { vf_tag, vo_re, vt_string, sql_vt_tag, NULL},
+	{ vf_tag, vo_re, vt_string, sql_vt_tagre, NULL},
 	{ vf_tag, vo_in, vt_list, sql_vt_taglist, NULL},
 
 	{ vf_title, vo_eq, vt_string, sql_vt_string, "title" },

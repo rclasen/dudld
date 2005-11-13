@@ -439,7 +439,7 @@ static valtesttype vttypes[] = {
 
 	{ vf_tag, vo_eq, vt_num },
 	{ vf_tag, vo_eq, vt_string },
-	// TODO: { vf_tag, vo_re, vt_string },
+	{ vf_tag, vo_re, vt_string },
 	{ vf_tag, vo_in, vt_list },
 
 	{ vf_title, vo_eq, vt_string },
