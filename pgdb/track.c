@@ -286,6 +286,11 @@ it_track *tracks_searchf( expr *filter )
 
 	*where = 0;
 	sql_expr(where, 4096, filter);
+	if( ! *where ){
+		syslog( LOG_ERR, "tracks_searchf skipped: empty where statement");
+		// TODO: errno = EINVAL;
+		return NULL;
+	}
 
 	return db_iterate( (db_convert)track_convert, "SELECT * "
 			"FROM mserv_track t "

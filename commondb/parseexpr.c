@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <unistd.h>
@@ -5,15 +6,20 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <stdarg.h>
+#include <syslog.h>
 
 #include <config.h>
 #include "parseexpr.h"
 
+//#define DEBUG
 #ifdef DEBUG
-#define DTOKEN(x)	syslog(LOG_DEBUG,"found token: %s\n",x )
+#define DMSG(x...)	syslog(LOG_DEBUG, x )
 #else
-#define DTOKEN(x)	{}
+#define DMSG(x...)	{}
 #endif
+
+#define DTOKEN(x)	DMSG("found token: %s",x )
 
 typedef struct {
 	parser_input *in;
@@ -24,9 +30,17 @@ typedef struct {
  * low-level token reader
  */
 
-static inline void parse_error( parse_stat *i, char *msg )
+static inline void parse_error( parse_stat *i, char *fmt, ... )
 {
-	if( ! i->msg ) i->msg = msg;
+	va_list ap;
+
+	va_start(ap, fmt);
+	if( ! i->msg ){
+		char *p = NULL;
+		vasprintf(&p, fmt, ap );
+		i->msg = p;
+	}
+	va_end(ap);
 }
 
 /* find next non-whitespace char */
@@ -185,11 +199,24 @@ static char *parse_string( parse_stat *i )
  * value parsing
  */
 
-static void value_free( value *v )
+void vallist_free( value **v )
 {
 	value **p;
 
+	if( ! v )
+		return;
+
+	for( p = v; *p; ++p )
+		free(*p);
+	free(v);
+}
+
+static void value_free( value *v )
+{
+
 	switch(v->type){
+	  case vt_none:
+	  case vt_max:
 	  case vt_num:
 		  break;
 
@@ -198,11 +225,9 @@ static void value_free( value *v )
 		  break;
 
 	  case vt_list:
-		  if( ! v->val.list ) break;
-		  for( p = v->val.list; *p; ++p )
-			  free(*p);
-		  free(v->val.list);
+		  vallist_free(v->val.list);
 		  break;
+	
 	}
 	free(v);
 }
@@ -232,6 +257,11 @@ static int value_fmt( char *buf, size_t len, value *v )
 			  used += value_fmt( buf+used, len-used, *p );
 			  if( used > len ) return used;
 		  }
+		  break;
+
+	  case vt_none:
+	  case vt_max:
+		  // TODO: report error
 		  break;
 	}
 	return used;
@@ -381,12 +411,89 @@ static valop parse_valop( parse_stat *i )
 	return vo_none;
 }
 
+typedef struct {
+	valfield field;
+	valop op;
+	valtype type;
+} valtesttype;
+
+/* don't forget to update backend specific list, too */
+static valtesttype vttypes[] = {
+	{ vf_dur, vo_eq, vt_num },
+	{ vf_dur, vo_lt, vt_num },
+	{ vf_dur, vo_le, vt_num },
+	{ vf_dur, vo_gt, vt_num },
+	{ vf_dur, vo_ge, vt_num },
+
+	{ vf_lplay, vo_eq, vt_num },
+	{ vf_lplay, vo_lt, vt_num },
+	{ vf_lplay, vo_le, vt_num },
+	{ vf_lplay, vo_gt, vt_num },
+	{ vf_lplay, vo_ge, vt_num },
+
+	{ vf_year, vo_eq, vt_num },
+	{ vf_year, vo_lt, vt_num },
+	{ vf_year, vo_le, vt_num },
+	{ vf_year, vo_gt, vt_num },
+	{ vf_year, vo_ge, vt_num },
+
+	{ vf_tag, vo_eq, vt_num },
+	{ vf_tag, vo_eq, vt_string },
+	// TODO: { vf_tag, vo_re, vt_string },
+	{ vf_tag, vo_in, vt_list },
+
+	{ vf_title, vo_eq, vt_string },
+	{ vf_title, vo_re, vt_string },
+
+	{ vf_artist, vo_eq, vt_string },
+	{ vf_artist, vo_eq, vt_num },
+	// TODO: { vf_artist, vo_in, vt_list },
+	{ vf_artist, vo_re, vt_string },
+
+	{ vf_album, vo_eq, vt_string },
+	{ vf_album, vo_eq, vt_num },
+	// TODO: { vf_album, vo_in, vt_list },
+	{ vf_album, vo_re, vt_string },
+
+	{ vf_none, vo_none, vt_none },
+};
+
+static char *valfield_name[vf_max] = {
+	"", // none
+	"duration",
+	"lastplay",
+	"tag",
+	"artist",
+	"title",
+	"album",
+	"year"
+};
+
+static char *valop_name[vo_max] = {
+	"", // none
+	"=",
+	"<",
+	"<=",
+	">",
+	">=",
+	"IN",
+	"~",
+};
+
+static char *valtype_name[vt_max] = {
+	"", // none
+	"number",
+	"string",
+	"list",
+};
+
 
 static valtest *parse_valtest( parse_stat *i )
 {
 	valtest *vt;
 	char *name;
-	int numeric = 0;
+	valtesttype *vtt;
+	int valid = 0;
 
 	if( NULL == (vt = malloc(sizeof(valtest)))){
 		parse_error(i, strerror(errno));
@@ -399,25 +506,12 @@ static valtest *parse_valtest( parse_stat *i )
 		goto clean2;
 	}
 
-	// TODO: use valfield_name array
-	if( 0 == strcmp( name, "duration" )){
-		vt->field = vf_dur;
-		numeric++;
-	} else if( 0 == strcmp( name, "lastplay" )){
-		vt->field = vf_lplay;
-		numeric++;
-	} else if( 0 == strcmp( name, "tag" )){
-		vt->field = vf_tag;
-	} else if( 0 == strcmp( name, "artist" )){
-		vt->field = vf_artist;
-	} else if( 0 == strcmp( name, "title" )){
-		vt->field = vf_title;
-	} else if( 0 == strcmp( name, "album" )){
-		vt->field = vf_album;
-	} else if( 0 == strcmp( name, "year" )){
-		vt->field = vf_year;
-		numeric++;
-	} else {
+	for( vt->field = vf_none; vt->field < vf_max; ++vt->field ){
+		if( 0 == strcmp(name, valfield_name[vt->field])){
+			break;
+		}
+	}
+	if( vt->field == vf_max ){
 		parse_error( i, "unknown field" );
 		free(name);
 		goto clean2;
@@ -428,32 +522,11 @@ static valtest *parse_valtest( parse_stat *i )
 	/* get operator */
 	vt->op = parse_valop(i);
 	switch(vt->op){
-	  case vo_none:
-	  case vo_max:
-		parse_error( i, "invalid value operator");
-	  	goto clean2;
-
 	  case vo_lt:
 	  case vo_le:
 	  case vo_gt:
 	  case vo_ge:
-		/*
-		if( ! numeric ){
-			parse_error( i, "invalid operation for string value" );
-			goto clean2;
-		}
-		*/
-		vt->val = parse_value(i);
-		break;
-
 	  case vo_re:
-		if( numeric ){
-			parse_error( i, "invalid operation for numeric value");
-			goto clean2;
-		}
-		vt->val = parse_value(i);
-		break;
-
 	  case vo_eq:
 		vt->val = parse_value(i);
 		break;
@@ -461,6 +534,11 @@ static valtest *parse_valtest( parse_stat *i )
 	  case vo_in:
 		vt->val = parse_vallist(i);
 		break;
+
+	  case vo_none:
+	  case vo_max:
+		parse_error( i, "invalid value operator");
+	  	goto clean2;
 	}
 
 	if( vt->val == NULL ){
@@ -468,26 +546,26 @@ static valtest *parse_valtest( parse_stat *i )
 		goto clean2;
 	}
 
-	if( vt->op == vo_re && vt->val->type != vt_string ){
-		parse_error(i, "regexp match needs string value" );
+	DMSG( "found valtest: %d %d %d", vt->field, vt->op, vt->val->type );
+	/* check field,op,valtype combination is allowed */
+	for( vtt = vttypes; vtt->field != vf_none; ++vtt ){
+		if( vtt->field == vt->field 
+				&& vtt->op == vt->op
+				&& vtt->type == vt->val->type ){
+
+			valid++;
+			break;
+		}
+	}
+
+	if( ! valid ){
+		parse_error(i, "invalid match on %s %s %d", 
+				valfield_name[vt->field], 
+				valop_name[vt->op], 
+				valtype_name[vt->val->type] );
 		goto clean3;
-	}
-	
-	if( numeric ){
-		if( vt->val->type != vt_num ){
-			parse_error(i, "need a numeric value" );
-			goto clean3;
-		}
 
-	} else {
-		if( vt->field != vf_tag && vt->val->type != vt_string ){
-			// TODO: id lookup
-			// TODO: lookup reject should happen from DB module
-			parse_error(i, "id lookup not yet allowed");
-			goto clean3;
-		}
 	}
-
 
 	return vt;
 
@@ -504,27 +582,6 @@ static void valtest_free( valtest *vt )
 	value_free(vt->val);
 	free(vt);
 }
-
-static char *valfield_name[vf_max] = {
-	"duration",
-	"lastplay",
-	"tag",
-	"artist",
-	"title",
-	"album",
-	"year"
-};
-
-static char *valop_name[vo_max] = {
-	"",
-	"=",
-	"<",
-	"<=",
-	">",
-	">=",
-	"IN",
-	"~",
-};
 
 static int valtest_fmt( char *buf, size_t len, valtest *vt )
 {
@@ -781,6 +838,8 @@ int expr_fmt( char *buf, size_t len, expr *e )
 		  break;
 
 	  case op_none:
+	  case op_max:
+		  // TODO: report error
 		  break;
 	}
 
@@ -811,6 +870,8 @@ void expr_free( expr *e )
 		  break;
 
 	  case op_none:
+	  case op_max:
+		  // TODO: report error
 		  break;
 	}
 	free(e);

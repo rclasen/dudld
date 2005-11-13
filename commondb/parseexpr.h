@@ -6,9 +6,13 @@
 #include "parsebuf.h"
 
 typedef enum {
+	vt_none,
+
 	vt_num,
 	vt_string,
 	vt_list,
+
+	vt_max,
 } valtype;
 
 typedef struct s_value {
@@ -22,11 +26,14 @@ typedef struct s_value {
 
 typedef enum {
 	vo_none,
+
 	vo_eq,
+
 	vo_lt,
 	vo_le,
 	vo_gt,
 	vo_ge,
+
 	vo_in,
 	vo_re,
 
@@ -34,6 +41,8 @@ typedef enum {
 } valop;
 
 typedef enum {
+	vf_none,
+
 	vf_dur,
 	vf_lplay,
 	vf_tag,
@@ -53,10 +62,13 @@ typedef struct {
 
 typedef enum {
 	op_none,
+
 	op_self,
 	op_not,
 	op_and,
 	op_or,
+
+	op_max,
 } operator;
 
 typedef struct s_expr {
@@ -74,5 +86,8 @@ expr *expr_parse_str( int *col, char **msg, char *i );
 int expr_fmt( char *buf, size_t len, expr *e );
 void expr_free( expr *e );
 expr *expr_copy( expr *e );
+
+void vallist_free( value **v );
+
 
 #endif

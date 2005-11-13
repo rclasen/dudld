@@ -7,157 +7,153 @@
 
 // TODO: report errors
 
-static int sql_value( char *buf, size_t len, value *v )
+static int add_val( value ***vlist, size_t *num, value *add )
 {
-	size_t used = 0;
-	char *esc;
+	value **tmp;
 
-	switch(v->type){
-	  case vt_num:
-		  used += snprintf( buf+used, len-used, "%d",v->val.num );
-		  break;
+	if( NULL == (tmp = realloc(*vlist, (*num+1) * sizeof(value))))
+		return 1;
 
-	  case vt_string:
-		  esc = db_escape(v->val.string);
-		  used += snprintf( buf+used, len-used, "'%s'", esc );
-		  free(esc);
-		  break;
+	*vlist = tmp;
+	tmp[(*num)++] = add;
 
-	  case vt_list:
-		  // TODO: report error
-		  break;
-	}
-	return used;
+	return 0;
 }
 
-static int sql_taglist( char *buf, size_t len, value **lst )
+#define SQL_LEN 1024
+static value **sql_tags2id( value **inval )
 {
-	size_t used = 0;
-	value **v;
-	char sql[512];
-	size_t sus = 0;
+	value **val;
+	value **idval = NULL;
+	int idnum = 0;
+	char sql[SQL_LEN] = "";
+	int used = 0;
 	char *esc;
 	PGresult *res;
 	int tup;
 
-	*sql = 0;
-	for( v = lst; *v; ++v ){
-		/* add id to buf */
-		if( (*v)->type != vt_string ){
-			if( used ){
-				used += snprintf( buf+used, len-used, 
-						", " );
-				if( used > len ) return used;
-			}
 
-			used += snprintf( buf+used, len-used, "%d", 
-					(*v)->val.num );
-			if( used > len ) return used;
+	/* add id values to result and build query to lookup strings */
+	for( val = inval; *val ; ++val ){
+		switch( (*val)->type ){
+		  case vt_num:
+			  if( add_val( &idval, &idnum, *val ))
+				  goto clean1;
+			  break;
 
-			continue;
+		  case vt_string:
+			  syslog( LOG_DEBUG, "tag2id: %s", (*val)->val.string );
+			  if( used ){
+				  used += snprintf(sql+used, SQL_LEN-used, ",");
+			  	  if( used > SQL_LEN )
+					  goto clean1;
+			  }
+
+			  esc = db_escape((*val)->val.string);
+			  used += snprintf(sql+used, SQL_LEN-used,"'%s'",esc);
+			  free(esc);
+
+			  if( used > SQL_LEN )
+				  goto clean1;
+			  break;
+
+		  case vt_list:
+		  case vt_none:
+		  case vt_max:
+			  // TODO: report error
+			  break;
 		}
-
-		/*  and build a list of strings for searching their IDs */
-		if( v != lst ){
-			sus += snprintf( sql+sus, 512-sus, ", " );
-			if( sus > 512 ) return 0;
-		}
-
-		esc = db_escape((*v)->val.string);
-		sus += snprintf( sql+sus, 512-sus, "'%s'", esc );
-		free(esc);
-		if( sus > 512 ) return 0;
 	}
 
-	if( ! sus )
-		return used;
+	if( ! used ){
+		add_val(&idval, &idnum, NULL );
+		return idval;
+	}
 
 	res = db_query( "SELECT id FROM mserv_tag WHERE name IN (%s)", sql );
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK){
-		syslog( LOG_ERR, "sql_taglist: %s", db_errstr() );
+		syslog( LOG_ERR, "sql_tags2id: %s", db_errstr() );
 		PQclear(res);
-		return used;
+		goto clean1;
 	}
 
 	for( tup = 0; tup < PQntuples(res); ++tup ){
-		if( used ){
-			used += snprintf( buf+used, len-used, ", " );
-			if( used > len ) goto clean;
-		}
+		value *v;
+		v = malloc(sizeof(value));
+		v->type = vt_num;
+		v->val.num = pgint(res,tup,0);
 
-		used += snprintf( buf+used, len-used, "%s", 
-				PQgetvalue(res,tup,0));
-		if( used > len ) goto clean;
+		if( add_val( &idval, &idnum, v ))
+			goto clean2;
+
 	}
 
-clean:
 	PQclear(res);
-	return used;
+	add_val( &idval, &idnum, NULL );
+	return idval;
+
+clean2:
+	PQclear(res);
+clean1:
+	vallist_free(idval);
+	return NULL;
 }
 
-static int sql_tag( char *buf, size_t len, valtest *vt )
+static char *sql_idlist( value **vlist )
 {
-	value *eqlist[2] = { NULL, NULL };
-	value **list = NULL;
-	size_t used = 0;
+	value **val;
+	size_t sused = 0;
+	static char sbuf[SQL_LEN];
 
+	*sbuf = 0;
+	for( val = vlist; *val; ++val ){
+		if( val != vlist ){
+			sused += snprintf( sbuf+sused, SQL_LEN-sused, ",");
+			if( sused > SQL_LEN )
+				return NULL;
+		}
 
-	switch( vt->op ){
-	  case vo_eq:
-		  eqlist[0] = vt->val;
-		  list = eqlist;
-		  break;
-
-	  case vo_in:
-		  list = vt->val->val.list;
-		  break;
-
-	  case vo_none:
-	  case vo_max:
-		  // nothing to do
-		  break;
-
-	  case vo_lt:
-	  case vo_le:
-	  case vo_gt:
-	  case vo_ge:
-	  case vo_re:
-		  // TODO: report error
-		break;
+		sused += snprintf( sbuf+sused, SQL_LEN-sused, 
+				"%d", (*val)->val.num );
+		if( sused > SQL_LEN )
+			return NULL;
 
 	}
 
-	if( ! list )
+	return sbuf;
+
+}
+
+static int sql_taglist( char *buf, size_t len, value **vlist )
+{
+	value **idlist;
+	size_t used = 0;
+	char *lst;
+
+	if( NULL == ( idlist = sql_tags2id( vlist )))
 		return 0;
 
-	used += snprintf( buf+used, len-used, 
+	if( NULL == (lst = sql_idlist(idlist)))
+		goto clean1;
+
+	if( *lst == 0 )
+		goto clean1;
+
+	used = snprintf( buf, len, 
 			"EXISTS( SELECT file_id "
 			"FROM mserv_filetag ft "
 			"WHERE "
 				"t.id = ft.file_id AND "
-				"ft.tag_id IN ("
-				);
-	if( used > len ) return used;
+				"ft.tag_id IN (%s))",
+				lst );
 
-	used += sql_taglist( buf+used, len-used, list );
-	if( used > len ) return used;
-
-	used += snprintf( buf+used, len-used, "))" );
+clean1:
+	vallist_free(idlist);
 	return used;
 }
 
-char *field_names[vf_max] = {
-	"dur",
-	"lplay",
-	"",
-	"artist_name",
-	"title",
-	"album_name",
-	"album_publish_date",
-};
-
-char *oper_names[vo_max] = {
-	"",
+static char *oper_names[vo_max] = {
+	"", // none
 	"=",
 	"<",
 	"<=",
@@ -167,41 +163,113 @@ char *oper_names[vo_max] = {
 	"~*",
 };
 
+static int sql_vt_num( char *buf, size_t len, valtest *vt, char *row )
+{
+	return snprintf( buf, len, "%s %s %d", 
+			row, oper_names[vt->op], vt->val->val.num );
+}
+
+static int sql_vt_year( char *buf, size_t len, valtest *vt, char *row )
+{
+	return snprintf( buf, len, "%s %s '%04d-01-01'", 
+				  row, oper_names[vt->op], vt->val->val.num );
+}
+
+static int sql_vt_tag( char *buf, size_t len, valtest *vt, char *row )
+{
+	value *vlist[2] = { vt->val, NULL };
+
+	(void)row;
+	return sql_taglist( buf, len, vlist );
+}
+
+static int sql_vt_taglist( char *buf, size_t len, valtest *vt, char *row )
+{
+	(void)row;
+	return sql_taglist( buf, len, vt->val->val.list );
+}
+
+static int sql_vt_string( char *buf, size_t len, valtest *vt, char *row )
+{
+	char *esc;
+	int used;
+
+	esc = db_escape(vt->val->val.string);
+	used = snprintf( buf, len, "%s %s '%s'", 
+			row, oper_names[vt->op], esc );
+	free(esc);
+	return used;
+}
+
+typedef int (*fmt_func)(char *buf, size_t len, valtest *vt, char *row );
+typedef struct {
+	valfield field;
+	valop op;
+	valtype type;
+	fmt_func func;
+	char *row;
+} sql_valtestfmt_t;
+
+static sql_valtestfmt_t sql_valtestfmt[] ={
+	{ vf_dur, vo_eq, vt_num, sql_vt_num, "dur" },
+	{ vf_dur, vo_lt, vt_num, sql_vt_num, "dur" },
+	{ vf_dur, vo_le, vt_num, sql_vt_num, "dur" },
+	{ vf_dur, vo_gt, vt_num, sql_vt_num, "dur" },
+	{ vf_dur, vo_ge, vt_num, sql_vt_num, "dur" },
+
+	{ vf_lplay, vo_eq, vt_num, sql_vt_num, "lplay" },
+	{ vf_lplay, vo_lt, vt_num, sql_vt_num, "lplay" },
+	{ vf_lplay, vo_le, vt_num, sql_vt_num, "lplay" },
+	{ vf_lplay, vo_gt, vt_num, sql_vt_num, "lplay" },
+	{ vf_lplay, vo_ge, vt_num, sql_vt_num, "lplay" },
+
+	{ vf_year, vo_eq, vt_num, sql_vt_year, "album_publish_date" },
+	{ vf_year, vo_lt, vt_num, sql_vt_year, "album_publish_date" },
+	{ vf_year, vo_le, vt_num, sql_vt_year, "album_publish_date" },
+	{ vf_year, vo_gt, vt_num, sql_vt_year, "album_publish_date" },
+	{ vf_year, vo_ge, vt_num, sql_vt_year, "album_publish_date" },
+
+	{ vf_tag, vo_eq, vt_num, sql_vt_num, NULL},
+	{ vf_tag, vo_eq, vt_string, sql_vt_tag, NULL},
+	// TODO: { vf_tag, vo_re, vt_string, sql_vt_tag, NULL},
+	{ vf_tag, vo_in, vt_list, sql_vt_taglist, NULL},
+
+	{ vf_title, vo_eq, vt_string, sql_vt_string, "title" },
+	{ vf_title, vo_re, vt_string, sql_vt_string, "title" },
+
+	{ vf_artist, vo_eq, vt_string, sql_vt_string, "artist_name" },
+	{ vf_artist, vo_eq, vt_num, sql_vt_num, "artist_id" },
+	// TODO: { vf_artist, vo_in, vt_list, sql_vt_idlist, "artist_name" },
+	{ vf_artist, vo_re, vt_string, sql_vt_string, "artist_name" },
+
+	{ vf_album, vo_eq, vt_string, sql_vt_string, "album_name" },
+	{ vf_album, vo_eq, vt_num, sql_vt_num, "album_id" },
+	// TODO: { vf_album, vo_in, vt_list, sql_vt_idlist, "album_name" },
+	{ vf_album, vo_re, vt_string, sql_vt_string, "album_name" },
+
+	{ vf_none, vo_none, vt_none, NULL, NULL },
+};
+
 static int sql_valtest( char *buf, size_t len, valtest *vt )
 {
-	size_t used = 0;
+	sql_valtestfmt_t *fmt;
+	int found = 0;
 
+	for( fmt = sql_valtestfmt; fmt->field != vf_none; ++fmt ){
+		if( fmt->field == vt->field 
+				&& fmt->op == vt->op
+				&& fmt->type == vt->val->type ){
 
-	switch(vt->field){
-	  case vf_tag:
-		  used += sql_tag( buf+used, len-used, vt );
-		  break;
-
-	  // TODO allow other fields than tag
-	  case vf_title:
-	  case vf_artist:
-	  case vf_album:
-	  case vf_dur:
-	  case vf_lplay:
-		  used += snprintf( buf+used, len-used, "%s %s ", 
-				  field_names[vt->field], 
-				  oper_names[vt->op] );
-		  if( used > len ) return used;
-		  used += sql_value( buf+used, len-used, vt->val );
-		  break;
-
-	  case vf_year:
-		  used += snprintf( buf+used, len-used, "%s %s '%04d-01-01'", 
-				  field_names[vt->field], 
-				  oper_names[vt->op],
-				  vt->val->val.num );
-		  break;
-
-	  case vf_max:
-		  return 0;
+			found++;
+			break;
+		}
+	}
+	if( found ){
+		return (*fmt->func)(buf, len, vt, fmt->row );
 	}
 
-	return used;
+	// TODO: report error
+	return 0;
 }
 
 int sql_expr( char *buf, size_t len, expr *e )
@@ -246,7 +314,8 @@ int sql_expr( char *buf, size_t len, expr *e )
 		  break;
 
 	  case op_none:
-		  // nothing to do
+	  case op_max:
+		  // TODO: report error
 		  break;
 	}
 	return used;
