@@ -28,3 +28,9 @@ proto_cmd.h
 proto_cmdlist.c
 proto_arg_tpl.h
 proto_cmd_tpl.c
+*.tar.gz
+depcomp
+install-sh
+ltmain.sh
+missing
+
