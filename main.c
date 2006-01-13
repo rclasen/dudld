@@ -24,6 +24,8 @@
 #include "sleep.h"
 #include "opt.h"
 
+#define  DUDLD_CONFIG	"/etc/dudld.conf"
+
 char *progname = NULL;
 GMainLoop *gmain = NULL;
 
@@ -32,9 +34,6 @@ static void sig_term( int sig )
 	(void)sig;
 	g_main_loop_quit(gmain);
 }
-
-// TODO: config file
-// TODO: sighup handler - reread config
 
 static void load_filter( void )
 {
@@ -93,19 +92,19 @@ static void usage( void );
 int main( int argc, char **argv )
 {
 	pid_t pid;
-	char *pidfile = "/var/run/dudld/dudld.pid";
 	int foreground = 0;
 	int debug = 0;
-	int port = 4445;
 	int c;
 	int needhelp = 0;
+	char *config = DUDLD_CONFIG;
 	struct poptOption popt[] = {
 		{ NULL,	0, POPT_ARG_INCLUDE_TABLE, NULL, 0, "GStreamer", NULL},
 		{ "help",	'h', POPT_ARG_NONE,	NULL, 'h', NULL, NULL },
-		{ "foreground",	'f', POPT_ARG_NONE,	NULL, 'f', NULL, NULL  },
-		{ "debug",	'd', POPT_ARG_NONE,	NULL, 'd', NULL, NULL  },
-		{ "port",	'p', POPT_ARG_INT,	NULL, 'p', NULL, NULL  },
-		{ "pidfile",	'i', POPT_ARG_STRING,	NULL, 'i', NULL, NULL  },
+		{ "foreground",	'f', POPT_ARG_NONE,	NULL, 'f', NULL, NULL },
+		{ "debug",	'd', POPT_ARG_NONE,	NULL, 'd', NULL, NULL },
+		{ "port",	'p', POPT_ARG_INT,	NULL, 'p', NULL, NULL },
+		{ "pidfile",	'i', POPT_ARG_STRING,	NULL, 'i', NULL, NULL },
+		{ "config",	'c', POPT_ARG_STRING,	NULL, 'c', NULL, NULL },
 		POPT_TABLEEND
 	};
 	poptContext pctx;
@@ -140,11 +139,15 @@ int main( int argc, char **argv )
 			  break;
 
 		  case 'p':
-			  port = atoi(optarg);
+			  opt_port = atoi(optarg);
 			  break;
 
 		  case 'i':
-			  pidfile = strdup(optarg);
+			  opt_pidfile = strdup(optarg);
+			  break;
+
+		  case 'c':
+			  config = strdup(optarg);
 			  break;
 
 		  default:
@@ -163,8 +166,9 @@ int main( int argc, char **argv )
 	if( ! debug )
 		setlogmask( LOG_UPTO(LOG_INFO) );
 
+	opt_read( config );
 
-	if( pidfile_flock(pidfile)){
+	if( pidfile_flock(opt_pidfile)){
 		syslog( LOG_ERR, "cannot create pidfile: %m");
 		exit(1);
 	}
@@ -175,7 +179,7 @@ int main( int argc, char **argv )
 	signal( SIGCHLD, SIG_IGN );
 	signal( SIGPIPE, SIG_IGN );
 
-	if( clients_init( port ) ){
+	if( clients_init( opt_port ) ){
 		syslog( LOG_ERR, "clients_init(): %m" );
 		return 1;
 	}
@@ -185,7 +189,7 @@ int main( int argc, char **argv )
 		exit( 1 );
 	}
 	/* our pid changed - update pidfile */
-	if( pidfile_ftake(pidfile, pid) ){
+	if( pidfile_ftake(opt_pidfile, pid) ){
 		syslog( LOG_ERR, "cannot update pidfile: %m" );
 		exit(1);
 	}
@@ -200,7 +204,9 @@ int main( int argc, char **argv )
 	proto_init();
 	
 	load_filter();
-
+	if( opt_start ){
+		player_start();
+	}
 
 	syslog(LOG_INFO, "waiting" );
 
@@ -213,7 +219,7 @@ int main( int argc, char **argv )
 	player_done();
 	clients_done();
 	db_done();
-	pidfile_funlock(pidfile);
+	pidfile_funlock(opt_pidfile);
 	return 0;
 }
 
