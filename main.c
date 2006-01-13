@@ -231,5 +231,9 @@ static void usage( void )
 		" -f --foreground    do not detach\n"
 		" -d --debug         be more verbose\n"
 		" -p --port <port>   set port to listen on\n"
+		" -i --pidfile <file> where to store pidfile\n"
+		" -c --config <file> config file location\n"
+		"\n"
+		"gstreamer options are also accepted.\n"
 	      );
 }

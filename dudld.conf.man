@@ -1,0 +1,61 @@
+.TH DUDLD.CONF 5 "14 Januar 2006" "Dudl Jukebox Daemon" "Version 0.1.9"
+.SH NAME
+dudl.conf \- config for the dudld mp3 jukebox daemon
+
+.SH DESCRIPTION
+This manual page describes the syntax of the dudld configuration file.
+
+The file is read using the glib keyfile parser. This means it is roughly
+ini-like. Comments are started with #.
+
+[dudld]
+
+<key>=<value>
+
+.SH KEYS
+.TP
+\fBport\fR
+TCP port to listen on.
+.TP
+\fBpidfile\fR
+where to store PID after startup.
+.TP
+\fBpath_tracks\fR
+root directory with music files. This directory has to be structured like
+this:
+
+<collection>/<collection><4-digit-num>/[<dir(s)>/]<files>
+
+.TP
+\fBgap\fR
+initial gap between tracks in seconds.
+.TP
+\fBrandom\fR
+initial state of random playback: 0=off, 1=on
+.TP
+\fBstart\fR
+should jukebox to attempt to play on startup: 0=off, 1=on
+.TP
+\fBsfilter\fR
+name of \fIsfilter\fR to load on startup and save on exit.
+
+.TP
+\fBdb_host\fR
+database hostname. Empty for UNIX socket.
+.TP
+\fBdb_port\fR
+database port. Empty for UNIX socket.
+.TP
+\fBdb_name\fR
+database name.
+.TP
+\fBdb_user\fR
+database user.
+.TP
+\fBdb_pass\fR
+database password.
+
+.SH "SEE ALSO"
+.BR dudld (1)
+.SH AUTHORS
+Rainer Clasen

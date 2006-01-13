@@ -6,6 +6,10 @@ AM_CFLAGS=-g $(shell pkg-config --cflags gstreamer-0.8 glib) -Wall -W -Wunused -
 
 AM_LDFLAGS=$(shell pkg-config --libs gstreamer-0.8 glib)
 
+man8_MANS=dudld.man
+man5_MANS=dudld.conf.man
+EXTRA_DIST=$(MANS)
+
 SUBDIRS=commondb pgdb # wpipe # wgst
 
 sbin_PROGRAMS=dudld

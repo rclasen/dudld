@@ -1,6 +1,7 @@
 dudld (0.1.9) unstable; urgency=low
 
   * added config file support
+  * added man pages
 
  -- Rainer Clasen <bj@zuto.de>  Fri, 13 Jan 2006 10:55:42 +0100
 
