@@ -21,6 +21,9 @@ dudld \- a mp3 jukebox daemon
 is the mp3 Jukebox commponent of the 
 .B Dudl
 Music Database.
+
+Currently the daemon generates a decoded audio stream multicasted to 239.0.0.1.
+
 .SH OPTIONS
 Options available for the
 .B dudld
@@ -55,7 +58,8 @@ dudld startup configuration
 .BI /var/run/dudld/dudld.pid
 .SH "SEE ALSO"
 .BR dudld.conf (5),
-.BR dudlc (1)
+.BR dudlc (1),
+.BR dcast-client (1)
 .SH BUGS
 I guess there are tons of 'em
 .SH AUTHORS

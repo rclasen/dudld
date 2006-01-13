@@ -7,9 +7,10 @@ Standards-Version: 3.5.2
 
 Package: dudld
 Architecture: any
-Depends: ${shlibs:Depends}, dudl-db (=0.0.1)
+Depends: ${shlibs:Depends}, dudl-db (=0.0.1), gstreamer0.8-tools
+Suggests: gstreamer0.8-plugins, gstreamer0.8-lame
 Description: dudl jukebox daemon
- The dudl jukebox is a network oriented MP3 server you can connect to with
+ The dudl jukebox is a network oriented MP3 server you can control from
  multiple clients. 
  .
  This is the daemon using the dudl database.

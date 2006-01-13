@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+exec gst-launch-0.8 --silent udpsrc \
+		port=4953 \
+		control=1 \
+		multicast-group=239.0.0.1 \
+	\! "audio/x-raw-int", \
+		format=int, \
+		rate=44100, \
+		channels=2, \
+		width=16, \
+		depth=16 \
+	\! audioconv \
+	\! alsasink

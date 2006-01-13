@@ -6,14 +6,17 @@ AM_CFLAGS=-g $(shell pkg-config --cflags gstreamer-0.8 glib) -Wall -W -Wunused -
 
 AM_LDFLAGS=$(shell pkg-config --libs gstreamer-0.8 glib)
 
-man8_MANS=dudld.man
+man1_MANS=dcast-client.man
 man5_MANS=dudld.conf.man
+man8_MANS=dudld.man
+
 EXTRA_DIST=$(MANS)
 
 SUBDIRS=commondb pgdb # wpipe # wgst
 
-sbin_PROGRAMS=dudld
+dist_bin_SCRIPTS=dcast-client
 sysconf_DATA=dudld.conf
+sbin_PROGRAMS=dudld
 
 dudld_LDADD= commondb/libcommon.a pgdb/libdudldb.a
 dudld_LDFLAGS=-lpq -lncc

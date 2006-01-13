@@ -1,0 +1,20 @@
+.TH DCAST-CLIENT 1 "14 Januar 2006" "Dudl Jukebox Daemon client" "Version 0.1.9"
+.SH NAME
+dcast-client \- mulicast listener for dudld streams.
+
+.SH SYNOPSIS
+.B dcast-client
+.SH OPTIONS
+this program takes no options. As this is a simple script starting a
+gstreamer pipe, you can change it at your will. Please consult the
+gstreamer documentation for details ;-)
+.SH DESCRIPTION
+.B dcast-client
+is a sample listener for the multicast streams produced by the mp3 Jukebox
+daemon 
+.B dudld.
+
+.SH "SEE ALSO"
+.BR dudld (8)
+.SH AUTHORS
+Rainer Clasen
