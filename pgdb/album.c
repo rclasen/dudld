@@ -4,9 +4,7 @@
 #include <stdio.h>
 #include <syslog.h>
 
-// TODO: do not use opt directly
 #include <config.h>
-#include <opt.h>
 #include "album.h"
 #include "artist.h"
 
