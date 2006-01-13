@@ -24,7 +24,7 @@
 #include "sleep.h"
 #include "opt.h"
 
-#define  DUDLD_CONFIG	"/etc/dudld.conf"
+#define  DUDLD_CONFIG	SYSCONFDIR "/dudld.conf"
 
 char *progname = NULL;
 GMainLoop *gmain = NULL;

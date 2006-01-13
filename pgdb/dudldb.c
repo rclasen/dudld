@@ -45,6 +45,8 @@ static int db_conn( void )
 		return 1;
 	}
 
+	// TODO: check dbver
+
 	return 0;
 }
 

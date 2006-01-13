@@ -2,13 +2,14 @@ AUTOMAKE_OPTIONS=foreign
 
 # TODO: properly test for glib and gstreamer
 
-AM_CFLAGS=-g $(shell pkg-config --cflags gstreamer-0.8 glib) -Wall -W -Wunused -Wmissing-prototypes -Wno-cast-qual -Wcast-align
+AM_CFLAGS=-g $(shell pkg-config --cflags gstreamer-0.8 glib) -Wall -W -Wunused -Wmissing-prototypes -Wno-cast-qual -Wcast-align -DSYSCONFDIR=\"@sysconfdir@\"
 
 AM_LDFLAGS=$(shell pkg-config --libs gstreamer-0.8 glib)
 
 SUBDIRS=commondb pgdb # wpipe # wgst
 
 sbin_PROGRAMS=dudld
+sysconf_DATA=dudld.conf
 
 dudld_LDADD= commondb/libcommon.a pgdb/libdudldb.a
 dudld_LDFLAGS=-lpq -lncc

@@ -1,3 +1,9 @@
+dudld (0.1.9) unstable; urgency=low
+
+  * added config file support
+
+ -- Rainer Clasen <bj@zuto.de>  Fri, 13 Jan 2006 10:55:42 +0100
+
 dudld (0.1.8) unstable; urgency=low
 
   * always add history entry - although with indication if track completed

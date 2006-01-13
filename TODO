@@ -6,9 +6,15 @@ rename tables from mserv_<name> to juke_<name> or mus_<name>
 
 who caused a broadcast message ???
 
+make filter parser modular (for queue and history filter)
+
 complete parsexpr / filter / random
 
 rating: play some tracks more often
+
+more sophisticated permission system
+
+secure authentication? encrypted connection?
 
 multiple (anonymouse) instances not possible because:
  track.lastplay
@@ -19,12 +25,11 @@ multiple (anonymouse) instances not possible because:
 
 automatically skip silence at start/end of a file
 
-Find way to play non-archived stuff, too.
-Find way to use dudld for test-listening and integrate it into renaming
+"normalize" volume level
+
+integrate dudl with test-listening and renaming
 
 seeking
-
-progress indication
 
 go back to previous track
 
@@ -38,3 +43,5 @@ gst sink selection: sinkadd/sinkdel?
 more queue controls
  move
  insert
+
+voting: play the song most users requested

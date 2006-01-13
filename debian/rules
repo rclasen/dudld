@@ -24,7 +24,7 @@ endif
 config.status: configure
 	dh_testdir
 	# Add here commands to configure the package.
-	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info
+	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --sysconfdir=/etc
 
 
 build: build-stamp
@@ -60,7 +60,7 @@ install: build
 	dh_installdirs
 
 	# Add here commands to install the package into debian/dudld.
-	$(MAKE) install prefix=$(CURDIR)/debian/dudld/usr
+	$(MAKE) install prefix=$(CURDIR)/debian/dudld/usr sysconfdir=$(CURDIR)/debian/dudld/etc
 
 
 # Build architecture-independent files here.
@@ -81,7 +81,7 @@ binary-arch: build install
 #	dh_installmime
 	dh_installinit defaults 21 19
 	dh_installcron
-	dh_installman
+#	dh_installman
 	dh_installinfo
 #	dh_undocumented
 	dh_installchangelogs 
