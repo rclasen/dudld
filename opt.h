@@ -9,6 +9,7 @@ extern int opt_gap;
 extern int opt_random;
 extern int opt_start;
 extern char *opt_sfilter;
+extern char *opt_failtag;
 
 extern char *opt_db_host;
 extern char *opt_db_port;

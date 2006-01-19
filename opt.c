@@ -11,6 +11,7 @@ int opt_gap = -1;
 int opt_random = -1;
 int opt_start = -1;
 char *opt_sfilter = NULL;
+char *opt_failtag = NULL;
 /* TODO: make gst/gstreamer pipe configurable */
 
 char *opt_db_host = NULL;
@@ -70,6 +71,7 @@ void opt_read( char *fname )
 	def_integer( &opt_random, keyfile, "random", 1 );
 	def_integer( &opt_start, keyfile, "start", 0 );
 	def_string( &opt_sfilter, keyfile, "sfilter", "init" );
+	def_string( &opt_failtag, keyfile, "failtag", "failed" );
 
 	def_string( &opt_db_host, keyfile, "db_host", "" );
 	def_string( &opt_db_port, keyfile, "db_port", "" );

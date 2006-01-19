@@ -171,7 +171,7 @@ static int sql_vt_num( char *buf, size_t len, valtest *vt, char *row )
 
 static int sql_vt_year( char *buf, size_t len, valtest *vt, char *row )
 {
-	return snprintf( buf, len, "%s %s '%04d-01-01'", 
+	return snprintf( buf, len, "%s %s '%04d'", 
 				  row, oper_names[vt->op], vt->val->val.num );
 }
 
@@ -243,11 +243,11 @@ static sql_valtestfmt_t sql_valtestfmt[] ={
 	{ vf_lplay, vo_gt, vt_num, sql_vt_num, "lplay" },
 	{ vf_lplay, vo_ge, vt_num, sql_vt_num, "lplay" },
 
-	{ vf_year, vo_eq, vt_num, sql_vt_year, "album_publish_date" },
-	{ vf_year, vo_lt, vt_num, sql_vt_year, "album_publish_date" },
-	{ vf_year, vo_le, vt_num, sql_vt_year, "album_publish_date" },
-	{ vf_year, vo_gt, vt_num, sql_vt_year, "album_publish_date" },
-	{ vf_year, vo_ge, vt_num, sql_vt_year, "album_publish_date" },
+	{ vf_year, vo_eq, vt_num, sql_vt_year, "album_publish_year" },
+	{ vf_year, vo_lt, vt_num, sql_vt_year, "album_publish_year" },
+	{ vf_year, vo_le, vt_num, sql_vt_year, "album_publish_year" },
+	{ vf_year, vo_gt, vt_num, sql_vt_year, "album_publish_year" },
+	{ vf_year, vo_ge, vt_num, sql_vt_year, "album_publish_year" },
 
 	{ vf_tag, vo_eq, vt_num, sql_vt_num, NULL},
 	{ vf_tag, vo_eq, vt_string, sql_vt_tag, NULL},

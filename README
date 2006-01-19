@@ -1,0 +1,13 @@
+Database access:
+================
+
+depends on how you've setup your dudl database:
+
+a) default ident-based access where you create matching unix and Postgress
+users:
+ - adduser --system dudld
+ - echo "user=dudld" >> /etc/default/dudld
+
+b) authenticate on DB connect. The default config is setup for this.
+
+

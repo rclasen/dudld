@@ -16,13 +16,6 @@ typedef struct _t_track {
 	char *fname;
 	int _refs;
 	unsigned int lastplay;
-	union {
-		unsigned int any;
-		struct {
-			unsigned int title:1;
-			unsigned int artist:1;
-		} m;
-	} modified;
 } t_track;
 
 #define it_track it_db
@@ -37,10 +30,8 @@ void track_free( t_track *t );
 int track_mkpath( char *buf, int len, t_track *t );
 int track_exists( t_track *t );
 
-// TODO: use id for set() instead of ptr, remove _save
-int track_settitle( t_track *t, const char *title );
-int track_setartist( t_track *t, int artistid );
-int track_save( t_track *t );
+int track_setname( int trackid, const char *title );
+int track_setartist( int trackid, int artistid );
 
 int tracks( void );
 int track_id( int album_id, int num );

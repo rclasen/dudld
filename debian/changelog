@@ -1,3 +1,14 @@
+dudld (0.1.10) unstable; urgency=low
+
+  * added tracksetname/-artist
+  * added albumsetyear
+  * added artistadd/-del
+  * included year in album data - INCOMPATIBLE PROTOCOL CHANGE
+  * made protocol greeting versionend to identify further protocol changes
+  * removed _save() functions from DB layer
+
+ -- Rainer Clasen <bj@zuto.de>  Mon, 16 Jan 2006 15:04:25 +0100
+
 dudld (0.1.9) unstable; urgency=low
 
   * added config file support

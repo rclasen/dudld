@@ -344,6 +344,24 @@ my @cmds = (
 		cargs	=> [qw( id id )],
 		cret	=> "id",
 	},
+	{
+		name	=> "tracksetname",
+		code	=> "283",
+		minpriv	=> r_admin,
+		context	=> p_idle,
+		sargs	=> [qw( id string )],
+		cargs	=> [qw( id string )],
+		cret	=> "succ",
+	},
+	{
+		name	=> "tracksetartist",
+		code	=> "284",
+		minpriv	=> r_admin,
+		context	=> p_idle,
+		sargs	=> [qw( id id )],
+		cargs	=> [qw( id id )],
+		cret	=> "succ",
+	},
 	# TODO: track modification
 
 
@@ -628,6 +646,15 @@ my @cmds = (
 		cargs	=> [qw( id id )],
 		cret	=> "succ",
 	},
+	{
+		name	=> "albumsetyear",
+		code	=> "286",
+		minpriv	=> r_admin,
+		context	=> p_idle,
+		sargs	=> [qw( id num )],
+		cargs	=> [qw( id num )],
+		cret	=> "succ",
+	},
 	# TODO: albumdel
 
 
@@ -658,15 +685,15 @@ my @cmds = (
 		cargs	=> [qw( id )],
 		cret	=> "artist",
 	},
-#	{
-#		name	=> "artistadd", # TODO
-#		code	=> "295",
-#		minpriv	=> r_admin,
-#		context	=> p_idle,
-#		sargs	=> [qw( string )],
-#		cargs	=> [qw( string )],
-#		cret	=> "id",
-#	},
+	{
+		name	=> "artistadd",
+		code	=> "295",
+		minpriv	=> r_admin,
+		context	=> p_idle,
+		sargs	=> [qw( string )],
+		cargs	=> [qw( string )],
+		cret	=> "id",
+	},
 	{
 		name	=> "artistsetname",
 		code	=> "293",
@@ -685,15 +712,15 @@ my @cmds = (
 		cargs	=> [qw( id id )],
 		cret	=> "succ",
 	},
-#	{
-#		name	=> "artistdel", # TODO
-#		code	=> "295",
-#		minpriv	=> r_admin,
-#		context	=> p_idle,
-#		sargs	=> [qw( id )],
-#		cargs	=> [qw( id )],
-#		cret	=> "succ",
-#	},
+	{
+		name	=> "artistdel",
+		code	=> "295",
+		minpriv	=> r_admin,
+		context	=> p_idle,
+		sargs	=> [qw( id )],
+		cargs	=> [qw( id )],
+		cret	=> "succ",
+	},
 
 
 	{

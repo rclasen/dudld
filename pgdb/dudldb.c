@@ -39,14 +39,17 @@ static int db_conn( void )
 	dbcon = PQconnectdb( buffer );
 	if( NULL == dbcon || CONNECTION_OK != PQstatus(dbcon)){
 		syslog( LOG_ERR, "db_conn failed: %s", PQerrorMessage(dbcon));
-		PQfinish(dbcon);
-		dbcon = NULL;
-		return 1;
+		goto clean1;
 	}
 
 	// TODO: check dbver
 
 	return 0;
+
+clean1:
+	PQfinish(dbcon);
+	dbcon = NULL;
+	return 1;
 }
 
 const char *db_errstr( void )

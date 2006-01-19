@@ -18,19 +18,28 @@ test -f $DAEMON || exit 0
 set -e
 
 
-flags="-d"
-user=mserv
+flags=""
+user=""
 piddir=/var/run/$NAME
 pidfile=$piddir/$NAME.pid
 
+[ -r /etc/default/dudld ] && . /etc/default/dudld
+
+if [ -n "$user" ]; then
+	uarg="--chuid $user"
+	export HOME=`getent passwd $user | cut -d : -f 6`
+else
+	uarg=""
+	export HOME=`getent passwd root | cut -d : -f 6`
+fi
 
 case "$1" in
   start)
 	echo -n "Starting $DESC: "
 	mkdir -p $piddir
-	chown $user $piddir
+	[ -n "$user" ] && chown -R $user $piddir
 	start-stop-daemon --start --quiet --pidfile $pidfile \
-		--chuid $user --exec $DAEMON -- $flags
+		$uarg --exec $DAEMON -- $flags
 	echo "$NAME."
 	;;
   stop)

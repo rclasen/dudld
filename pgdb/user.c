@@ -211,12 +211,12 @@ it_user *users_list( void )
 			"FROM mserv_user ORDER BY LOWER(name)" );
 }
 
-int user_setright( t_user *u, t_rights right )
+int user_setright( int userid, t_rights right )
 {
 	PGresult *res;
 
 	res = db_query( "UPDATE mserv_user SET lev = %d WHERE id = %d",
-			right, u->id);
+			right, userid);
 	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "user_setright: %s", db_errstr() );
 		PQclear(res);
@@ -230,11 +230,10 @@ int user_setright( t_user *u, t_rights right )
 
 	PQclear(res);
 
-	u->right = right;
 	return 0;
 }
 
-int user_setpass( t_user *u, const char *newpass )
+int user_setpass( int userid, const char *newpass )
 {
 	PGresult *res;
 	char *pass;
@@ -242,7 +241,7 @@ int user_setpass( t_user *u, const char *newpass )
 	pass = pass_gen(newpass);
 
 	res = db_query( "UPDATE mserv_user SET pass = '%s' WHERE id = %d",
-			pass, u->id);
+			pass, userid);
 	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "user_setpass: %s", db_errstr() );
 		PQclear(res);
@@ -255,19 +254,6 @@ int user_setpass( t_user *u, const char *newpass )
 	}
 
 	PQclear(res);
-
-	if( u->_pass ){
-		free(u->_pass);
-		u->_pass = NULL;
-	}
-
-	u->_pass = strdup(pass);
-	return 0;
-}
-
-int user_save( t_user *u )
-{
-	(void)u;
 	return 0;
 }
 

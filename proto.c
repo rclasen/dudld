@@ -49,6 +49,16 @@
 
 #define SKIPSPACE(str)	while(isspace(*str)){str++;};
 
+/*
+ * major version: increased on incompatible protocol changes
+ */
+#define PROTO_MAJOR_VERSION 1
+
+/*
+ * minor version: increased on non-intrusive protocl additions
+ */
+#define PROTO_MINOR_VERSION 0
+
 static t_cmd *cmd_find( t_protstate context, char *name )
 {
 	t_cmd *cmd;
@@ -190,9 +200,9 @@ static void proto_input( t_client *client )
  */
 static void proto_newclient( t_client *client )
 {
-	// TODO: make greeting versioned
 	client->ifunc = (void*)proto_input;
-	proto_rlast( client, "220", "dudld" );
+	proto_rlast( client, "220", "dudld %d %d", 
+			PROTO_MAJOR_VERSION, PROTO_MINOR_VERSION );
 	syslog( LOG_DEBUG, "con #%d: new connection from %s", client->id,
 			inet_ntoa(client->sin.sin_addr ));
 }

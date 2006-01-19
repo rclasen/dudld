@@ -170,40 +170,24 @@ void cmd_usersetpass( t_client *client, char *code, void **argv )
 {
 	t_arg_id	id = (t_arg_id)argv[0];
 	t_arg_pass	pass = (t_arg_pass)argv[1];
-	t_user *u;
 
-	if( NULL == (u = user_get(id))){
-		proto_rlast(client,"501","no such user");
-		return;
-	}
-
-	if( 0 > user_setpass(u, pass) ){
+	if( 0 > user_setpass(id, pass) ){
 		proto_rlast(client, "530", "failed");
 	} else {
 		proto_rlast(client, code, "password changed" );
-		user_save(u);
 	}
-	user_free(u);
 }
 
 void cmd_usersetright( t_client *client, char *code, void **argv )
 {
 	t_arg_id	id = (t_arg_id)argv[0];
 	t_arg_right	right = (t_arg_right)argv[1];
-	t_user *u;
 
-	if( NULL == (u = user_get(id))){
-		proto_rlast(client,"501","no such user");
-		return;
-	}
-
-	if( 0 > user_setright(u, right) ){
+	if( 0 > user_setright(id, right) ){
 		proto_rlast(client, "530", "failed");
 	} else {
 		proto_rlast(client, code, "right changed" );
-		user_save(u);
 	}
-	user_free(u);
 }
 
 void cmd_userdel( t_client *client, char *code, void **argv )
@@ -412,6 +396,32 @@ void cmd_track2id( t_client *client, char *code, void **argv )
 	}
 
 	proto_rlast(client, code, "%d", id );
+}
+
+void cmd_tracksetname( t_client *client, char *code, void **argv )
+{
+	t_arg_id	id = (t_arg_id)argv[0];
+	t_arg_string	name = (t_arg_string)argv[1];
+
+	if( track_setname(id, name )){
+		proto_rlast(client,"511", "failed" );
+		return;
+	}
+
+	proto_rlast(client,code, "name changed" );
+}
+
+void cmd_tracksetartist( t_client *client, char *code, void **argv )
+{
+	t_arg_id	track = (t_arg_id)argv[0];
+	t_arg_id	artist = (t_arg_id)argv[1];
+
+	if( track_setartist(track, artist)){
+		proto_rlast(client,"511", "failed" );
+		return;
+	}
+
+	proto_rlast(client,code, "artist changed" );
 }
 
 void cmd_filter( t_client *client, char *code, void **argv )
@@ -759,21 +769,12 @@ void cmd_albumsetname( t_client *client, char *code, void **argv )
 {
 	t_arg_id	id = (t_arg_id)argv[0];
 	t_arg_string	name = (t_arg_string)argv[1];
-	t_album *a;
 
-	if( NULL == (a = album_get(id))){
-		proto_rlast(client, "512", "no such album" );
-		return;
-	}
-
-	if( album_setname(a, name )){
+	if( album_setname(id, name )){
 		proto_rlast(client,"511", "failed" );
-		album_free(a);
 		return;
 	}
 
-	album_save(a);
-	album_free(a);
 	proto_rlast(client,code, "name changed" );
 }
 
@@ -781,22 +782,26 @@ void cmd_albumsetartist( t_client *client, char *code, void **argv )
 {
 	t_arg_id	album = (t_arg_id)argv[0];
 	t_arg_id	artist = (t_arg_id)argv[1];
-	t_album *a;
 
-	if( NULL == (a = album_get(album))){
-		proto_rlast(client, "512", "no such album" );
-		return;
-	}
-
-	if( album_setartist(a, artist)){
-		album_free(a);
+	if( album_setartist(album, artist)){
 		proto_rlast(client,"511", "failed" );
 		return;
 	}
 
-	album_save(a);
-	album_free(a);
 	proto_rlast(client,code, "artist changed" );
+}
+
+void cmd_albumsetyear( t_client *client, char *code, void **argv )
+{
+	t_arg_id	album = (t_arg_id)argv[0];
+	t_arg_num	year = (t_arg_num)argv[1];
+
+	if( album_setyear(album, year)){
+		proto_rlast(client,"511", "failed" );
+		return;
+	}
+
+	proto_rlast(client,code, "year changed" );
 }
 
 void cmd_artistlist( t_client *client, char *code, void **argv )
@@ -832,25 +837,29 @@ void cmd_artistget( t_client *client, char *code, void **argv )
 	artist_free(a);
 }
 
+void cmd_artistadd( t_client *client, char *code, void **argv )
+{
+	t_arg_string	name = (t_arg_string)argv[0];
+	int id;
+
+	if( 0 > (id = artist_add( name ))){
+		proto_rlast(client,"511", "failed" );
+		return;
+	}
+
+	proto_rlast(client, code, "%d", id );
+}
+
 void cmd_artistsetname( t_client *client, char *code, void **argv )
 {
 	t_arg_id	id = (t_arg_id)argv[0];
 	t_arg_string	name = (t_arg_string)argv[1];
-	t_artist *a;
 
-	if( NULL == (a = artist_get(id))){
-		proto_rlast(client, "512", "no such artist" );
-		return;
-	}
-
-	if( artist_setname(a, name )){
+	if( artist_setname(id, name )){
 		proto_rlast(client,"511", "failed" );
-		artist_free(a);
 		return;
 	}
 
-	artist_save(a);
-	artist_free(a);
 	proto_rlast(client,code, "name changed" );
 }
 
@@ -865,6 +874,18 @@ void cmd_artistmerge( t_client *client, char *code, void **argv )
 	}
 
 	proto_rlast(client,code, "merged artist %d into %d", from, to );
+}
+
+void cmd_artistdel( t_client *client, char *code, void **argv )
+{
+	t_arg_id	id = (t_arg_id)argv[0];
+
+	if( artist_del(id)){
+		proto_rlast(client,"511", "failed" );
+		return;
+	}
+
+	proto_rlast(client,code, "artist deleted" );
 }
 
 void cmd_sfilterlist( t_client *client, char *code, void **argv )

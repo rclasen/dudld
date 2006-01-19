@@ -22,6 +22,12 @@ is the mp3 Jukebox commponent of the
 .B Dudl
 Music Database.
 
+.\" TODO: extend description
+
+network oriented.
+Dudld uses the dudld database.
+Database is maintained elsewhere.
+Gstreamer driven.
 Currently the daemon generates a decoded audio stream multicasted to 239.0.0.1.
 
 .SH OPTIONS

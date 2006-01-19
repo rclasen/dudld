@@ -104,7 +104,7 @@ static void db_finish( int completed )
 	if( ! completed ){
 		int tagid;
 
-		if( 0 < (tagid = tag_id("failed")))
+		if( 0 < (tagid = tag_id(opt_failtag)))
 			track_tagadd(curtrack->id,tagid);
 	}
 

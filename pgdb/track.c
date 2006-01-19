@@ -44,7 +44,6 @@ t_track *track_convert( PGresult *res, int tup )
 		return NULL;
 
 	t->_refs = 1;
-	t->modified.any = 0;
 
 	GETFIELD(f,"id", clean1 );
 	t->id = pgint(res, tup, f );
@@ -108,93 +107,42 @@ void track_free( t_track *t )
 }
 
 
-int track_settitle( t_track *t, const char *title )
+int track_setname( int trackid, const char *title )
 {
+	PGresult *res;
 	char *n;
 
-	if( NULL == (n = strdup(title)))
-		return 1;
+	if( NULL == (n = db_escape(title)))
+		return -1;
 
-	free(t->title);
-	t->title = n;
-	t->modified.m.title = 1;
-	return 0;
-}
-
-int track_setartist( t_track *t, int artistid )
-{
-	t_artist *nart;
-
-	if( NULL == (nart = artist_get(artistid)))
-		return 1;
-	artist_free(t->artist);
-	t->artist = nart;
-	t->modified.m.artist = 1;
-	return 0;
-}
-
-static int addcom( char *buffer, int len, int *fields )
-{
-	if( *fields && len ){
-		strcat( buffer, ",");
-		(*fields)++;
-		return 1;
+	res = db_query( "UPDATE stor_file SET title = '%s' "
+			"WHERE id = %d", n, trackid );
+	free(n);
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res)){
+		syslog( LOG_ERR, "track_setname: %s", db_errstr());
+		PQclear(res);
+		return -1;
 	}
 
+	PQclear(res);
+
 	return 0;
 }
 
-#define SBUFLEN 1024
-int track_save( t_track *t )
+int track_setartist( int trackid, int artistid )
 {
-	char buffer[SBUFLEN];
-	int len;
-	int fields = 0;
 	PGresult *res;
 
-	if( ! t->id )
-		return 1;
-
-	if( ! t->modified.any )
-		return 0;
-
-	len = snprintf( buffer, SBUFLEN, "UPDATE stor_file SET ");
-	if( len > SBUFLEN || len < 0 )
-		return 1;
-
-	if( t->modified.m.title ){
-		char *esc;
-		if( NULL == (esc = db_escape(t->title)))
-			return 1;
-
-		len += addcom( buffer + len, SBUFLEN - len, &fields );
-		len += snprintf( buffer + len, SBUFLEN - len, "title='%s'",
-				esc );
-		free( esc );
-		if( len > SBUFLEN || len < 0 )
-			return 1;
+	res = db_query( "UPDATE stor_file SET artist_id = %d "
+			"WHERE id = %d", artistid, trackid );
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res)){
+		syslog( LOG_ERR, "track_setartist: %s", db_errstr());
+		PQclear(res);
+		return -1;
 	}
 
-	if( t->modified.m.artist ){
-		len += addcom( buffer + len, SBUFLEN - len, &fields );
-		len += snprintf( buffer + len, SBUFLEN - len, "artist_id=%d", 
-				t->artist->id );
-		if( len > SBUFLEN || len < 0 )
-			return 1;
-	}
+	PQclear(res);
 
-	snprintf( buffer+len, SBUFLEN - len, " WHERE id = %d", t->id );
-	if( len > SBUFLEN || len < 0 )
-		return 1;
-
-	res = db_query( "%s", buffer );
-
-	if( ! res || PGRES_COMMAND_OK != PQresultStatus(res)){
-		syslog( LOG_ERR, "track_save: %s", db_errstr());
-		return 1;
-	}
-
-	t->modified.any = 0;
 	return 0;
 }
 

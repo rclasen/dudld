@@ -43,6 +43,9 @@ t_album *album_convert( PGresult *res, int tup )
 	if( NULL == (t->album = pgstring(res, tup, f)))
 		goto clean1;
 
+	GETFIELD(f,"album_publish_year", clean2 );
+	t->year = pgint(res, tup, f );
+
 	if( NULL == (t->artist = artist_convert_album( res, tup )))
 		goto clean2;
 
@@ -65,7 +68,7 @@ void album_free( t_album *t )
 }
 
 
-int album_setname( t_album *t, const char *name )
+int album_setname( int albumid, const char *name )
 {
 	PGresult *res;
 	char *n;
@@ -74,7 +77,7 @@ int album_setname( t_album *t, const char *name )
 		return -1;
 
 	res = db_query( "UPDATE mus_album SET album = '%s' "
-			"WHERE id = %d", n, t->id );
+			"WHERE id = %d", n, albumid );
 	free(n);
 	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "album_setname: %s", db_errstr());
@@ -84,20 +87,15 @@ int album_setname( t_album *t, const char *name )
 
 	PQclear(res);
 
-	if( NULL == (n = strdup(name)))
-		return -1;
-
-	free(t->album);
-	t->album = n;
 	return 0;
 }
 
-int album_setartist( t_album *t, int artistid )
+int album_setartist( int albumid, int artistid )
 {
 	PGresult *res;
 
 	res = db_query( "UPDATE mus_album SET artist_id = %d "
-			"WHERE id = %d", artistid, t->id );
+			"WHERE id = %d", artistid, albumid );
 	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "album_setartist: %s", db_errstr());
 		PQclear(res);
@@ -106,14 +104,23 @@ int album_setartist( t_album *t, int artistid )
 
 	PQclear(res);
 
-	artist_free(t->artist);
-	t->artist = artist_get(artistid);
 	return 0;
 }
 
-int album_save( t_album *t )
+int album_setyear( int albumid, int year )
 {
-	(void)t;
+	PGresult *res;
+
+	res = db_query( "UPDATE mus_album SET publish_date = '%d-1-1' "
+			"WHERE id = %d", year, albumid );
+	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res)){
+		syslog( LOG_ERR, "album_setyear: %s", db_errstr());
+		PQclear(res);
+		return -1;
+	}
+
+	PQclear(res);
+
 	return 0;
 }
 

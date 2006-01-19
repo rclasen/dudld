@@ -80,7 +80,7 @@ void artist_free( t_artist *t )
 }
 
 
-int artist_setname( t_artist *t, const char *name )
+int artist_setname( int artistid, const char *name )
 {
 	PGresult *res;
 	char *n;
@@ -89,7 +89,7 @@ int artist_setname( t_artist *t, const char *name )
 		return -1;
 
 	res = db_query( "UPDATE mus_artist SET nname = '%s' "
-			"WHERE id = %d", n, t->id );
+			"WHERE id = %d", n, artistid );
 	free(n);
 	if( NULL == res ||  PGRES_COMMAND_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "artist_setname: %s", db_errstr());
@@ -99,17 +99,6 @@ int artist_setname( t_artist *t, const char *name )
 
 	PQclear(res);
 
-	if( NULL == (n = strdup(name)))
-		return -1;
-
-	free(t->artist);
-	t->artist = n;
-	return 0;
-}
-
-int artist_save( t_artist *t )
-{
-	(void)t;
 	return 0;
 }
 
@@ -203,4 +192,54 @@ it_artist *artist_search( const char *substr )
 	return it;
 }
 
+int artist_add( const char *name )
+{
+	PGresult *res;
+	char *esc;
+	int id;
+
+	res = db_query( "SELECT nextval('mus_artist_id_seq')" );
+	if( !res || PQresultStatus(res) != PGRES_TUPLES_OK ){
+		syslog( LOG_ERR, "artist_add: %s", db_errstr());
+		PQclear(res);
+		return -1;
+	}
+
+	if( 0 > (id = pgint(res,0,0))){
+		PQclear(res);
+		return -1;
+	}
+	PQclear(res);
+
+	if( NULL == (esc = db_escape(name)))
+		return -1;
+
+	res = db_query( "INSERT INTO mus_artist(id, nname) "
+			"VALUES( %d, '%s')", id, esc );
+	free(esc);
+	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
+		syslog( LOG_ERR, "artist_add: %s", db_errstr());
+		PQclear(res);
+		return -1;
+	}
+
+	PQclear(res);
+
+	return id;
+}
+
+int artist_del( int artistid )
+{
+	PGresult *res;
+
+	res = db_query("DELETE FROM mus_artist WHERE id = %d", artistid);
+	if( ! res || PQresultStatus(res) != PGRES_COMMAND_OK ){
+		syslog( LOG_ERR, "artist_del: %s", db_errstr());
+		PQclear(res);
+		return -1;
+	}
+
+	PQclear(res);
+	return 0;
+}
 

@@ -145,7 +145,7 @@ char *mkalbum( t_album *a )
 	if( NULL == (sub = mkartist( a->artist )))
 		return NULL;
 
-	tmp = mktab( "dst", a->id, a->album, sub );
+	tmp = mktab( "dsdt", a->id, a->album, a->year, sub );
 	free(sub);
 
 	return tmp;

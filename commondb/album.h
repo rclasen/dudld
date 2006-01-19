@@ -7,6 +7,7 @@
 typedef struct _t_album {
 	int id;
 	char *album;
+	int year;
 	t_artist *artist;
 } t_album;
 
@@ -24,9 +25,8 @@ it_album *albums_list( void );
 it_album *albums_artistid( int artistid );
 it_album *albums_search( const char *substr );
 
-// TODO: use id for set() instead of ptr, remove _save
-int album_setname( t_album *t, const char *name );
-int album_setartist( t_album *t, int artistid );
-int album_save( t_album *t );
+int album_setname( int id, const char *name );
+int album_setartist( int id, int artistid );
+int album_setyear( int id, int year );
 
 #endif

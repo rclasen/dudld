@@ -20,7 +20,7 @@ typedef int t_arg_id;
 typedef char * t_arg_name;
 #define arg_name { "name", APARSE(val_name), AFREE(free) }
 
-typedef int t_arg_num;
+typedef unsigned int t_arg_num;
 #define arg_num { "num", APARSE(val_uint), NULL }
 
 typedef char * t_arg_pass;
