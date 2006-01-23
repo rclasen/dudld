@@ -13,6 +13,8 @@ static PGconn *dbcon = NULL;
 
 #define BUFLENQUERY 2048
 
+#define DBVER 1
+
 static int addopt( char *buffer, const char *opt, const char *val )
 {
 	if( ! val || ! *val )
@@ -25,6 +27,7 @@ static int db_conn( void )
 {
 	char buffer[1024];
 	int len = 0;
+	PGresult *res;
 
 	db_done();
 
@@ -42,9 +45,27 @@ static int db_conn( void )
 		goto clean1;
 	}
 
-	// TODO: check dbver
+	if( NULL == (res = db_query( "SELECT ver "
+			"FROM dbver "
+			"WHERE item = 'schema'")))
+		goto clean1;
 
+	if( PGRES_TUPLES_OK !=  PQresultStatus(res) ){
+		syslog( LOG_ERR, "db_conn(dbver): %s", db_errstr() );
+		goto clean2;
+	}
+	syslog( LOG_DEBUG, "DB Version: %d", pgint(res,1,1));
+
+	if( pgint(res, 1, 1 ) != DBVER ){
+		syslog( LOG_ERR, "db_conn: invalid DB Version %d - need %d", 
+				pgint(res,1,1), DBVER);
+		goto clean2;
+	}
+	PQclear(res);
 	return 0;
+
+clean2:
+	PQclear(res);
 
 clean1:
 	PQfinish(dbcon);
