@@ -1,3 +1,15 @@
+dudld (0.1.12) unstable; urgency=low
+
+  * depend on dudl-dbschema instead of versioned dudl-db
+
+ -- Rainer Clasen <bj@zuto.de>  Thu, 19 Jan 2006 15:03:14 +0100
+
+dudld (0.1.11) unstable; urgency=low
+
+  * rebuild for new dudl-db
+
+ -- Rainer Clasen <bj@zuto.de>  Thu, 19 Jan 2006 14:47:47 +0100
+
 dudld (0.1.10) unstable; urgency=low
 
   * added tracksetname/-artist

@@ -12,7 +12,7 @@ int opt_random = -1;
 int opt_start = -1;
 char *opt_sfilter = NULL;
 char *opt_failtag = NULL;
-/* TODO: make gst/gstreamer pipe configurable */
+/* TODO: make gst/gstreamer pipe configurable: gst_parse_launch()  */
 
 char *opt_db_host = NULL;
 char *opt_db_port = NULL;

@@ -61,6 +61,7 @@ install: build
 
 	# Add here commands to install the package into debian/dudld.
 	$(MAKE) install prefix=$(CURDIR)/debian/dudld/usr sysconfdir=$(CURDIR)/debian/dudld/etc
+	chmod go= $(CURDIR)/debian/dudld/etc/dudld.conf
 
 
 # Build architecture-independent files here.
