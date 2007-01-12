@@ -163,7 +163,11 @@ it_track *random_top( int num )
 					"LIMIT %d "
 				") AS c "
 					"INNER JOIN mserv_track t "
-					"ON t.id = c.id ",
+					"ON t.id = c.id "
+			"ORDER BY "
+				"c.lplay, "
+				"LOWER(album_artist_name), "
+				"LOWER(album_name), album_pos", 
 				num );
 }
 
