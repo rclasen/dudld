@@ -68,6 +68,13 @@ done:
 	expr_free(e);
 }
 
+static void db_connected( void )
+{
+	syslog( LOG_DEBUG, "DB connection is up." );
+	random_init();
+	random_setfilter(random_filter());
+}
+
 static void save_filter( void )
 {
 	char buf[4096];
@@ -196,8 +203,8 @@ int main( int argc, char **argv )
 
 	syslog(LOG_INFO, "initializing" );
 
-	db_init();
-	random_init();
+	db_init( db_connected );
+	// random_init(); // invoked from db_init()
 	player_init();
 	player_setgap( opt_gap );
 	player_setrandom( opt_random );

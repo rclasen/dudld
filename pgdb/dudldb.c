@@ -10,10 +10,11 @@
 #include "dudldb.h"
 
 static PGconn *dbcon = NULL;
+static db_opened_cb opened_cb = NULL;
 
 #define BUFLENQUERY 2048
 
-#define DBVER 1
+#define DBVER 2
 
 static int addopt( char *buffer, const char *opt, const char *val )
 {
@@ -27,7 +28,13 @@ static int db_conn( void )
 {
 	char buffer[1024];
 	int len = 0;
+	static int inprogress = 0;
 	PGresult *res;
+
+	/* avoid endless recursion in case callback function causes reconnect */
+	if( inprogress )
+		return 0;
+	inprogress++;
 
 	db_done();
 
@@ -67,6 +74,10 @@ static int db_conn( void )
 		goto clean2;
 	}
 	PQclear(res);
+
+	if( opened_cb )
+		(*opened_cb)();
+
 	return 0;
 
 clean2:
@@ -75,6 +86,7 @@ clean2:
 clean1:
 	PQfinish(dbcon);
 	dbcon = NULL;
+	inprogress--;
 	return 1;
 }
 
@@ -252,8 +264,9 @@ char *pgstring( PGresult *res, int tup, int field )
 /************************************************************
  * public interface
  */
-int db_init( void )
+int db_init( db_opened_cb cbfunc )
 {
+	opened_cb = cbfunc;
 	return db_conn();
 }
 
