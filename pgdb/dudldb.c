@@ -54,9 +54,14 @@ static int db_conn( void )
 		syslog( LOG_ERR, "db_conn(dbver): %s", db_errstr() );
 		goto clean2;
 	}
-	syslog( LOG_DEBUG, "DB Version: %d", pgint(res,1,1));
+	if( PQntuples(res) != 1 ){
+		syslog( LOG_ERR, "db_conn(dbver): couldn't determine dbver, "
+				"found %d rows", PQntuples(res));
+		goto clean2;
+	}
+	syslog( LOG_DEBUG, "DB Version: %d", pgint(res,0,0));
 
-	if( pgint(res, 1, 1 ) != DBVER ){
+	if( pgint(res, 0, 0 ) != DBVER ){
 		syslog( LOG_ERR, "db_conn: invalid DB Version %d - need %d", 
 				pgint(res,1,1), DBVER);
 		goto clean2;
