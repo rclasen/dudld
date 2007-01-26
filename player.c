@@ -491,6 +491,7 @@ const void *player_popt_table( void )
 void player_init( void )
 {
 	GstElement *p_dec;
+	GstElement *p_scale;
 	GstElement *p_conv;
 	GstCaps *scaps;
 	
@@ -506,11 +507,17 @@ void player_init( void )
 	}
 	gst_element_link( p_src, p_dec );
 
+	if( NULL == (p_scale = gst_element_factory_make ("audioscale", "p_scale"))){
+		syslog(LOG_ERR,"player: cannot create scale object");
+		exit(1);
+	}
+	gst_element_link( p_dec, p_scale );
+
 	if( NULL == (p_conv = gst_element_factory_make ("audioconvert", "p_conv"))){
 		syslog(LOG_ERR,"player: cannot create convert object");
 		exit(1);
 	}
-	gst_element_link( p_dec, p_conv );
+	gst_element_link( p_scale, p_conv );
 
 	if( NULL == (scaps = gst_caps_new_simple ("audio/x-raw-int",
 		"format", G_TYPE_STRING, "int",
@@ -542,7 +549,7 @@ void player_init( void )
 
 	g_signal_connect( p_pipe, "eos", G_CALLBACK(cb_eos), NULL);
 	g_signal_connect( p_pipe, "error", G_CALLBACK(cb_error), NULL);
-	gst_bin_add_many( GST_BIN(p_pipe), p_src, p_dec, p_conv, p_out, NULL);
+	gst_bin_add_many( GST_BIN(p_pipe), p_src, p_dec, p_scale, p_conv, p_out, NULL);
 
 	gst_element_set_state (p_pipe, GST_STATE_READY);
 }
