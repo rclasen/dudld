@@ -78,6 +78,7 @@ static int db_conn( void )
 	if( opened_cb )
 		(*opened_cb)();
 
+	inprogress--;
 	return 0;
 
 clean2:
