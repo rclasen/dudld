@@ -1,7 +1,9 @@
 #ifndef _COMMONDB_DUDLDB_H
 #define _COMMONDB_DUDLDB_H
 
-int db_init( void );
+typedef void (*db_opened_cb)( void );
+
+int db_init( db_opened_cb );
 void db_done( void );
 
 typedef void t_db;
