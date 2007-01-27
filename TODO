@@ -1,3 +1,30 @@
+convert callbacks/signals/* to glib
+
+upgrade to gstreamer 0.10
+- playback gets stuck, sometimes
+
+trigger periodic elapsed broadcast. Likely this will lead to trouble when
+the daemon is busy (handling large requests, updating filter, ... )
+
+connections are dropped when there is too much pending data to send to the
+client. Increasing the buffer won't help with large data sets. This the
+server has to block on writes (at least for some time). This also means
+the server hase to use multiple threads/-processes. Multiple processes
+won't work with the cache table. Threads require some kind of locking to
+avoid multiple concurrent queries.
+
+get rid of cache table
+- (tmp table) breaks multiple DB connections
+- attribute changes are not automatically rematched against filter
+
+get rid of lastplay column for files, use "last" record from history table
+
+change lastplay evaluation for random 
+- to be more random for anything but the last played xx tracks
+- to take rating into account
+- only look at lastplay for tracks picked by random play. (non-queued)
+- introdcue "last" for tracks picked by random play
+
 cleanup error reporting:
  use values from errno.h
  use the same 5xx replies for all commands
@@ -11,6 +38,8 @@ make filter parser modular (for queue and history filter)
 complete parsexpr / filter / random
 
 rating: play some tracks more often
+- most likely := max( (lastplay - now) base^(rating/factor))
+  rating:=-2, ... +2
 
 more sophisticated permission system
 
@@ -23,9 +52,19 @@ multiple (anonymouse) instances not possible because:
  queue
  user/permission
 
-automatically skip silence at start/end of a file
+automagically skip silence at start/end of a file gstreamer::cutter
+skip junk at begin/end
+allow several tracks per file (allows cutting out junk with junk-skip)
 
-"normalize" volume level
+"normalize" volume level - replaygain
+- gstreamer::rganalysis
+- ?gstreamer::rgvolume?
+- http://bugzilla.gnome.org/show_bug.cgi?id=127574
+- http://replaygain.org/
+- mp3gain
+- gstreamer::volume::volume = 10^(rgain/20) * 10^(preamp/20) 
+- dudld knobs: rg=off/peak/average, preamp=double/db, 
+
 
 integrate dudl with test-listening and renaming
 
@@ -45,3 +84,5 @@ more queue controls
  insert
 
 voting: play the song most users requested
+
+?support for other file formats like ogg

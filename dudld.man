@@ -22,6 +22,9 @@ is the mp3 Jukebox commponent of the
 .B Dudl
 Music Database.
 
+It is designed to run just ontop of the music database and therefore lacks 
+thorough editing capabilities for the DB.
+
 .\" TODO: extend description
 
 network oriented.
@@ -63,6 +66,7 @@ dudld startup configuration
 .TP
 .BI /var/run/dudld/dudld.pid
 .SH "SEE ALSO"
+.BR Dudl::Overview (3),
 .BR dudld.conf (5),
 .BR dudlc (1),
 .BR dcast-client (1)

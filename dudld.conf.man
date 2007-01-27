@@ -6,7 +6,7 @@ dudl.conf \- config for the dudld mp3 jukebox daemon
 This manual page describes the syntax of the dudld configuration file.
 
 The file is read using the glib keyfile parser. This means it is roughly
-ini-like. Comments are started with #.
+ini-like. Comments start with #.
 
 [dudld]
 
@@ -58,4 +58,4 @@ database password.
 .SH "SEE ALSO"
 .BR dudld (1)
 .SH AUTHORS
-Rainer Clasen
+Rainer Clasen.
