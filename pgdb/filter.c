@@ -267,6 +267,12 @@ static sql_valtestfmt_t sql_valtestfmt[] ={
 	// TODO: { vf_album, vo_in, vt_list, sql_vt_idlist, "album_name" },
 	{ vf_album, vo_re, vt_string, sql_vt_string, "album_name" },
 
+	{ vf_pos, vo_eq, vt_num, sql_vt_num, "album_pos" },
+	{ vf_pos, vo_lt, vt_num, sql_vt_num, "album_pos" },
+	{ vf_pos, vo_le, vt_num, sql_vt_num, "album_pos" },
+	{ vf_pos, vo_gt, vt_num, sql_vt_num, "album_pos" },
+	{ vf_pos, vo_ge, vt_num, sql_vt_num, "album_pos" },
+
 	{ vf_none, vo_none, vt_none, NULL, NULL },
 };
 

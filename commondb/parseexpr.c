@@ -455,6 +455,12 @@ static valtesttype vttypes[] = {
 	// TODO: { vf_album, vo_in, vt_list },
 	{ vf_album, vo_re, vt_string },
 
+	{ vf_pos, vo_eq, vt_num },
+	{ vf_pos, vo_lt, vt_num },
+	{ vf_pos, vo_le, vt_num },
+	{ vf_pos, vo_gt, vt_num },
+	{ vf_pos, vo_ge, vt_num },
+
 	{ vf_none, vo_none, vt_none },
 };
 
@@ -466,7 +472,8 @@ static char *valfield_name[vf_max] = {
 	"artist",
 	"title",
 	"album",
-	"year"
+	"year",
+	"pos"
 };
 
 static char *valop_name[vo_max] = {

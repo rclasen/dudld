@@ -50,6 +50,7 @@ typedef enum {
 	vf_title,
 	vf_album,
 	vf_year,
+	vf_pos,
 
 	vf_max,
 } valfield;
