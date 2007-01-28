@@ -30,6 +30,7 @@
 static int do_random = 1;
 static int gap = 0;
 static int gap_id = 0;
+static int elapsed_id = 0;
 
 static t_track *curtrack = NULL;
 static int curuid = 0;
@@ -124,6 +125,40 @@ static void gap_finish( void )
 	gap_id = 0;
 }
 
+static gint cb_elapsed_timeout( gpointer data )
+{
+	(void)data;
+
+	if( ! player_func_elapsed ){
+		elapsed_id = 0;
+		return FALSE;
+	}
+
+	(*player_func_elapsed)();
+
+	return TRUE;
+}
+
+static void elapsed_add( void )
+{
+	if( ! player_func_elapsed )
+		return;
+
+	if( elapsed_id )
+		return;
+
+	elapsed_id = g_timeout_add(1000, cb_elapsed_timeout, NULL );
+}
+
+static void elapsed_del( void )
+{
+	if( ! elapsed_id )
+		return;
+
+	g_source_remove( elapsed_id );
+	elapsed_id = 0;
+}
+
 static t_playstatus bp_status( void )
 {
 	if( GST_STATE(p_src) == GST_STATE_PLAYING )
@@ -175,12 +210,16 @@ static int bp_start(void)
 	if( player_func_newtrack )
 		(*player_func_newtrack)();
 
+	elapsed_add();
+
 	return PE_OK;
 }
 
 static void bp_finish( int complete )
 {
 	syslog(LOG_DEBUG, "bp_finish %d", complete);
+
+	elapsed_del();
 
 	if( gap_id )
 		gap_finish();
@@ -217,6 +256,8 @@ static int bp_resume( void )
 	if( player_func_resume )
 		(*player_func_resume)();
 
+	elapsed_add();
+
 	return 0;
 }
 
@@ -249,6 +290,8 @@ static int bp_pause( void )
 
 	if( player_func_pause )
 		(*player_func_pause)();
+
+	elapsed_del();
 
 	return 0;
 }
