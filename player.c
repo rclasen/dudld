@@ -452,7 +452,7 @@ t_playerror player_jump( int to_sec )
  * - set/del gap callback
  * - send bcast
  * - set gst status: bp_start/bp_finish/bp_pause
- * TODO: - set/del elapsed broadcast timer
+ * - set/del elapsed broadcast timer
  */
 
 
