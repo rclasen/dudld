@@ -1,3 +1,20 @@
+dudld (0.1.14) unstable; urgency=low
+
+  * rebuild for etch
+
+ -- Rainer Clasen <bj@zuto.de>  Tue, 30 Jan 2007 19:08:54 +0100
+
+dudld (1.1.13) unstable; urgency=low
+
+  * check DB Version on connect
+  * sort random_top results
+  * recreate cache table on DB reconnect
+  * added audioscale to gst pipe for files with samplerates != 44khz
+  * send elapsed broadcast
+  * added pos filed to filter parser
+
+ -- Rainer Clasen <bj@zuto.de>  Sun, 28 Jan 2007 14:33:02 +0100
+
 dudld (0.1.12) unstable; urgency=low
 
   * depend on dudl-dbschema instead of versioned dudl-db

@@ -3,9 +3,6 @@ convert callbacks/signals/* to glib
 upgrade to gstreamer 0.10
 - playback gets stuck, sometimes
 
-trigger periodic elapsed broadcast. Likely this will lead to trouble when
-the daemon is busy (handling large requests, updating filter, ... )
-
 connections are dropped when there is too much pending data to send to the
 client. Increasing the buffer won't help with large data sets. This the
 server has to block on writes (at least for some time). This also means
@@ -21,9 +18,14 @@ get rid of lastplay column for files, use "last" record from history table
 
 change lastplay evaluation for random 
 - to be more random for anything but the last played xx tracks
-- to take rating into account
+- to take score into account
 - only look at lastplay for tracks picked by random play. (non-queued)
 - introdcue "last" for tracks picked by random play
+
+introduce tag-types: genre, preference, selection/playlist
+
+include lastplay/history data in all track results
+include tags data in all track results
 
 cleanup error reporting:
  use values from errno.h
@@ -37,9 +39,9 @@ make filter parser modular (for queue and history filter)
 
 complete parsexpr / filter / random
 
-rating: play some tracks more often
-- most likely := max( (lastplay - now) base^(rating/factor))
-  rating:=-2, ... +2
+scoring: play some tracks more often
+- most likely := max( (lastplay - now) base^(score/factor))
+  score:=-2, ... +2
 
 more sophisticated permission system
 

@@ -25,7 +25,7 @@ static value **sql_tags2id( value **inval )
 {
 	value **val;
 	value **idval = NULL;
-	int idnum = 0;
+	size_t idnum = 0;
 	char sql[SQL_LEN] = "";
 	int used = 0;
 	char *esc;

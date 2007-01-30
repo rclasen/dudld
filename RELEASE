@@ -1,6 +1,6 @@
 
 release:
-- devian/control: check dudl-dbschema dependency
+- debian/control: check dudl-dbschema dependency
 - debian/changelog: Version, changes
 - configure.ac: Version
 - autoremake

@@ -2,9 +2,11 @@ AUTOMAKE_OPTIONS=foreign
 
 # TODO: properly test for glib and gstreamer
 
-AM_CFLAGS=-g $(shell pkg-config --cflags gstreamer-0.8 glib) -Wall -W -Wunused -Wmissing-prototypes -Wno-cast-qual -Wcast-align -DSYSCONFDIR=\"@sysconfdir@\"
+AM_CFLAGS=-g ${GLIB_CFLAGS} ${GSTREAMER_CFLAGS} ${PSQL_CFLAGS} \
+	-Wall -W -Wunused -Wmissing-prototypes -Wno-cast-qual -Wcast-align \
+	-DSYSCONFDIR=\"@sysconfdir@\"
 
-AM_LDFLAGS=$(shell pkg-config --libs gstreamer-0.8 glib)
+AM_LDFLAGS=${GLIB_LIBS} ${GSTREAMER_LIBS} ${PSQL_LIBS}
 
 man1_MANS=dcast-client.man
 man5_MANS=dudld.conf.man
@@ -12,14 +14,14 @@ man8_MANS=dudld.man
 
 EXTRA_DIST=$(MANS)
 
-SUBDIRS=commondb pgdb # wpipe # wgst
+SUBDIRS=commondb pgdb
 
 dist_bin_SCRIPTS=dcast-client
 sysconf_DATA=dudld.conf
 sbin_PROGRAMS=dudld
 
 dudld_LDADD= commondb/libcommon.a pgdb/libdudldb.a
-dudld_LDFLAGS=-lpq -lncc
+dudld_LDFLAGS=-lncc
 dudld_SOURCES= client.c \
 	main.c \
 	opt.c \
