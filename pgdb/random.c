@@ -178,8 +178,10 @@ t_track *random_fetch( void )
 	int id;
 
 	num = random_filterstat() / 3;
+#if 0
 	if( num > RANDOM_LIMIT )
 		num = RANDOM_LIMIT;
+#endif
 
 	if( num < 1 )
 		num = 1;
@@ -194,25 +196,23 @@ t_track *random_fetch( void )
 	}
 
 	/* 
-	 * randomly pick a track
+	 * randomly pick a track while trying to avoid recently played
+	 * tracks. See test_random.c on how the resulting distribution of
+	 * random numbers looks like.
 	 *
-	 * by adding two randoms, we get a Gaussian distribution with
-	 * of random numbers between 0 and 2*RAND_MAX with it's max
-	 * at RAND_MAX.
-	 *
-	 * We move this max to zero and take the abs() of the value.
-	 *
-	 * This way the likeliness of more recent tracks decreases
 	 */
-	/* num = abs( random() + random() - RAND_MAX ); */
-	/*Unum = (double)num / RAND_MAX * PQntuples(res); */
+#if 1
+	/* 'abs': folded and shifted gaussian distribution */
+	num = (double)abs( (double)random() + random() - RAND_MAX )  
+		/ RAND_MAX * PQntuples(res);
+#else
 
-	/* even better: multiply two normalized randoms*/
-	num = ((double)random() / RAND_MAX * PQntuples(res)) *
-		((double)random() / RAND_MAX * PQntuples(res)) /
-		 PQntuples(res);
+	/* 'div': more drastic */
+	num = ((double)random() * random()) 
+		/ ( (double)RAND_MAX * RAND_MAX) 
+		* PQntuples(res);
+#endif
 
-	/* adjust number to available tracks */
 	syslog( LOG_DEBUG, "random: picking %d from top %d", num, 
 			PQntuples(res));
 
