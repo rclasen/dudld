@@ -260,14 +260,14 @@ void client_addref( t_client *c )
 {
 
 	c->_refs++;
-	syslog(LOG_DEBUG,"client(%d): addref %d", c->id, c->_refs );
+	/* syslog(LOG_DEBUG,"client(%d): addref %d", c->id, c->_refs ); */
 }
 
 /* free a stand-alone client structure */
 void client_delref( t_client *c )
 {
 	--c->_refs;
-	syslog(LOG_DEBUG,"client(%d): delref %d", c->id, c->_refs );
+	/* syslog(LOG_DEBUG,"client(%d): delref %d", c->id, c->_refs ); */
 
 	if( c->del )
 		return;
