@@ -1,6 +1,8 @@
 
 AM_CFLAGS=-I.. -g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
 
+noinst_PROGRAMS=test_random
+test_random_LDFLAGS=-lm
 
 noinst_LIBRARIES=libdudldb.a
 libdudldb_a_SOURCES= \
