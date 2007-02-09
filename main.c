@@ -70,9 +70,14 @@ done:
 
 static void db_connected( void )
 {
+	expr *oldfilter;
+
 	syslog( LOG_DEBUG, "DB connection is up." );
+
+	oldfilter = expr_copy(random_filter());
 	random_init();
-	random_setfilter(random_filter());
+	random_setfilter(oldfilter);
+	expr_free(oldfilter);
 }
 
 static void save_filter( void )
