@@ -14,7 +14,7 @@ static db_opened_cb opened_cb = NULL;
 
 #define BUFLENQUERY 2048
 
-#define DBVER 2
+#define DBVER 3
 
 static int addopt( char *buffer, const char *opt, const char *val )
 {
@@ -70,7 +70,7 @@ static int db_conn( void )
 
 	if( pgint(res, 0, 0 ) != DBVER ){
 		syslog( LOG_ERR, "db_conn: invalid DB Version %d - need %d", 
-				pgint(res,1,1), DBVER);
+				pgint(res,0,0), DBVER);
 		goto clean2;
 	}
 	PQclear(res);
