@@ -10,6 +10,8 @@ the server hase to use multiple threads/-processes. Multiple processes
 won't work with the cache table. Threads require some kind of locking to
 avoid multiple concurrent queries.
 
+find way to deal with "broken" files. (set/view stor_file flag)
+
 get rid of cache table
 - (tmp table) breaks multiple DB connections
 - attribute changes are not automatically rematched against filter
@@ -21,6 +23,11 @@ change lastplay evaluation for random
 - to take score into account
 - only look at lastplay for tracks picked by random play. (non-queued)
 - introdcue "last" for tracks picked by random play
+
+make randomness - see pgdb/random.c:
+- algorithm (none/plain/abs/divi/first)
+- max percent (curently hardcoded 33%)
+- max total (used to be hardcoded to 1000)
 
 introduce tag-types: genre, preference, selection/playlist
 

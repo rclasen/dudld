@@ -1,3 +1,10 @@
+dudld (0.1.15) unstable; urgency=low
+
+  * bugfix: avoid free()ing still used filter in db_connected
+  * rebuild for new dbversion
+
+ -- Rainer Clasen <bj@zuto.de>  Sun, 11 Feb 2007 16:08:16 +0100
+
 dudld (0.1.14) unstable; urgency=low
 
   * rebuild for etch
