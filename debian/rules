@@ -21,6 +21,9 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_PROGRAM += -s
 endif
 
+configure: configure.ac
+	autoremake
+	
 config.status: configure
 	dh_testdir
 	# Add here commands to configure the package.
