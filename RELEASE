@@ -1,8 +1,8 @@
 
 release:
-- pgdb/dbcon.c: adjust dbversion
 - debian/control: check dudl-dbschema dependency
 - debian/changelog: Version, changes
+- pgdb/dudldb.c: adjust dbversion
 - configure.ac: Version
 - autoremake
 - fakeroot debian/rules clean ; fakeroot debian/rules binary

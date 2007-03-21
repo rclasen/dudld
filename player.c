@@ -14,6 +14,7 @@
 #include <syslog.h>
 #include <errno.h>
 #include <assert.h>
+#include <math.h>
 #include <string.h>
 #include <gst/gst.h>
 
@@ -29,6 +30,9 @@
 
 static int do_random = 1;
 static int gap = 0;
+static int cut = 0;
+static t_replaygain rgtype = rg_none;
+static double rgpreamp = 0;
 static int gap_id = 0;
 static int elapsed_id = 0;
 
@@ -36,6 +40,7 @@ static t_track *curtrack = NULL;
 static int curuid = 0;
 
 GstElement *p_src = NULL;
+GstElement *p_vol = NULL;
 GstElement *p_out = NULL;
 GstElement *p_pipe = NULL;
 
@@ -48,7 +53,7 @@ t_player_func_update player_func_pause = NULL;
 t_player_func_update player_func_stop = NULL;
 /* used by player_random */
 t_player_func_update player_func_random = NULL;
-t_player_func_update player_func_elapsed = NULL;
+t_player_func_elapsed player_func_elapsed = NULL;
 
 /************************************************************
  * database functions
@@ -119,6 +124,12 @@ static void db_finish( int completed )
  * gst backend functions
  */
 
+static int bp_start(void);
+static void bp_finish( int complete );
+static int bp_resume( void );
+static int bp_pause( void );
+static t_playstatus bp_status( void );
+
 static void gap_finish( void )
 {
 	g_source_remove(gap_id);
@@ -127,6 +138,9 @@ static void gap_finish( void )
 
 static gint cb_elapsed_timeout( gpointer data )
 {
+	gint64 pos;
+	GstFormat fmt = GST_FORMAT_TIME;
+
 	(void)data;
 
 	if( ! player_func_elapsed ){
@@ -134,7 +148,16 @@ static gint cb_elapsed_timeout( gpointer data )
 		return FALSE;
 	}
 
-	(*player_func_elapsed)();
+	if( ! gst_element_query( p_out, GST_QUERY_POSITION, &fmt, &pos))
+		pos = 0;
+
+	(*player_func_elapsed)( pos );
+
+	/* TODO: remove this workaround for skipping the end of a track */
+	if( cut && curtrack && curtrack->seg_to && curtrack->seg_to <= (guint64)pos ){
+		bp_finish(1);
+		bp_start();
+	}
 
 	return TRUE;
 }
@@ -173,6 +196,19 @@ static t_playstatus bp_status( void )
 	return pl_stop;
 }
 
+static int bp_volume( void )
+{
+	double volume;
+
+	if( ! curtrack )
+		return PE_OK;
+
+	volume = pow( 10, ( (track_rgval( curtrack, rgtype ) + rgpreamp)/20 ) );
+	g_object_set( G_OBJECT( p_vol), "volume", volume, NULL ); 
+
+	return PE_OK;
+}
+
 static int bp_start(void)
 {
 	char fname[MAXPATHLEN];
@@ -192,9 +228,11 @@ static int bp_start(void)
 	}
 
 	track_mkpath(fname, MAXPATHLEN, curtrack);
-
 	syslog(LOG_DEBUG, "play_gst: >%s<", fname);
 	g_object_set( G_OBJECT( p_src), "location", fname, NULL);
+
+	bp_volume();
+
 	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
 		!= GST_STATE_SUCCESS ){
 
@@ -205,6 +243,13 @@ static int bp_start(void)
 			(*player_func_stop)();
 
 		return PE_FAIL;
+	}
+
+	if( cut & curtrack->seg_from > 1* GST_SECOND ){
+		/* TODO: can I seek in GST_STATE_READY */
+		gst_element_seek( p_out, GST_SEEK_METHOD_SET | GST_FORMAT_TIME |
+			GST_SEEK_FLAG_FLUSH, curtrack->seg_from );
+		/* TODO: seek to end - requires gstreamer0.10 */
 	}
 
 	if( player_func_newtrack )
@@ -396,6 +441,39 @@ t_playerror player_setgap( int g )
 	return PE_OK;
 }
 
+int player_cut( void )
+{
+	return cut;
+}
+
+t_playerror player_setcut( int g )
+{
+	cut = g;
+	return PE_OK;
+}
+
+double player_rgpreamp( void )
+{
+	return rgpreamp;
+}
+
+t_playerror player_setrgpreamp( double g )
+{
+	rgpreamp = g;
+	return bp_volume() ? PE_OK : PE_FAIL;
+}
+
+t_replaygain player_rgtype( void )
+{
+	return rgtype;
+}
+
+t_playerror player_setrgtype( t_replaygain g )
+{
+	rgtype = g;
+	return bp_volume() ? PE_OK : PE_FAIL;
+}
+
 int player_random( void )
 {
 	return do_random;
@@ -550,11 +628,17 @@ void player_init( void )
 	}
 	gst_element_link( p_src, p_dec );
 
+	if( NULL == (p_vol = gst_element_factory_make ("volume", "p_vol"))){
+		syslog(LOG_ERR,"player: cannot create volume object");
+		exit(1);
+	}
+	gst_element_link( p_dec, p_vol );
+
 	if( NULL == (p_scale = gst_element_factory_make ("audioscale", "p_scale"))){
 		syslog(LOG_ERR,"player: cannot create scale object");
 		exit(1);
 	}
-	gst_element_link( p_dec, p_scale );
+	gst_element_link( p_vol, p_scale );
 
 	if( NULL == (p_conv = gst_element_factory_make ("audioconvert", "p_conv"))){
 		syslog(LOG_ERR,"player: cannot create convert object");
@@ -592,7 +676,7 @@ void player_init( void )
 
 	g_signal_connect( p_pipe, "eos", G_CALLBACK(cb_eos), NULL);
 	g_signal_connect( p_pipe, "error", G_CALLBACK(cb_error), NULL);
-	gst_bin_add_many( GST_BIN(p_pipe), p_src, p_dec, p_scale, p_conv, p_out, NULL);
+	gst_bin_add_many( GST_BIN(p_pipe), p_src, p_dec, p_vol, p_scale, p_conv, p_out, NULL);
 
 	gst_element_set_state (p_pipe, GST_STATE_READY);
 }

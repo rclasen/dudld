@@ -46,6 +46,14 @@ t_album *album_convert( PGresult *res, int tup )
 	GETFIELD(f,"album_publish_year", clean2 );
 	t->year = pgint(res, tup, f );
 
+	t->rgain = 0;
+	if( -1 != (f = PQfnumber( res, "album_rgain" )))
+		t->rgain = pgdouble(res, tup, f);
+
+	t->rgainpeak = 0;
+	if( -1 != (f = PQfnumber( res, "album_rgain_peak" )))
+		t->rgainpeak = pgdouble(res, tup, f);
+
 	if( NULL == (t->artist = artist_convert_album( res, tup )))
 		goto clean2;
 

@@ -9,6 +9,8 @@ typedef struct _t_album {
 	char *album;
 	int year;
 	t_artist *artist;
+	double rgain;
+	double rgainpeak;
 } t_album;
 
 #define it_album it_db

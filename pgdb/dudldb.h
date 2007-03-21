@@ -2,6 +2,7 @@
 #define _PGDB_DB_H
 
 #include <postgresql/libpq-fe.h>
+#include <glib.h>
 
 #include <commondb/dudldb.h>
 
@@ -23,6 +24,10 @@ int db_table_exists( char *table );
 char *db_escape( const char *in );
 
 int pgint( PGresult *res, int tup, int field );
+unsigned int pguint( PGresult *res, int tup, int field );
+gint64 pgint64( PGresult *res, int tup, int field );
+guint64 pguint64( PGresult *res, int tup, int field );
+double pgdouble( PGresult *res, int tup, int field );
 int pgbool( PGresult *res, int tup, int field );
 char *pgstring( PGresult *res, int tup, int field );
 

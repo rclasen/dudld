@@ -163,6 +163,7 @@ char *mktrack( t_track *t )
 		return NULL;
 	}
 
+	/* TODO: nanosec duration, start/stop, replaygain */
 	tmp = mktab( "ddsdtt", t->id, t->albumnr, t->title, t->duration,
 			sub1, sub2);
 	free(sub1);

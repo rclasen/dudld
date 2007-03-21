@@ -5,6 +5,8 @@
 
 int val_int( char *in, char **end );
 unsigned int val_uint( char *in, char **end );
+double *val_double( char *in, char **end );
+t_replaygain val_replaygain( char *in, char **end );
 char *val_name( char *in, char **end );
 char *val_string( char *in, char **end );
 

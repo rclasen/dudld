@@ -1,18 +1,32 @@
 #ifndef _COMMONDB_TRACK_H
 #define _COMMONDB_TRACK_H
 
+#include <glib.h>
+
 #include "dudldb.h"
 #include "parseexpr.h"
 #include "artist.h"
 #include "album.h"
 
+typedef enum {
+	rg_none,
+	rg_track,
+	rg_track_peak,
+	rg_album,
+	rg_album_peak,
+} t_replaygain;
+	
 typedef struct _t_track {
 	int id;
 	t_album *album;
 	int albumnr;
 	char *title;
 	t_artist *artist;
-	int duration;
+	int duration; /* TODO: 64bit nanosec */
+	guint64 seg_from;
+	guint64 seg_to;
+	double rgain;
+	double rgainpeak;
 	char *fname;
 	int _refs;
 	unsigned int lastplay;
@@ -29,6 +43,8 @@ void track_free( t_track *t );
 
 int track_mkpath( char *buf, int len, t_track *t );
 int track_exists( t_track *t );
+
+double track_rgval( t_track *track, t_replaygain type );
 
 int track_setname( int trackid, const char *title );
 int track_setartist( int trackid, int artistid );

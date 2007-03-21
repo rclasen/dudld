@@ -279,6 +279,48 @@ void cmd_gapset( t_client *client, char *code, void **argv )
 	proto_rlast(client, code, "gap adjusted" );
 }
 
+void cmd_cut( t_client *client, char *code, void **argv )
+{
+	(void)argv;
+	proto_rlast(client, code, "%d", player_cut() );
+}
+
+void cmd_cutset( t_client *client, char *code, void **argv )
+{
+	t_arg_bool	arg0 = (t_arg_bool)argv[0];
+
+	player_setcut( arg0 );
+	proto_rlast(client, code, "cutting adjusted" );
+}
+
+void cmd_replaygain( t_client *client, char *code, void **argv )
+{
+	(void)argv;
+	proto_rlast(client, code, "%d", player_rgtype() );
+}
+
+void cmd_replaygainset( t_client *client, char *code, void **argv )
+{
+	t_arg_replaygain	arg0 = (t_arg_replaygain)argv[0];
+
+	player_setrgtype( arg0 );
+	proto_rlast(client, code, "replaygain type adjusted" );
+}
+
+void cmd_rgpreamp( t_client *client, char *code, void **argv )
+{
+	(void)argv;
+	proto_rlast(client, code, "%f", player_rgpreamp() );
+}
+
+void cmd_rgpreampset( t_client *client, char *code, void **argv )
+{
+	t_arg_decibel	arg0 = (t_arg_decibel)argv[0];
+
+	player_setrgpreamp( *arg0 );
+	proto_rlast(client, code, "replaygain preamplification adjusted" );
+}
+
 void cmd_random( t_client *client, char *code, void **argv )
 {
 	(void)argv;

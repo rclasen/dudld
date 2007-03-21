@@ -80,4 +80,6 @@ proto_cmd.o: proto_cmd.h
 proto_cmd_tpl.c: mkproto.pl
 	perl $^ srv-cmdtpl > $@
 
+commands.txt: mkproto.pl
+	perl $^ cmdlist > $@
 

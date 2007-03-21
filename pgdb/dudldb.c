@@ -14,7 +14,7 @@ static db_opened_cb opened_cb = NULL;
 
 #define BUFLENQUERY 2048
 
-#define DBVER 3
+#define DBVER 4
 
 static int addopt( char *buffer, const char *opt, const char *val )
 {
@@ -237,7 +237,27 @@ int db_table_exists( char *table )
 
 int pgint( PGresult *res, int tup, int field )
 {
-	return atoi(PQgetvalue( res, tup, field ));
+	return strtol(PQgetvalue( res, tup, field ), NULL, 10);
+}
+
+unsigned int pguint( PGresult *res, int tup, int field )
+{
+	return strtoul(PQgetvalue( res, tup, field ), NULL, 10);
+}
+
+gint64 pgint64( PGresult *res, int tup, int field )
+{
+	return g_ascii_strtoll(PQgetvalue( res, tup, field ), NULL, 10);
+}
+
+guint64 pguint64( PGresult *res, int tup, int field )
+{
+	return g_ascii_strtoull(PQgetvalue( res, tup, field ), NULL, 10);
+}
+
+double pgdouble( PGresult *res, int tup, int field )
+{
+	return strtod(PQgetvalue( res, tup, field ), NULL);
 }
 
 int pgbool( PGresult *res, int tup, int field )

@@ -1,5 +1,6 @@
 
-AM_CFLAGS=-I.. -g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
+AM_CFLAGS=-g ${GLIB_CFLAGS} ${PSQL_CFLAGS} \
+	-I.. -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
 
 noinst_PROGRAMS=test_random
 test_random_LDFLAGS=-lm

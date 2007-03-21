@@ -1,3 +1,5 @@
+cleanup use of int/uint for IDs
+
 convert callbacks/signals/* to glib
 
 upgrade to gstreamer 0.10
@@ -71,8 +73,9 @@ allow several tracks per file (allows cutting out junk with junk-skip)
 - http://bugzilla.gnome.org/show_bug.cgi?id=127574
 - http://replaygain.org/
 - mp3gain
-- gstreamer::volume::volume = 10^(rgain/20) * 10^(preamp/20) 
-- dudld knobs: rg=off/peak/average, preamp=double/db, 
+- gstreamer::volume::volume = 10^(rgain/20) * 10^(preamp/20) = 10^( (rgain+preamp)/20 )
+- dudld knobs: rg=off/peak/average, preamp=double/db
+
 
 
 integrate dudl with test-listening and renaming

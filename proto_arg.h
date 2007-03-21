@@ -5,6 +5,11 @@
 #include "proto_helper.h"
 #include "proto_val.h"
 
+/*
+ * - default types for casting in cmd_* functions
+ * - pre'define'd struct members for argument lists
+ */
+
 #define arg_end { NULL, NULL, NULL }
 
 typedef int t_arg_bool;
@@ -29,10 +34,16 @@ typedef char * t_arg_pass;
 typedef t_rights t_arg_right;
 #define arg_right { "right", APARSE(val_uint), NULL }
 
+typedef t_replaygain t_arg_replaygain;
+#define arg_replaygain { "replaygain", APARSE(val_replaygain), NULL }
+
 typedef int t_arg_sec;
 #define arg_sec { "sec", APARSE(val_uint), NULL }
 
-typedef char * t_arg_string;
+typedef double *t_arg_decibel;
+#define arg_decibel { "decibel", APARSE(val_double), AFREE(free) }
+
+typedef char *t_arg_string;
 #define arg_string { "string", APARSE(val_string), AFREE(free) }
 
 #endif

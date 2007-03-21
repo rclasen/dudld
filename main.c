@@ -211,6 +211,9 @@ int main( int argc, char **argv )
 	db_init( db_connected );
 	// random_init(); // invoked from db_init()
 	player_init();
+	player_setcut( opt_cut );
+	player_setrgtype( opt_rgtype );
+	player_setrgpreamp( opt_rgpreamp );
 	player_setgap( opt_gap );
 	player_setrandom( opt_random );
 	proto_init();

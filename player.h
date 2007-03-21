@@ -20,6 +20,7 @@ typedef enum {
 } t_playerror;
 
 typedef void (*t_player_func_update)( void );
+typedef void (*t_player_func_elapsed)( guint64 );
 
 /* callbacks */
 extern t_player_func_update player_func_newtrack;
@@ -27,16 +28,22 @@ extern t_player_func_update player_func_pause;
 extern t_player_func_update player_func_resume;
 extern t_player_func_update player_func_stop;
 extern t_player_func_update player_func_random;
-extern t_player_func_update player_func_elapsed;
+extern t_player_func_elapsed player_func_elapsed;
 
 t_playstatus player_status( void );
 t_track *player_track( void );
 int player_gap( void );
 t_playerror player_setgap( int gap );
+int player_cut( void );
+t_playerror player_setcut( int g );
+double player_rgpreamp( void );
+t_playerror player_setrgpreamp( double g );
+t_replaygain player_rgtype( void );
+t_playerror player_setrgtype( t_replaygain g );
 int player_random( void );
-int player_elapsed( void );
 t_playerror player_setrandom( int random );
-t_playerror player_jump( int to_sec );
+int player_elapsed( void ); /* TODO: nanosec */
+t_playerror player_jump( int to_sec ); /* TODO: nanosec */
 
 t_playerror player_start( void );
 t_playerror player_stop( void );

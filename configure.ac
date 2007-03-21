@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_INIT
-AM_INIT_AUTOMAKE(dudld,0.1.15)
+AM_INIT_AUTOMAKE(dudld,0.1.16)
 AC_CONFIG_HEADER([config.h])
 
 dnl DBDIR=pgdb

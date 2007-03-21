@@ -57,7 +57,7 @@
 /*
  * minor version: increased on non-intrusive protocl additions
  */
-#define PROTO_MINOR_VERSION 0
+#define PROTO_MINOR_VERSION 1
 
 static t_cmd *cmd_find( t_protstate context, char *name )
 {

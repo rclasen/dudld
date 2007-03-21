@@ -1,10 +1,12 @@
 
-AM_CFLAGS=-g -Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
+AM_CFLAGS=-g ${GLIB_CFLAGS} \
+	-Wall -W -Wunused -Wmissing-prototypes -Wcast-qual -Wcast-align -Werror
 
 noinst_LIBRARIES=libcommon.a
 noinst_PROGRAMS=testparse
 
 libcommon_a_SOURCES= parsebuf.c \
+	track.c \
 	parseexpr.c \
 	\
 	parsebuf.h \

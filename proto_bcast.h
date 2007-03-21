@@ -10,7 +10,7 @@ void proto_bcast_player_stop( void );
 void proto_bcast_player_pause( void );
 void proto_bcast_player_resume( void );
 void proto_bcast_player_random( void );
-void proto_bcast_player_elapsed( void );
+void proto_bcast_player_elapsed( guint64 elapsed );
 void proto_bcast_sleep( void );
 void proto_bcast_filter( void );
 void proto_bcast_queue_fetch( t_queue *q );

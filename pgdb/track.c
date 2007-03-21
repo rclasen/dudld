@@ -55,9 +55,25 @@ t_track *track_convert( PGresult *res, int tup )
 	if( -1 != (f = PQfnumber( res, "lplay" )))
 		t->lastplay = pgint(res, tup, f);
 
-	t->duration = 0;
+	t->duration = 0; /* TODO: nanosec duration */
 	if( -1 != (f = PQfnumber( res, "dur" )))
 		t->duration = pgint(res, tup, f);
+
+	t->seg_from = 0;
+	if( -1 != (f = PQfnumber( res, "seg_from" )))
+		t->seg_from = pgint64(res, tup, f);
+
+	t->seg_to = (gint64)t->duration * 1000000000;
+	if( -1 != (f = PQfnumber( res, "seg_to" )))
+		t->seg_to = pgint64(res, tup, f);
+
+	t->rgain = 0;
+	if( -1 != (f = PQfnumber( res, "rgain" )))
+		t->rgain = pgdouble(res, tup, f);
+
+	t->rgainpeak = 0;
+	if( -1 != (f = PQfnumber( res, "rgain_peak" )))
+		t->rgainpeak = pgdouble(res, tup, f);
 
 	GETFIELD(f,"filename", clean1 );
 	if( NULL == (t->fname = pgstring(res, tup, f)))

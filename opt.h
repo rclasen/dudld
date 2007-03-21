@@ -1,12 +1,17 @@
 #ifndef _OPT_H
 #define _OPT_H
 
+#include "commondb/track.h"
+
 extern int opt_port;
 extern char *opt_pidfile;
 extern char *opt_path_tracks;
 
 extern int opt_gap;
 extern int opt_random;
+extern int opt_cut;
+extern t_replaygain opt_rgtype;
+extern double opt_rgpreamp;
 extern int opt_start;
 extern char *opt_sfilter;
 extern char *opt_failtag;

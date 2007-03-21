@@ -1,3 +1,10 @@
+dudld (0.1.16) unstable; urgency=low
+
+  * added replaygain support
+  * added support for skipping begin/end of track
+
+ -- Rainer Clasen <bj@zuto.de>  Fri, 16 Feb 2007 14:36:02 +0100
+
 dudld (0.1.15) unstable; urgency=low
 
   * bugfix: avoid free()ing still used filter in db_connected

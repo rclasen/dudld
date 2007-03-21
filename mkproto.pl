@@ -231,7 +231,7 @@ my @cmds = (
 		context	=> p_idle,
 		sargs	=> [qw( )],
 		cargs	=> [qw( )],
-		cret	=> "succ",
+		cret	=> "sec",
 	},
 	{
 		name	=> "gapset",
@@ -240,6 +240,60 @@ my @cmds = (
 		context	=> p_idle,
 		sargs	=> [qw( sec )],
 		cargs	=> [qw( sec )],
+		cret	=> "succ",
+	},
+	{
+		name	=> "cut",
+		code	=> "244",
+		minpriv	=> r_guest,
+		context	=> p_idle,
+		sargs	=> [qw( )],
+		cargs	=> [qw( )],
+		cret	=> "bool",
+	},
+	{
+		name	=> "cutset",
+		code	=> "245",
+		minpriv	=> r_user,
+		context	=> p_idle,
+		sargs	=> [qw( bool )],
+		cargs	=> [qw( bool )],
+		cret	=> "succ",
+	},
+	{
+		name	=> "replaygain",
+		code	=> "244",
+		minpriv	=> r_guest,
+		context	=> p_idle,
+		sargs	=> [qw( )],
+		cargs	=> [qw( )],
+		cret	=> "replaygain",
+	},
+	{
+		name	=> "replaygainset",
+		code	=> "245",
+		minpriv	=> r_user,
+		context	=> p_idle,
+		sargs	=> [qw( replaygain )],
+		cargs	=> [qw( replaygain )],
+		cret	=> "succ",
+	},
+	{
+		name	=> "rgpreamp",
+		code	=> "244",
+		minpriv	=> r_guest,
+		context	=> p_idle,
+		sargs	=> [qw( )],
+		cargs	=> [qw( )],
+		cret	=> "decibel",
+	},
+	{
+		name	=> "rgpreampset",
+		code	=> "245",
+		minpriv	=> r_user,
+		context	=> p_idle,
+		sargs	=> [qw( decibel )],
+		cargs	=> [qw( decibel )],
 		cret	=> "succ",
 	},
 	{
@@ -866,6 +920,11 @@ EOF
 EOF
 }
 
+sub cmdlist {
+	my $cmd = shift;
+	print $cmd->{name}, "\n";
+}
+
 sub loop {
 	my $fmt = shift;
 
@@ -937,6 +996,8 @@ if( $what eq "srv-argheadtpl" ){
 	print "#include \"proto_cmd.h\"\n";
 	&loop( \&srv_cmdtpl);
 
+} elsif( $what eq "cmdlist" ){
+	&loop( \&cmdlist );
 
 
 } else {
