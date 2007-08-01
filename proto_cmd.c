@@ -650,6 +650,16 @@ void cmd_tagget( t_client *client, char *code, void **argv )
 	tag_free(t);
 }
 
+void cmd_tagsartist( t_client *client, char *code, void **argv )
+{
+	t_arg_id	aid = (t_arg_id)argv[0];
+	it_tag *it;
+
+	it = tags_artist(aid);
+	dump_tags( client, code, it );
+	it_tag_done(it );
+}
+
 void cmd_tag2id( t_client *client, char *code, void **argv )
 {
 	t_arg_name	name = (t_arg_name)argv[0];
@@ -783,6 +793,16 @@ void cmd_albumsartist( t_client *client, char *code, void **argv )
 	it_album_done(it);
 }
 
+void cmd_albumstag( t_client *client, char *code, void **argv )
+{
+	t_arg_id	tid = (t_arg_id)argv[0];
+	it_album *it;
+
+	it = albums_tag(tid);
+	dump_albums( client, code, it );
+	it_album_done(it);
+}
+
 void cmd_albumsearch( t_client *client, char *code, void **argv )
 {
 	t_arg_string	pat = (t_arg_string)argv[0];
@@ -851,7 +871,7 @@ void cmd_artistlist( t_client *client, char *code, void **argv )
 	it_artist *it;
 
 	(void)argv;
-	it = artist_list( );
+	it = artists_list( );
 	dump_artists( client, code, it );
 	it_artist_done(it);
 }
@@ -861,7 +881,17 @@ void cmd_artistsearch( t_client *client, char *code, void **argv )
 	t_arg_string	pat = (t_arg_string)argv[0];
 	it_artist *it;
 
-	it = artist_search( pat );
+	it = artists_search( pat );
+	dump_artists( client, code, it );
+	it_artist_done(it);
+}
+
+void cmd_artiststag( t_client *client, char *code, void **argv )
+{
+	t_arg_id	tid = (t_arg_id)argv[0];
+	it_artist *it;
+
+	it = artists_tag( tid );
 	dump_artists( client, code, it );
 	it_artist_done(it);
 }

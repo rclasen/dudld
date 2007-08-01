@@ -25,6 +25,7 @@ t_tag *tag_get( int id );
 int tag_id( const char *name );
 
 it_tag *tags_list( void );
+it_tag *tags_artist( int aid );
 
 int tag_add( const char *name );
 int tag_setname( int id, const char *name );

@@ -158,6 +158,18 @@ it_album *albums_artistid( int artistid )
 			"ORDER BY LOWER(album_name)", artistid);
 }
 
+it_album *albums_tag( int tid )
+{
+	return db_iterate( (db_convert)album_convert, "SELECT * "
+			"FROM mserv_album a "
+			"WHERE a.album_id IN ( "
+				"SELECT f.album_id FROM stor_file f "
+				"INNER JOIN mserv_filetag t "
+				"ON f.id = t.file_id "
+				"WHERE t.tag_id = %d ) "
+			"ORDER BY LOWER(album_name)", tid);
+}
+
 it_album *albums_list( void )
 {
 	return db_iterate( (db_convert)album_convert, "SELECT * "

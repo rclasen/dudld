@@ -560,6 +560,15 @@ my @cmds = (
 		cret	=> "tag",
 	},
 	{
+		name	=> "tagsartist",
+		code	=> "270",
+		minpriv	=> r_guest,
+		context	=> p_idle,
+		sargs	=> [qw( id )],
+		cargs	=> [qw( id )],
+		cret	=> "it_tag",
+	},
+	{
 		name	=> "tag2id",
 		code	=> "272",
 		minpriv	=> r_guest,
@@ -664,6 +673,15 @@ my @cmds = (
 		cret	=> "it_album",
 	},
 	{
+		name	=> "albumstag",
+		code	=> "285",
+		minpriv	=> r_admin,
+		context	=> p_idle,
+		sargs	=> [qw( id )],
+		cargs	=> [qw( id )],
+		cret	=> "it_album",
+	},
+	{
 		name	=> "albumsearch",
 		code	=> "282",
 		minpriv	=> r_guest,
@@ -728,6 +746,15 @@ my @cmds = (
 		context	=> p_idle,
 		sargs	=> [qw( string )],
 		cargs	=> [qw( string )],
+		cret	=> "it_artist",
+	},
+	{
+		name	=> "artiststag",
+		code	=> "292",
+		minpriv	=> r_guest,
+		context	=> p_idle,
+		sargs	=> [qw( id )],
+		cargs	=> [qw( id )],
 		cret	=> "it_artist",
 	},
 	{

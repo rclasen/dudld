@@ -26,6 +26,7 @@ t_album *album_get( int id );
 it_album *albums_list( void );
 it_album *albums_artistid( int artistid );
 it_album *albums_search( const char *substr );
+it_album *albums_tag( int tagid );
 
 int album_setname( int id, const char *name );
 int album_setartist( int id, int artistid );

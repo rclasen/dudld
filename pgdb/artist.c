@@ -169,14 +169,26 @@ t_artist *artist_get( int id )
 	return t;
 }
 
-it_artist *artist_list( void )
+it_artist *artists_list( void )
 {
 	return db_iterate( (db_convert)artist_convert_title, "SELECT * "
 			"FROM mserv_artist "
 			"ORDER BY LOWER(artist_name)");
 }
 
-it_artist *artist_search( const char *substr )
+it_artist *artists_tag( int tid )
+{
+	return db_iterate( (db_convert)artist_convert_title, "SELECT * "
+			"FROM mserv_artist a "
+			"WHERE a.artist_id IN ( "
+				"SELECT f.artist_id FROM stor_file f "
+				"INNER JOIN mserv_filetag t "
+				"ON f.id = t.file_id "
+				"WHERE t.tag_id = %d ) "
+			"ORDER BY LOWER(artist_name)", tid);
+}
+
+it_artist *artists_search( const char *substr )
 {
 	char *str;
 	it_db *it;

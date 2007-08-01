@@ -18,8 +18,9 @@ void artist_free( t_artist *t );
 
 t_artist *artist_get( int id );
 
-it_artist *artist_list( void );
-it_artist *artist_search( const char *substr );
+it_artist *artists_list( void );
+it_artist *artists_tag( int tid );
+it_artist *artists_search( const char *substr );
 
 int artist_add( const char *name );
 int artist_setname( int artistid, const char *name );

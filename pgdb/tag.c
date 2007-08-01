@@ -119,6 +119,19 @@ it_tag *tags_list( void )
 			"ORDER BY LOWER(name)" );
 }
 
+it_tag *tags_artist( int aid )
+{
+	return db_iterate( (db_convert)tag_convert, 
+			"SELECT id, name, cmnt "
+			"FROM mserv_tag t "
+			"WHERE t.id IN ( "
+				"SELECT tt.tag_id FROM stor_file f "
+				"INNER JOIN mserv_filetag tt "
+				"ON f.id = tt.file_id "
+				"WHERE f.artist_id = %d ) "
+			"ORDER BY LOWER(name)", aid );
+}
+
 int tag_add( const char *name )
 {
 	PGresult *res;
