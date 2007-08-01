@@ -1,3 +1,9 @@
+dudld (0.1.17) unstable; urgency=low
+
+  * added tagsartist, artiststag, albumstag
+
+ -- Rainer Clasen <bj@zuto.de>  Wed,  1 Aug 2007 10:28:31 +0200
+
 dudld (0.1.16) unstable; urgency=low
 
   * added replaygain support

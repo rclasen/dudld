@@ -3,6 +3,7 @@ release:
 - debian/control: check dudl-dbschema dependency
 - debian/changelog: Version, changes
 - pgdb/dudldb.c: adjust dbversion
+- proto.c: adjust protocol version
 - configure.ac: Version
 - autoremake
 - fakeroot debian/rules clean ; fakeroot debian/rules binary
