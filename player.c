@@ -203,7 +203,9 @@ static int bp_volume( void )
 	if( ! curtrack )
 		return PE_OK;
 
-	volume = pow( 10, ( (track_rgval( curtrack, rgtype ) + rgpreamp)/20 ) );
+	volume = rgtype 
+		? pow( 10, ( (track_rgval( curtrack, rgtype ) + rgpreamp)/20 ) )
+		: 1;
 	g_object_set( G_OBJECT( p_vol), "volume", volume, NULL ); 
 
 	return PE_OK;
@@ -245,7 +247,7 @@ static int bp_start(void)
 		return PE_FAIL;
 	}
 
-	if( cut & curtrack->seg_from > 1* GST_SECOND ){
+	if( cut & (curtrack->seg_from > 1* GST_SECOND) ){
 		/* TODO: can I seek in GST_STATE_READY */
 		gst_element_seek( p_out, GST_SEEK_METHOD_SET | GST_FORMAT_TIME |
 			GST_SEEK_FLAG_FLUSH, curtrack->seg_from );
