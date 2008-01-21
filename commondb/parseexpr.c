@@ -83,7 +83,7 @@ static char *_parse_alloc(
 			str = new;
 		}
 
-		str[used++] = c;
+		str[used++] = tolower(c);
 	}
 	if( str )
 		str[used] = 0;

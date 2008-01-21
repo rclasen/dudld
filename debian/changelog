@@ -1,3 +1,9 @@
+dudld (0.1.18) unstable; urgency=low
+
+  * lowercased filter to match indices
+
+ -- Rainer Clasen <bj@zuto.de>  Sat,  8 Sep 2007 19:42:25 +0200
+
 dudld (0.1.17) unstable; urgency=low
 
   * added tagsartist, artiststag, albumstag

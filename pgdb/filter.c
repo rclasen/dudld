@@ -214,7 +214,7 @@ static int sql_vt_string( char *buf, size_t len, valtest *vt, char *row )
 	char *esc;
 	int used;
 
-	esc = db_escape(vt->val->val.string);
+	esc = db_escape(vt->val->val.string); // TODO: lower?
 	used = snprintf( buf, len, "%s %s '%s'", 
 			row, oper_names[vt->op], esc );
 	free(esc);
@@ -254,15 +254,15 @@ static sql_valtestfmt_t sql_valtestfmt[] ={
 	{ vf_tag, vo_re, vt_string, sql_vt_tagre, NULL},
 	{ vf_tag, vo_in, vt_list, sql_vt_taglist, NULL},
 
-	{ vf_title, vo_eq, vt_string, sql_vt_string, "title" },
+	{ vf_title, vo_eq, vt_string, sql_vt_string, "lower(title)" },
 	{ vf_title, vo_re, vt_string, sql_vt_string, "title" },
 
-	{ vf_artist, vo_eq, vt_string, sql_vt_string, "artist_name" },
+	{ vf_artist, vo_eq, vt_string, sql_vt_string, "lower(artist_name)" },
 	{ vf_artist, vo_eq, vt_num, sql_vt_num, "artist_id" },
 	// TODO: { vf_artist, vo_in, vt_list, sql_vt_idlist, "artist_name" },
 	{ vf_artist, vo_re, vt_string, sql_vt_string, "artist_name" },
 
-	{ vf_album, vo_eq, vt_string, sql_vt_string, "album_name" },
+	{ vf_album, vo_eq, vt_string, sql_vt_string, "lower(album_name)" },
 	{ vf_album, vo_eq, vt_num, sql_vt_num, "album_id" },
 	// TODO: { vf_album, vo_in, vt_list, sql_vt_idlist, "album_name" },
 	{ vf_album, vo_re, vt_string, sql_vt_string, "album_name" },
