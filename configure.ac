@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_INIT
-AM_INIT_AUTOMAKE(dudld,0.1.17)
+AM_INIT_AUTOMAKE(dudld,0.1.20)
 AC_CONFIG_HEADER([config.h])
 
 dnl DBDIR=pgdb
@@ -13,7 +13,7 @@ AC_PROG_RANLIB
 AC_PROG_MAKE_SET
 
 # Checks for libraries.
-AC_CHECK_LIB([ncc], [pidfile_ftake])
+AC_CHECK_LIB([lockfile], [lockfile_create])
 
 AC_PATH_PROGS([PG_CONFIG], [pg_config])
 if test "$PG_CONFIG"x = ""x; then

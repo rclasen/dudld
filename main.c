@@ -13,7 +13,7 @@
 #include <glib.h>
 #include <popt.h>
 
-#include <libncc/pidfile.h>
+#include <lockfile.h>
 
 #include <config.h>
 #include "client.h"
@@ -28,6 +28,18 @@
 
 char *progname = NULL;
 GMainLoop *gmain = NULL;
+int debug = 0;
+
+static void sig_usr( int sig )
+{
+	(void)sig;
+
+	debug = !debug;
+	setlogmask( LOG_UPTO( debug ? LOG_DEBUG : LOG_INFO) );
+	syslog( LOG_INFO, "%sabled debugging output", debug ? "en" : "dis" );
+
+	signal( SIGUSR1, sig_usr );
+}
 
 static void sig_term( int sig )
 {
@@ -105,7 +117,6 @@ int main( int argc, char **argv )
 {
 	pid_t pid;
 	int foreground = 0;
-	int debug = 0;
 	int c;
 	int needhelp = 0;
 	char *config = DUDLD_CONFIG;
@@ -180,12 +191,13 @@ int main( int argc, char **argv )
 
 	opt_read( config );
 
-	if( pidfile_flock(opt_pidfile)){
-		syslog( LOG_ERR, "cannot create pidfile: %m");
+	if( lockfile_check(opt_pidfile, L_PID)){
+		syslog( LOG_ERR, "pidfile exists: %m");
 		exit(1);
 	}
 
 	// TODO: use sigaction
+	signal( SIGUSR1, sig_usr );
 	signal( SIGTERM, sig_term );
 	signal( SIGINT, sig_term );
 	signal( SIGCHLD, SIG_IGN );
@@ -200,9 +212,8 @@ int main( int argc, char **argv )
 		syslog( LOG_ERR, "cannot daemonize: %m" );
 		exit( 1 );
 	}
-	/* our pid changed - update pidfile */
-	if( pidfile_ftake(opt_pidfile, pid) ){
-		syslog( LOG_ERR, "cannot update pidfile: %m" );
+	if( lockfile_create(opt_pidfile, 0, L_PID)){
+		syslog( LOG_ERR, "cannot create pidfile: %m");
 		exit(1);
 	}
 
@@ -234,7 +245,7 @@ int main( int argc, char **argv )
 	player_done();
 	clients_done();
 	db_done();
-	pidfile_funlock(opt_pidfile);
+	lockfile_remove(opt_pidfile);
 	return 0;
 }
 

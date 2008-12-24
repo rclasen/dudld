@@ -21,7 +21,7 @@ sysconf_DATA=dudld.conf
 sbin_PROGRAMS=dudld
 
 dudld_LDADD= commondb/libcommon.a pgdb/libdudldb.a
-dudld_LDFLAGS=-lncc
+dudld_LDFLAGS=-llockfile
 dudld_SOURCES= client.c \
 	main.c \
 	opt.c \

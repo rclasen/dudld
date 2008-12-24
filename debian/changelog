@@ -1,3 +1,16 @@
+dudld (0.1.20) unstable; urgency=low
+
+  * switched from libncc to liblockfile
+
+ -- Rainer Clasen <bj@zuto.de>  Wed, 24 Dec 2008 12:20:23 +0100
+
+dudld (0.1.19) unstable; urgency=low
+
+  * properly close client sockets
+  * toggle debuging by SIGUSR1
+
+ -- Rainer Clasen <bj@zuto.de>  Wed, 26 Nov 2008 13:36:51 +0100
+
 dudld (0.1.18) unstable; urgency=low
 
   * lowercased filter to match indices

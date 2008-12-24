@@ -19,8 +19,8 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
-/* Define to 1 if you have the `ncc' library (-lncc). */
-#define HAVE_LIBNCC 1
+/* Define to 1 if you have the `lockfile' library (-llockfile). */
+#define HAVE_LIBLOCKFILE 1
 
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
    to 0 otherwise. */
@@ -144,7 +144,7 @@
 #define TIME_WITH_SYS_TIME 1
 
 /* Version number of package */
-#define VERSION "0.1.16"
+#define VERSION "0.1.20"
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

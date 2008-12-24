@@ -246,8 +246,11 @@ static gboolean client_accept( GIOChannel *source,
 			client_read, c );
 
 
-	syslog(LOG_DEBUG, "client(%d): accepted from %s", 
-			c->id, inet_ntoa(c->sin.sin_addr));
+	syslog(LOG_DEBUG, "client(%d): accepted fd(%d) from %s:%d", 
+			c->id, 
+			c->sock,
+			inet_ntoa(c->sin.sin_addr),
+			c->sin.sin_port);
 
 	if( client_func_connect )
 		(*client_func_connect)( c );
@@ -284,6 +287,7 @@ void client_delref( t_client *c )
 
 	g_source_remove_by_user_data(c);
 	shutdown(c->sock, 2);
+	close(c->sock);
 	user_free(c->user);
 	free(c->pdata);
 	free(c);

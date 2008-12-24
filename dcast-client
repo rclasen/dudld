@@ -2,6 +2,8 @@
 
 set -e
 
+renice -19 $$ > /dev/null 2>&1 || true
+
 exec gst-launch-0.8 --silent udpsrc \
 		port=4953 \
 		control=1 \
@@ -12,5 +14,4 @@ exec gst-launch-0.8 --silent udpsrc \
 		channels=2, \
 		width=16, \
 		depth=16 \
-	\! audioconv \
 	\! alsasink
