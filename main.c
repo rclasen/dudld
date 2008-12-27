@@ -191,8 +191,8 @@ int main( int argc, char **argv )
 
 	opt_read( config );
 
-	if( lockfile_check(opt_pidfile, L_PID)){
-		syslog( LOG_ERR, "pidfile exists: %m");
+	if( ! lockfile_check(opt_pidfile, L_PID)){
+		syslog( LOG_ERR, "pidfile exists, dudld seems to be running");
 		exit(1);
 	}
 
