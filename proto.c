@@ -1,4 +1,13 @@
 /*
+ * Copyright (c) 2008 Rainer Clasen
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms described in the file LICENSE included in this
+ * distribution.
+ *
+ */
+
+/*
  * this protocol is heavily based on SMTP
  *
  * it expexts a single-line command and prefixes each reply with a 3 digit
