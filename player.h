@@ -60,7 +60,7 @@ t_playerror player_next( void );
 t_playerror player_prev( void );
 t_playerror player_pause( void );
 
-const void *player_popt_table( void );
-void player_init( void );
+GOptionGroup *player_options( void );
+void player_init( GMainLoop *loop );
 void player_done( void );
 #endif

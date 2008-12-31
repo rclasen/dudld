@@ -50,7 +50,6 @@ static int curuid = 0;
 
 GstElement *p_src = NULL;
 GstElement *p_vol = NULL;
-GstElement *p_out = NULL;
 GstElement *p_pipe = NULL;
 
 /* used by player_start: */
@@ -157,16 +156,10 @@ static gint cb_elapsed_timeout( gpointer data )
 		return FALSE;
 	}
 
-	if( ! gst_element_query( p_out, GST_QUERY_POSITION, &fmt, &pos))
+	if( ! gst_element_query_position( p_pipe, &fmt, &pos))
 		pos = 0;
 
 	(*player_func_elapsed)( pos );
-
-	/* TODO: remove this workaround for skipping the end of a track */
-	if( cut && curtrack && curtrack->seg_to && curtrack->seg_to <= (guint64)pos ){
-		bp_finish(1);
-		bp_start();
-	}
 
 	return TRUE;
 }
@@ -193,13 +186,13 @@ static void elapsed_del( void )
 
 static t_playstatus bp_status( void )
 {
-	if( GST_STATE(p_src) == GST_STATE_PLAYING )
+	if( GST_STATE(p_pipe) == GST_STATE_PLAYING )
 		return pl_play;
 
 	else if( gap_id )
 		return pl_play;
 
-	else if( GST_STATE(p_src) == GST_STATE_PAUSED )
+	else if( GST_STATE(p_pipe) == GST_STATE_PAUSED )
 		return pl_pause;
 
 	return pl_stop;
@@ -215,9 +208,34 @@ static int bp_volume( void )
 	volume = rgtype 
 		? pow( 10, ( (track_rgval( curtrack, rgtype ) + rgpreamp)/20 ) )
 		: 1;
-	g_object_set( G_OBJECT( p_vol), "volume", volume, NULL ); 
+	g_object_set( G_OBJECT(p_vol), "volume", volume, NULL );
 
 	return PE_OK;
+}
+
+static int bp_seek( gint64 to )
+{
+	gboolean ret;
+
+	syslog(LOG_DEBUG, "bp_seek to %d", (int)( to / GST_SECOND ));
+
+	if( cut && curtrack->seg_to && to < (gint64)curtrack->seg_to ){
+		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME, 
+			GST_SEEK_FLAG_FLUSH, 
+			GST_SEEK_TYPE_SET, to,
+			GST_SEEK_TYPE_SET, (gint64)curtrack->seg_to);
+	} else {
+		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME, 
+			GST_SEEK_FLAG_FLUSH, 
+			GST_SEEK_TYPE_SET, to,
+			GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE );
+	}
+
+	if( ! ret )
+		syslog(LOG_ERR, "play_gst: seek failed" );
+
+	return ret;
+
 }
 
 static int bp_start(void)
@@ -240,27 +258,27 @@ static int bp_start(void)
 
 	track_mkpath(fname, MAXPATHLEN, curtrack);
 	syslog(LOG_DEBUG, "play_gst: >%s<", fname);
-	g_object_set( G_OBJECT( p_src), "location", fname, NULL);
+	g_object_set( G_OBJECT(p_src), "location", fname, NULL);
 
 	bp_volume();
 
-	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
-		!= GST_STATE_SUCCESS ){
+	gst_element_set_state( p_pipe, GST_STATE_PAUSED );
+	gst_element_get_state( p_pipe, NULL, NULL, GST_CLOCK_TIME_NONE );
 
-		syslog(LOG_ERR, "play_gst: failed to play");
+	if( cut & (curtrack->seg_from > 1* GST_SECOND) ){
+		bp_seek( curtrack->seg_from ); /* ignore failure */
+	}
+
+	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
+		== GST_STATE_CHANGE_FAILURE ){
+
+		syslog(LOG_ERR, "play_gst: failed to play" );
 		db_finish(0);
 
 		if( player_func_stop )
 			(*player_func_stop)();
 
 		return PE_FAIL;
-	}
-
-	if( cut & (curtrack->seg_from > 1* GST_SECOND) ){
-		/* TODO: can I seek in GST_STATE_READY */
-		gst_element_seek( p_out, GST_SEEK_METHOD_SET | GST_FORMAT_TIME |
-			GST_SEEK_FLAG_FLUSH, curtrack->seg_from );
-		/* TODO: seek to end - requires gstreamer0.10 */
 	}
 
 	if( player_func_newtrack )
@@ -282,7 +300,7 @@ static void bp_finish( int complete )
 
 	// TODO: is stopping the pipe needed??
 	if( gst_element_set_state( p_pipe, GST_STATE_READY ) 
-		!= GST_STATE_SUCCESS ){
+		== GST_STATE_CHANGE_FAILURE ){
 		
 		syslog(LOG_ERR, "play_gst: failed to finish");
 		db_finish(0);
@@ -296,11 +314,11 @@ static int bp_resume( void )
 {
 	syslog(LOG_DEBUG, "bp_resume");
 
-	if( GST_STATE(p_src) != GST_STATE_PAUSED )
+	if( GST_STATE(p_pipe) != GST_STATE_PAUSED )
 		return -1;
 
 	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
-		!= GST_STATE_SUCCESS ){
+		== GST_STATE_CHANGE_FAILURE ){
 		
 		syslog(LOG_ERR, "play_gst: failed to resume");
 		bp_finish(0);
@@ -330,12 +348,12 @@ static int bp_pause( void )
 		return 0;
 	} 
 	
-	if( GST_STATE(p_src) != GST_STATE_PLAYING )
+	if( GST_STATE(p_pipe) != GST_STATE_PLAYING )
 		return -1;
 
 
 	if( gst_element_set_state( p_pipe, GST_STATE_PAUSED ) 
-		!= GST_STATE_SUCCESS ){
+		== GST_STATE_CHANGE_FAILURE ){
 		
 		syslog(LOG_ERR, "play_gst: failed to finish");
 		bp_finish(0);
@@ -361,57 +379,71 @@ static gint cb_gap_timeout( gpointer data )
 	return FALSE;
 }
 
-static gint cb_eos_idle( gpointer data )
+static gboolean cb_bus( GstBus *bus, GstMessage *msg, gpointer data)
 {
-	bp_finish(1);
-	if( gap ){
-		syslog(LOG_DEBUG, "play_gst: gap started");
-		gap_id = g_timeout_add(1000 * gap, cb_gap_timeout, data );
-	} else {
-		bp_start();
+	GMainLoop *loop = (GMainLoop *) data;
+	(void)bus;
+
+	switch (GST_MESSAGE_TYPE (msg)) {
+
+	  case GST_MESSAGE_EOS:
+		bp_finish(1);
+
+		if( gap ){
+			syslog(LOG_DEBUG, "play_gst: gap started");
+			gap_id = g_timeout_add(1000 * gap, cb_gap_timeout, loop );
+		} else {
+			bp_start();
+		}
+
+		break;
+
+	  case GST_MESSAGE_WARNING: {
+		gchar  *debug;
+		GError *err;
+
+		gst_message_parse_error (msg, &err, &debug);
+		g_free (debug);
+
+		syslog( LOG_WARNING, "play_gst warning: %s %d %d %s", 
+			GST_ELEMENT_NAME(msg->src),
+			err->domain, err->code, err->message );
+
+		g_error_free (err);
+		break;
+	  }
+
+	  case GST_MESSAGE_ERROR: {
+		gchar  *debug;
+		GError *err;
+
+		gst_message_parse_error (msg, &err, &debug);
+		g_free (debug);
+
+		syslog( LOG_ERR, "play_gst: %s %d %d %s", 
+			GST_ELEMENT_NAME(msg->src),
+			err->domain, err->code, err->message );
+
+		if( curtrack )
+			syslog(LOG_ERR, "play_gst: failed track id=%d %d/%d", 
+					curtrack->id, curtrack->album->id, 
+					curtrack->albumnr );
+
+		bp_finish(0);
+
+		//TODO: stop on read/decode, otherwise pause
+		if( player_func_stop )
+			 (*player_func_stop)();
+
+		g_error_free (err);
+		break;
+	  }
+
+	  default:
+		break;
 	}
 
-	return FALSE;
-}
-
-static void cb_eos( GstElement *play, gpointer data )
-{
-	(void)play;
-	/* forward this event to main-thread */
-	g_idle_add(cb_eos_idle,data);
-}
-
-static gint cb_error_idle( gpointer data )
-{
-	(void)data;
-
-	if( curtrack )
-		syslog(LOG_ERR, "play_gst: failed track id=%d %d/%d", 
-				curtrack->id, curtrack->album->id, 
-				curtrack->albumnr);
-
-	bp_finish(0);
-	//TODO: stop on read/decode, otherwise pause
-	if( player_func_stop )
-		(*player_func_stop)();
-
-	return FALSE;
-}
-
-static void cb_error( GstElement *play,
-	GstElement *src,
-	GError     *err,
-	gchar      *debug,
-	gpointer    data)
-{
-	(void)play;
-	(void)src;
-	(void)err;
-	(void)debug;
-	(void)data;
-	syslog( LOG_ERR, "play_gst: %s %d %d %s", GST_ELEMENT_NAME(src), err->domain, err->code, err->message);
-	/* forward this event to main-thread */
-	g_idle_add(cb_error_idle,err);
+	return TRUE;
 }
 
 
@@ -510,7 +542,7 @@ int player_elapsed( void )
 	if( pl_stop == bp_status() )
 		return 0;
 
-	if( ! gst_element_query( p_out, GST_QUERY_POSITION, &fmt, &pos))
+	if( ! gst_element_query_position( p_pipe, &fmt, &pos))
 		return 0;
 
 	return pos / GST_SECOND;
@@ -518,13 +550,11 @@ int player_elapsed( void )
 
 t_playerror player_jump( int to_sec )
 {
-	gint64 nanoseconds = to_sec * GST_SECOND;
-
 	if( pl_stop == bp_status() )
 		return PE_NOTHING;
 
-	gst_element_seek( p_out, GST_SEEK_METHOD_SET | GST_FORMAT_TIME |
-			GST_SEEK_FLAG_FLUSH, nanoseconds);
+	if( ! bp_seek( to_sec * GST_SECOND ) )
+		return PE_FAIL;
 
 	return PE_OK;
 }
@@ -615,18 +645,22 @@ t_playerror player_stop( void )
  * interface house keeping fuctions
  */
 
-const void *player_popt_table( void )
+GOptionGroup *player_options( void )
 {
-	return gst_init_get_popt_table( );
+	return gst_init_get_option_group();
 }
 
-void player_init( void )
+void player_init( GMainLoop *loop )
 {
+	GstBus *bus;
 	GstElement *p_dec;
 	GstElement *p_scale;
 	GstElement *p_conv;
+	GstElement *p_out;
 	GstCaps *scaps;
 	
+	/* TODO: autoplug input to support non-mp3 */
+	/* TODO: support user-specified output */
 
 	if( NULL == (p_src = gst_element_factory_make ("filesrc", "p_src"))){
 		syslog(LOG_ERR,"player: cannot create src object");
@@ -637,25 +671,16 @@ void player_init( void )
 		syslog(LOG_ERR,"player: cannot create decode object");
 		exit(1);
 	}
-	gst_element_link( p_src, p_dec );
 
-	if( NULL == (p_vol = gst_element_factory_make ("volume", "p_vol"))){
-		syslog(LOG_ERR,"player: cannot create volume object");
-		exit(1);
-	}
-	gst_element_link( p_dec, p_vol );
-
-	if( NULL == (p_scale = gst_element_factory_make ("audioscale", "p_scale"))){
+	if( NULL == (p_scale = gst_element_factory_make ("audioresample", "p_scale"))){
 		syslog(LOG_ERR,"player: cannot create scale object");
 		exit(1);
 	}
-	gst_element_link( p_vol, p_scale );
 
 	if( NULL == (p_conv = gst_element_factory_make ("audioconvert", "p_conv"))){
 		syslog(LOG_ERR,"player: cannot create convert object");
 		exit(1);
 	}
-	gst_element_link( p_scale, p_conv );
 
 	if( NULL == (scaps = gst_caps_new_simple ("audio/x-raw-int",
 		"format", G_TYPE_STRING, "int",
@@ -671,25 +696,40 @@ void player_init( void )
 		exit(1);
 	}
 
+	if( NULL == (p_vol = gst_element_factory_make ("volume", "p_vol"))){
+		syslog(LOG_ERR,"player: cannot create volume object");
+		exit(1);
+	}
+
 	if( NULL == (p_out = gst_element_factory_make ("udpsink", "p_out" ))){
 		syslog(LOG_ERR,"player: cannot create output object");
 		exit(1);
 	}
 	gst_util_set_object_arg(G_OBJECT(p_out), "host", "239.0.0.1" );
 	gst_util_set_object_arg(G_OBJECT(p_out), "port", "4953" );
-	gst_util_set_object_arg(G_OBJECT(p_out), "control", "1" );
-	gst_element_link_filtered( p_conv, p_out, scaps );
+	//gst_util_set_object_arg(G_OBJECT(p_out), "control", "1" );
 
-	if( NULL == (p_pipe = gst_thread_new("p_pipe"))){
+	if( NULL == (p_pipe = gst_pipeline_new("p_pipe"))){
 		syslog(LOG_ERR,"player: cannot create pipe object");
 		exit(1);
 	}
 
-	g_signal_connect( p_pipe, "eos", G_CALLBACK(cb_eos), NULL);
-	g_signal_connect( p_pipe, "error", G_CALLBACK(cb_error), NULL);
-	gst_bin_add_many( GST_BIN(p_pipe), p_src, p_dec, p_vol, p_scale, p_conv, p_out, NULL);
+	bus = gst_pipeline_get_bus (GST_PIPELINE (p_pipe));
+	gst_bus_add_watch (bus, cb_bus, loop);
+	gst_object_unref (bus);
 
-	gst_element_set_state (p_pipe, GST_STATE_READY);
+	gst_bin_add_many( GST_BIN(p_pipe), 
+		p_src, p_dec, p_scale, p_conv, p_vol, p_out, NULL);
+	if( !gst_element_link_many( p_src, p_dec, p_scale, p_conv, p_vol, NULL) )
+		syslog( LOG_ERR, "player: failed to link pipeline 1" );
+	if( !gst_element_link_filtered( p_vol, p_out, scaps ) )
+		syslog( LOG_ERR, "player: failed to link pipeline 1" );
+
+
+	if( gst_element_set_state (p_pipe, GST_STATE_READY)
+		== GST_STATE_CHANGE_FAILURE )
+		
+		syslog( LOG_ERR, "play_gst: failed to init pipeline" );
 }
 
 void player_done( void )

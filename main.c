@@ -20,7 +20,6 @@
 #include <time.h>
 #include <errno.h>
 #include <glib.h>
-#include <popt.h>
 
 #include <lockfile.h>
 
@@ -37,7 +36,7 @@
 
 char *progname = NULL;
 GMainLoop *gmain = NULL;
-int debug = 0;
+gboolean debug = 0;
 
 static void sig_usr( int sig )
 {
@@ -120,28 +119,25 @@ static void save_filter( void )
 	sfilter_setfilter(id, buf);
 }
 
-static void usage( void );
-
 int main( int argc, char **argv )
 {
-	pid_t pid;
-	int foreground = 0;
-	int c;
-	int needhelp = 0;
-	char *config = DUDLD_CONFIG;
-	struct poptOption popt[] = {
-		{ NULL,	0, POPT_ARG_INCLUDE_TABLE, NULL, 0, "GStreamer", NULL},
-		{ "help",	'h', POPT_ARG_NONE,	NULL, 'h', NULL, NULL },
-		{ "foreground",	'f', POPT_ARG_NONE,	NULL, 'f', NULL, NULL },
-		{ "debug",	'd', POPT_ARG_NONE,	NULL, 'd', NULL, NULL },
-		{ "port",	'p', POPT_ARG_INT,	NULL, 'p', NULL, NULL },
-		{ "pidfile",	'i', POPT_ARG_STRING,	NULL, 'i', NULL, NULL },
-		{ "config",	'c', POPT_ARG_STRING,	NULL, 'c', NULL, NULL },
-		POPT_TABLEEND
+	gboolean foreground = 0;
+	gchar *config = DUDLD_CONFIG;
+	GOptionEntry gopt[] = {
+		{ "foreground",	'f', 0, G_OPTION_ARG_NONE,   &foreground,
+			"do not detach", NULL },
+		{ "debug",	'd', 0, G_OPTION_ARG_NONE,   &debug,
+			"enable verbose logging", NULL },
+		{ "port",	'p', 0, G_OPTION_ARG_INT,    &opt_port,
+			"listen on tcp port P", "P" },
+		{ "pidfile",	'i', 0, G_OPTION_ARG_STRING, &opt_pidfile,
+			"use F as pidfile", "F" },
+		{ "config",	'c', 0, G_OPTION_ARG_STRING, &config,
+			"config file location F", "C" },
+		{ NULL }
 	};
-	poptContext pctx;
-
-	popt[0].arg = player_popt_table();
+	GOptionContext *copt = NULL;
+	GError *error = NULL;
 
 	progname = strrchr( argv[0], '/' );
 	if( NULL != progname ){
@@ -149,50 +145,21 @@ int main( int argc, char **argv )
 	} else {
 		progname = argv[0];
 	}
-	pid = getpid();
 
-	pctx = poptGetContext( NULL, argc, (const char**) argv, popt, 0 );
-	while( 0 < (c = poptGetNextOpt(pctx))){
-		const char *optarg;
 
-		optarg = poptGetOptArg(pctx);
-		switch(c){
-		  case 'h':
-			  usage();
-			  exit(0);
-			  break;
+	if (!g_thread_supported ())
+		g_thread_init (NULL);
 
-		  case 'f':
-			  foreground++;
-			  break;
-
-		  case 'd':
-			  debug++;
-			  break;
-
-		  case 'p':
-			  opt_port = atoi(optarg);
-			  break;
-
-		  case 'i':
-			  opt_pidfile = strdup(optarg);
-			  break;
-
-		  case 'c':
-			  config = strdup(optarg);
-			  break;
-
-		  default:
-			  needhelp++;
-			  break;
-		}
-	}
-	poptFreeContext(pctx);
-
-	if( needhelp ){
-		fprintf( stderr, "use --help for usage information\n" );
+	copt = g_option_context_new ("- networked jukebox daemon");
+	g_option_context_add_main_entries (copt, gopt, NULL);
+	g_option_context_add_group (copt, player_options() );
+	if( !g_option_context_parse (copt, &argc, &argv, &error) ){
+		fprintf( stderr, "%s\n"
+			"use --help for usage information\n",
+			error->message);
 		exit( 1 );
 	}
+	g_option_context_free(copt);
 
 	openlog( progname, LOG_PID | LOG_PERROR, LOG_DAEMON );
 	if( ! debug )
@@ -212,6 +179,8 @@ int main( int argc, char **argv )
 	signal( SIGCHLD, SIG_IGN );
 	signal( SIGPIPE, SIG_IGN );
 
+	gmain = g_main_loop_new(NULL,0);
+
 	if( clients_init( opt_port ) ){
 		syslog( LOG_ERR, "clients_init(): %m" );
 		return 1;
@@ -230,7 +199,7 @@ int main( int argc, char **argv )
 
 	db_init( db_connected );
 	// random_init(); // invoked from db_init()
-	player_init();
+	player_init( gmain );
 	player_setcut( opt_cut );
 	player_setrgtype( opt_rgtype );
 	player_setrgpreamp( opt_rgpreamp );
@@ -245,7 +214,6 @@ int main( int argc, char **argv )
 
 	syslog(LOG_INFO, "waiting" );
 
-	gmain = g_main_loop_new(NULL,0);
 	g_main_loop_run(gmain);
 
 	syslog(LOG_INFO, "terminating" );
@@ -256,19 +224,4 @@ int main( int argc, char **argv )
 	db_done();
 	lockfile_remove(opt_pidfile);
 	return 0;
-}
-
-static void usage( void )
-{
-	printf( "usage: %s [opt]\n", progname );
-	printf(
-		" -h --help          show this message\n"
-		" -f --foreground    do not detach\n"
-		" -d --debug         be more verbose\n"
-		" -p --port <port>   set port to listen on\n"
-		" -i --pidfile <file> where to store pidfile\n"
-		" -c --config <file> config file location\n"
-		"\n"
-		"gstreamer options are also accepted.\n"
-	      );
 }

@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_INIT
-AM_INIT_AUTOMAKE(dudld,0.1.20)
+AM_INIT_AUTOMAKE(dudld,0.1.21)
 AC_CONFIG_HEADER([config.h])
 
 dnl DBDIR=pgdb
@@ -29,7 +29,7 @@ PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.12.4])
 AC_SUBST(GLIB_LIBS)
 AC_SUBST(GLIB_CFLAGS)
 
-PKG_CHECK_MODULES([GSTREAMER], [gstreamer-0.8 >= 0.8.12])
+PKG_CHECK_MODULES([GSTREAMER], [gstreamer-0.10 >= 0.10.10])
 AC_SUBST(GSTREAMER_LIBS)
 AC_SUBST(GSTREAMER_CFLAGS)
 

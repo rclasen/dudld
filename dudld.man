@@ -5,7 +5,7 @@ dudld \- a mp3 jukebox daemon
 .SH SYNOPSIS
 .B dudld
 [
-.B \-dhf
+.B \-?df
 ] [
 .B \-p
 .I port
@@ -44,7 +44,7 @@ Enable debug logging.
 \fB\-f\fR, \fB\-\-foreground\fR 
 Do not detach - stay in foreground.
 .TP
-\fB\-h\fR, \fB\-\-help\fR
+\fB\-?\fR, \fB\-\-help\fR
 A brief message.
 .TP
 \fB\-i\fR, \fB\-\-pidfile \fR\fIpid-file\fR

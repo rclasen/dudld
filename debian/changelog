@@ -1,3 +1,10 @@
+dudld (0.1.21) unstable; urgency=low
+
+  * switch from popt to GOption to allow ...
+  * switch to gstreamer-0.10
+
+ -- Rainer Clasen <bj@zuto.de>  Wed, 31 Dec 2008 12:11:41 +0100
+
 dudld (0.1.20) unstable; urgency=low
 
   * switched from libncc to liblockfile

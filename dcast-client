@@ -4,9 +4,8 @@ set -e
 
 renice -19 $$ > /dev/null 2>&1 || true
 
-exec gst-launch-0.8 --silent udpsrc \
+exec gst-launch-0.10 udpsrc \
 		port=4953 \
-		control=1 \
 		multicast-group=239.0.0.1 \
 	\! "audio/x-raw-int", \
 		format=int, \

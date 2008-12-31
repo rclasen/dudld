@@ -2,9 +2,6 @@ cleanup use of int/uint for IDs
 
 convert callbacks/signals/* to glib
 
-upgrade to gstreamer 0.10
-- playback gets stuck, sometimes
-
 connections are dropped when there is too much pending data to send to the
 client. Increasing the buffer won't help with large data sets. This the
 server has to block on writes (at least for some time). This also means
@@ -56,21 +53,18 @@ more sophisticated permission system
 
 secure authentication? encrypted connection?
 
-multiple (anonymouse) instances not possible because:
+multiple (anonymous) instances. cur. not possible because:
  track.lastplay
  track.available?
  history
  queue
  user/permission
 
-automagically skip silence at start/end of a file gstreamer::cutter
-skip junk at begin/end
 allow several tracks per file (allows cutting out junk with junk-skip)
 
 "normalize" volume level - replaygain
 - gstreamer::rganalysis
 - ?gstreamer::rgvolume?
-- http://bugzilla.gnome.org/show_bug.cgi?id=127574
 - http://replaygain.org/
 - mp3gain
 - gstreamer::volume::volume = 10^(rgain/20) * 10^(preamp/20) = 10^( (rgain+preamp)/20 )
@@ -79,8 +73,6 @@ allow several tracks per file (allows cutting out junk with junk-skip)
 
 
 integrate dudl with test-listening and renaming
-
-seeking
 
 go back to previous track
 
