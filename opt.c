@@ -24,7 +24,7 @@ int opt_random = -1;
 int opt_start = -1;
 char *opt_sfilter = NULL;
 char *opt_failtag = NULL;
-/* TODO: make gst/gstreamer pipe configurable: gst_parse_launch()  */
+char *opt_pipeline = NULL;
 
 char *opt_db_host = NULL;
 char *opt_db_port = NULL;
@@ -129,6 +129,7 @@ void opt_read( char *fname )
 	def_integer( &opt_start, keyfile, "start", 0 );
 	def_string( &opt_sfilter, keyfile, "sfilter", "init" );
 	def_string( &opt_failtag, keyfile, "failtag", "failed" );
+	def_string( &opt_pipeline, keyfile, "pipeline", "autoaudiosink" );
 
 	def_replaygain( &opt_rgtype, keyfile, "rgtype", 3 );
 

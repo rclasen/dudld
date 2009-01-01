@@ -34,10 +34,28 @@ initial gap between tracks in seconds.
 initial state of random playback: 0=off, 1=on
 .TP
 \fBstart\fR
-should jukebox to attempt to play on startup: 0=off, 1=on
+try to start playing on startup: 0=off, 1=on
 .TP
 \fBsfilter\fR
 name of \fIsfilter\fR to load on startup and save on exit.
+.TP
+\fBfailtag\fR
+name of \fItag\fR to add to files that had problems being played.
+.TP
+\fBrgtype\fR
+default replaygain type to use: 0=off, 1=track, 2=track_peak, 3=album,
+4=album_peak
+.TP
+\fBrgpreamp\fR
+replaygain preamplification. 
+.TP
+\fBpipeline\fR
+gstreamer pipeline specification to use as output. See 
+.BR gst-launch 
+for details. The full pipeline is going to look like 
+
+ filesrc ! decodebin ! $pipeline
+
 
 .TP
 \fBdb_host\fR

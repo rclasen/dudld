@@ -28,10 +28,15 @@ thorough editing capabilities for the DB.
 .\" TODO: extend description
 
 network oriented.
+
 Dudld uses the dudld database.
+
 Database is maintained elsewhere.
+
 Gstreamer driven.
-Currently the daemon generates a decoded audio stream multicasted to 239.0.0.1.
+
+supports replaygain 
+.BR http://replaygain.org/
 
 .SH OPTIONS
 Options available for the

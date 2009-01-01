@@ -298,8 +298,8 @@ static void bp_finish( int complete )
 	if( gap_id )
 		gap_finish();
 
-	// TODO: is stopping the pipe needed??
-	if( gst_element_set_state( p_pipe, GST_STATE_READY ) 
+	// stop the pipe completely
+	if( gst_element_set_state( p_pipe, GST_STATE_NULL ) 
 		== GST_STATE_CHANGE_FAILURE ){
 		
 		syslog(LOG_ERR, "play_gst: failed to finish");
@@ -652,12 +652,12 @@ GOptionGroup *player_options( void )
 
 void player_init( GMainLoop *loop )
 {
-	GstBus *bus;
-	GstElement *p_dec;
-	GstElement *p_scale;
-	GstElement *p_conv;
-	GstElement *p_out;
-	GstCaps *scaps;
+	GstBus *bus = NULL;
+	GstElement *p_dec = NULL;
+	GstElement *p_scale = NULL;
+	GstElement *p_conv = NULL;
+	GstElement *p_out = NULL;
+	GError *err = NULL;
 	
 	/* TODO: autoplug input to support non-mp3 */
 	/* TODO: support user-specified output */
@@ -682,32 +682,21 @@ void player_init( GMainLoop *loop )
 		exit(1);
 	}
 
-	if( NULL == (scaps = gst_caps_new_simple ("audio/x-raw-int",
-		"format", G_TYPE_STRING, "int",
-		"endianness", G_TYPE_INT, 1234,
-		"signed", G_TYPE_BOOLEAN, "true",
-		"rate", G_TYPE_INT, 44100,
-		"channels", G_TYPE_INT, 2,
-		"width", G_TYPE_INT, 16,
-		"depth", G_TYPE_INT, 16,
-		NULL))){
-
-		syslog(LOG_ERR,"player: cannot create caps object");
-		exit(1);
-	}
-
 	if( NULL == (p_vol = gst_element_factory_make ("volume", "p_vol"))){
 		syslog(LOG_ERR,"player: cannot create volume object");
 		exit(1);
 	}
 
-	if( NULL == (p_out = gst_element_factory_make ("udpsink", "p_out" ))){
-		syslog(LOG_ERR,"player: cannot create output object");
+	syslog(LOG_DEBUG,"player: constructing output pipeline: %s",
+		opt_pipeline );
+	if( NULL == (p_out = gst_parse_bin_from_description(
+		opt_pipeline, TRUE, &err ))){
+
+		syslog(LOG_ERR,"player: cannot create output pipeline: %s",
+			err->message );
+		g_error_free (err);
 		exit(1);
 	}
-	gst_util_set_object_arg(G_OBJECT(p_out), "host", "239.0.0.1" );
-	gst_util_set_object_arg(G_OBJECT(p_out), "port", "4953" );
-	//gst_util_set_object_arg(G_OBJECT(p_out), "control", "1" );
 
 	if( NULL == (p_pipe = gst_pipeline_new("p_pipe"))){
 		syslog(LOG_ERR,"player: cannot create pipe object");
@@ -720,9 +709,10 @@ void player_init( GMainLoop *loop )
 
 	gst_bin_add_many( GST_BIN(p_pipe), 
 		p_src, p_dec, p_scale, p_conv, p_vol, p_out, NULL);
-	if( !gst_element_link_many( p_src, p_dec, p_scale, p_conv, p_vol, NULL) )
-		syslog( LOG_ERR, "player: failed to link pipeline 1" );
-	if( !gst_element_link_filtered( p_vol, p_out, scaps ) )
+
+	if( !gst_element_link_many( 
+		p_src, p_dec, p_scale, p_conv, p_vol, p_out, NULL) )
+
 		syslog( LOG_ERR, "player: failed to link pipeline 1" );
 
 

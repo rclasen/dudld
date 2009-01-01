@@ -1,3 +1,9 @@
+dudld (0.1.22) unstable; urgency=low
+
+  * made gstreamer output pipeline configurable
+
+ -- Rainer Clasen <bj@zuto.de>  Thu,  1 Jan 2009 14:53:14 +0100
+
 dudld (0.1.21) unstable; urgency=low
 
   * switch from popt to GOption to allow ...
