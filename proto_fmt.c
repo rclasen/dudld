@@ -334,144 +334,180 @@ void dump_users( t_client *client, const char *code, it_user *it )
 {
 	char *buf;
 	t_user *t;
+	int r = 0;
 
 	for( t = it_user_begin(it); t; t = it_user_next(it) ){
-		if( NULL != (buf = mkuser(t))){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mkuser(t))){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		user_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_clients( t_client *client, const char *code, it_client *it )
 {
 	char *buf;
 	t_client *t;
+	int r = 0;
 
 	for( t = it_client_begin(it); t; t = it_client_next(it) ){
-		if( NULL != (buf = mkclient(t))){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mkclient(t))){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		client_delref(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_tracks( t_client *client, const char *code, it_track *it )
 {
 	char *buf;
 	t_track *t;
+	int r = 0;
 
 	for( t = it_track_begin(it); t; t = it_track_next(it) ){
-		if( NULL != (buf = mktrack(t))){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mktrack(t))){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		track_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_history( t_client *client, const char *code, it_history *it )
 {
 	char *buf;
 	t_history *t;
+	int r = 0;
 
 	for( t = it_history_begin(it); t; t = it_history_next(it) ){
-		if( NULL != (buf = mkhistory(t))){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mkhistory(t))){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		history_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_tags( t_client *client, const char *code, it_tag *it )
 {
 	char *buf;
 	t_tag *t;
+	int r = 0;
 
 	for( t = it_tag_begin(it); t; t = it_tag_next(it) ){
-		if( NULL != (buf = mktag(t) )){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mktag(t) )){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		tag_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_albums( t_client *client, const char *code, it_album *it )
 {
 	char *buf;
 	t_album *t;
+	int r = 0;
 
 	for( t = it_album_begin(it); t; t = it_album_next(it) ){
-		if( NULL != (buf = mkalbum(t) )){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mkalbum(t) )){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		album_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_artists( t_client *client, const char *code, it_artist *it )
 {
 	char *buf;
 	t_artist *t;
+	int r = 0;
 
 	for( t = it_artist_begin(it); t; t = it_artist_next(it) ){
-		if( NULL != (buf = mkartist(t) )){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mkartist(t) )){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		artist_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_queues( t_client *client, const char *code, it_queue *it )
 {
 	char *buf;
 	t_queue *t;
+	int r = 0;
 
 	for( t = it_queue_begin(it); t; t = it_queue_next(it) ){
-		if( NULL != (buf = mkqueue(t) )){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mkqueue(t) )){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		queue_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 void dump_sfilters( t_client *client, const char *code, it_sfilter *it )
 {
 	char *buf;
 	t_sfilter *t;
+	int r = 0;
 
 	for( t = it_sfilter_begin(it); t; t = it_sfilter_next(it) ){
-		if( NULL != (buf = mksfilter(t) )){
-			proto_rline(client, code,"%s", buf ); 
+		if( r >= 0 && NULL != (buf = mksfilter(t) )){
+			r = proto_rline(client, code,"%s", buf ); 
 			free(buf);
 		}
 		sfilter_free(t);
+		if( r < 0 )
+			break;
 	}
 
-	proto_rlast(client, code, "" );
+	if( r >= 0 )
+		proto_rlast(client, code, "" );
 }
 
 

@@ -40,14 +40,15 @@ static int proto_vline( t_client *client, int last, const char *code,
 		const char *fmt, va_list ap )
 {
 	char *line;
+	int ret;
 
 	if( NULL == ( line = proto_fmtline( last, code, fmt, ap )))
 		return -1;
 
-	client_send( client, line );
+	ret = client_send( client, line );
 	free(line);
 
-	return 0;
+	return ret;
 }
 
 /*
