@@ -330,6 +330,8 @@ int client_send( t_client *c, const char *buf )
 
 	//syslog(LOG_DEBUG,"client(%d): send >%s<", c->id, buf );
 	if( len != send( c->sock, buf, len, MSG_DONTWAIT )){
+		syslog( LOG_NOTICE, "client(%d) send failed: %m", c->id );
+		// TODO: handle full buffers more graceful
 		client_close(c);
 		return -1;
 	}
