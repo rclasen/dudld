@@ -9,6 +9,7 @@
 
 
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 
 #include <config.h>
@@ -34,6 +35,7 @@ static t_sfilter *sfilter_convert( PGresult *res, int tup )
 
 	if( NULL == (h = malloc(sizeof(t_sfilter))))
 		return NULL;
+	memset( h, 0, sizeof(t_sfilter));
 
 	GETFIELD(f,"id", clean1 );
 	h->id = pgint(res, tup, f);

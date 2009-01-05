@@ -165,7 +165,7 @@ clean1:
 static void proto_line( t_client *client, char *line )
 {
 	char *end;
-	char *scmd;
+	char *scmd=NULL;
 	t_cmd *cmd;
 	t_rights perm;
 
@@ -173,22 +173,24 @@ static void proto_line( t_client *client, char *line )
 	scmd = val_name( line, &end );
 	if( line == end || ! scmd ){
 		proto_rlast( client, "501", "invalid command");
-		return;
+		goto clean1;
 	}
 	line = end;
 
 	if( NULL == (cmd = cmd_find( client->pstate, scmd ))){
 		proto_rlast( client, "501", "no such command" );
-		return;
+		goto clean1;
 	}
 
 	perm = client->user ? client->user->right : r_any;
 	if( perm < cmd->perm ){
 		proto_rlast( client, "501", "insufficient karma" );
-		return;
+		goto clean1;
 	}
 
 	cmd_parse( client, cmd, line );
+clean1:
+	free(scmd);
 }
 
 /*

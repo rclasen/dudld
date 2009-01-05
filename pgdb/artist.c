@@ -56,6 +56,7 @@ static t_artist *artist_convert( PGresult *res, int tup, t_artist_col *col )
 
 	if( NULL == (t = malloc(sizeof(t_artist))))
 		return NULL;
+	memset( t, 0, sizeof(t_artist));
 
 
 	GETFIELD(f, col->id, clean1 );
@@ -85,6 +86,10 @@ t_artist *artist_convert_album( PGresult *res, int tup )
 
 void artist_free( t_artist *t )
 {
+	if( ! t )
+		return;
+
+	free( t->artist );
 	free( t );
 }
 

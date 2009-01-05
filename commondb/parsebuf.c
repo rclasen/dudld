@@ -80,9 +80,11 @@ parser_input *pi_str_new( const char *in )
 
 	if( NULL == (pi = malloc(sizeof(parser_input))))
 		goto clean1;
+	memset(pi, 0, sizeof(parser_input));
 
 	if( NULL == (str = malloc(sizeof(pi_str))))
 		goto clean2;
+	memset(str, 0, sizeof(pi_str));
 
 	str->str = in;
 	str->cur = 0;

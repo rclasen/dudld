@@ -37,6 +37,7 @@ static t_user *user_convert( PGresult *res, int tup )
 
 	if( NULL == (u = malloc(sizeof(t_user))))
 		return NULL;
+	memset( u, 0, sizeof(t_user));
 
 	u->_refs = 1;
 
@@ -69,7 +70,7 @@ void user_free( t_user *u )
 	if( ! u )
 		return;
 
-	if( -- u->_refs )
+	if( -- u->_refs > 0 )
 		return;
 
 	free(u->_pass);

@@ -51,6 +51,7 @@ t_track *track_convert( PGresult *res, int tup )
 
 	if( NULL == (t = malloc(sizeof(t_track))))
 		return NULL;
+	memset( t, 0, sizeof(t_track));
 
 	t->_refs = 1;
 
@@ -123,9 +124,14 @@ t_track *track_use( t_track *t )
 
 void track_free( t_track *t )
 {
-	if( 0 < -- t->_refs)
+	if( ! t )
 		return;
 
+	if( -- t->_refs > 0 )
+		return;
+
+	album_free(t->album);
+	artist_free(t->artist);
 	free( t->fname );
 	free( t->title );
 	free( t );

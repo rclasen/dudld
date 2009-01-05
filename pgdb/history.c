@@ -9,6 +9,7 @@
 
 
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 #include <time.h>
 
@@ -46,6 +47,7 @@ void history_free( t_history *h)
 	if( !h )
 		return;
 
+	user_free(h->user);
 	track_free(h->track);
 	free(h);
 }
@@ -69,6 +71,7 @@ static t_history *history_convert( PGresult *res, int tup )
 
 	if( NULL == (h = malloc(sizeof(t_history))))
 		return NULL;
+	memset( h, 0, sizeof(t_history));
 
 	GETFIELD(f,"played", clean1 );
 	h->played = pgint(res, tup, f );

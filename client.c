@@ -181,6 +181,7 @@ static gboolean client_read( GIOChannel *source,
 	//syslog(LOG_DEBUG,"client(%d): read", c->id );
 	if( cond & G_IO_IN ){
 		sock = g_io_channel_unix_get_fd(source);
+		/* TODO: use g_io_channel_foo instead of recv() */
 		if( 0 >= (len = recv( sock, 
 				c->ibuf + c->ilen,
 				CLIENT_BUFLEN - c->ilen, 0))){
@@ -243,8 +244,10 @@ static gboolean client_accept( GIOChannel *source,
 	c->ifunc = NULL;
 	c->del = 0;
 
-	if( -1 == it_client_add(clients, c ) )
+	if( -1 == it_client_add(clients, c ) ){
+		free(c);
 		return TRUE;
+	}
 
 	if( NULL == (cchan = g_io_channel_unix_new(c->sock))){
 		client_close(c);
@@ -329,6 +332,7 @@ int client_send( t_client *c, const char *buf )
 		return 0;
 
 	//syslog(LOG_DEBUG,"client(%d): send >%s<", c->id, buf );
+	/* TODO: use g_io_channel_foo instead of send() */
 	if( len != send( c->sock, buf, len, MSG_DONTWAIT )){
 		syslog( LOG_NOTICE, "client(%d) send failed: %m", c->id );
 		// TODO: handle full buffers more graceful

@@ -9,6 +9,7 @@
 
 
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 
 #include <config.h>
@@ -38,6 +39,7 @@ static t_tag *tag_convert( PGresult *res, int tup )
 
 	if( NULL == (h = malloc(sizeof(t_tag))))
 		return NULL;
+	memset(h, 0, sizeof(t_tag));
 
 	GETFIELD(f,"id", clean1 );
 	h->id = pgint(res, tup, f);
@@ -67,6 +69,7 @@ void tag_free( t_tag *t )
 	if( ! t )
 		return;
 
+	free(t->desc);
 	free(t->name);
 	free(t);
 }

@@ -9,6 +9,7 @@
 
 
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 
 #include <config.h>
@@ -40,6 +41,7 @@ static t_queue *queue_convert( PGresult *res, int tup )
 
 	if( NULL == (q = malloc(sizeof(t_queue))))
 		return NULL;
+	memset(q, 0, sizeof(t_queue));
 
 	q->_refs = 1;
 
@@ -85,6 +87,7 @@ void queue_free( t_queue *q )
 	if( -- q->_refs > 0 )
 		return;
 
+	user_free(q->user);
 	track_free(q->track);
 	free(q);
 }
