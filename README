@@ -1,3 +1,8 @@
+dudld:
+======
+
+networked jukebox using data from dudl DB.
+
 Database access:
 ================
 
@@ -10,4 +15,5 @@ users:
 
 b) authenticate on DB connect. The default config is setup for this.
 
+TODO: this should actually describe what dudld does
 

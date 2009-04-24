@@ -612,6 +612,7 @@ t_playerror player_start( void )
 
 t_playerror player_next( void )
 {
+	/* TODO: first get next track, then stop current and start next */
 	bp_finish(1);
 	if( -1 == bp_start() )
 		return PE_FAIL;
@@ -660,7 +661,6 @@ void player_init( GMainLoop *loop )
 	GError *err = NULL;
 	
 	/* TODO: autoplug input to support non-mp3 */
-	/* TODO: support user-specified output */
 
 	if( NULL == (p_src = gst_element_factory_make ("filesrc", "p_src"))){
 		syslog(LOG_ERR,"player: cannot create src object");

@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_INIT
-AM_INIT_AUTOMAKE(dudld,0.1.21)
+AM_INIT_AUTOMAKE(dudld,0.1.22)
 AC_CONFIG_HEADER([config.h])
 
 dnl DBDIR=pgdb
@@ -13,8 +13,11 @@ AC_PROG_RANLIB
 AC_PROG_MAKE_SET
 
 # Checks for libraries.
+
+# LGPL
 AC_CHECK_LIB([lockfile], [lockfile_create])
 
+# looks BSD-like
 AC_PATH_PROGS([PG_CONFIG], [pg_config])
 if test "$PG_CONFIG"x = ""x; then
 	AC_MSG_ERROR([Cannot locate postgresql pg_config])
@@ -25,10 +28,12 @@ else
 	AC_SUBST(PSQL_LIBS)
 fi
 
+# LGPL
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.12.4])
 AC_SUBST(GLIB_LIBS)
 AC_SUBST(GLIB_CFLAGS)
 
+# LGPL
 PKG_CHECK_MODULES([GSTREAMER], [gstreamer-0.10 >= 0.10.10])
 AC_SUBST(GSTREAMER_LIBS)
 AC_SUBST(GSTREAMER_CFLAGS)

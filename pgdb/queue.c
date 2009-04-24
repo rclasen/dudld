@@ -7,6 +7,9 @@
  *
  */
 
+/* TODO: allows adding "invalid" tracks by stor_file.id that have
+ * broken=true. This causes "empty" tracks on de-queue and thereby
+ * disabling queue processing */
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,8 +1,10 @@
 dudld (0.1.22) unstable; urgency=low
 
   * made gstreamer output pipeline configurable
+  * fix: do not ignore errors when sending data to clients
+  * fixed some memholes, made allocation + free more robust
 
- -- Rainer Clasen <bj@zuto.de>  Thu,  1 Jan 2009 14:53:14 +0100
+ -- Rainer Clasen <bj@zuto.de>  Mon,  5 Jan 2009 22:42:44 +0100
 
 dudld (0.1.21) unstable; urgency=low
 

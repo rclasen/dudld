@@ -12,6 +12,7 @@
 
 double track_rgval( t_track *track, t_replaygain gain )
 {
+	/* TODO: fall back mechanism when selected rgain isn't set */
 	switch( gain ){
 	  case rg_track:
 		return track->rgain;
