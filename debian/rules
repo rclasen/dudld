@@ -22,7 +22,7 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 endif
 
 configure: configure.ac
-	autoremake
+	autoreconf
 	
 config.status: configure
 	dh_testdir

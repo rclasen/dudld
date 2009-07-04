@@ -1,3 +1,9 @@
+dudld (0.1.23) unstable; urgency=low
+
+  * rebuild for lenny
+
+ -- Rainer Clasen <bj@zuto.de>  Fri, 03 Jul 2009 17:39:02 +0200
+
 dudld (0.1.22) unstable; urgency=low
 
   * made gstreamer output pipeline configurable

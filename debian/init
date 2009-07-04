@@ -1,12 +1,14 @@
 #! /bin/sh
-#
-#		Written by Miquel van Smoorenburg <miquels@cistron.nl>.
-#		Modified for Debian GNU/Linux
-#		by Ian Murdock <imurdock@gnu.ai.mit.edu>.
-#
-# Version:	@(#)skeleton  1.8  03-Mar-1998  miquels@cistron.nl
-#
-# This file was automatically customized by dh-make on Thu,  1 Aug 2002 18:35:50 +0200
+
+### BEGIN INIT INFO
+# Provides:          dudld
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start dudld at boot time
+# Description:       Enable dudld jukebox daemon at Startup.
+### END INIT INFO
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 NAME=dudld
@@ -17,6 +19,7 @@ test -f $DAEMON || exit 0
 
 set -e
 
+unset DISPLAY
 
 flags=""
 user=""
@@ -39,7 +42,7 @@ case "$1" in
 	mkdir -p $piddir
 	[ -n "$user" ] && chown -R $user $piddir
 	start-stop-daemon --start --quiet --pidfile $pidfile \
-		$uarg --exec $DAEMON -- $flags
+		-N -19 $uarg --exec $DAEMON -- $flags
 	echo "$NAME."
 	;;
   stop)
