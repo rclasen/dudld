@@ -36,3 +36,4 @@ missing
 
 commands.txt
 config.h
+*.o

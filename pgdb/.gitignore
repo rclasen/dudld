@@ -1,4 +1,6 @@
 Makefile
 Makefile.in
 .deps
-testparse
+test_random
+*.o
+*.a
