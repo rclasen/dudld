@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -40,7 +40,7 @@ int main( int argc, char **argv )
 
 	(void)argc;
 	(void)argv;
-	
+
 	for( i = 1000000; --i; ){
 		set( "plain", plain, ((double)random() / RAND_MAX) * NUM );
 		set( "arit", arit, ( (double)random() + random() ) / ((double)2*RAND_MAX) * NUM );

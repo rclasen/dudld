@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -122,7 +122,7 @@ static char *sql_idlist( value **vlist )
 				return NULL;
 		}
 
-		sused += snprintf( sbuf+sused, SQL_LEN-sused, 
+		sused += snprintf( sbuf+sused, SQL_LEN-sused,
 				"%d", (*val)->val.num );
 		if( sused > SQL_LEN )
 			return NULL;
@@ -148,7 +148,7 @@ static int sql_taglist( char *buf, size_t len, value **vlist )
 	if( *lst == 0 )
 		goto clean1;
 
-	used = snprintf( buf, len, 
+	used = snprintf( buf, len,
 			"EXISTS( SELECT file_id "
 			"FROM mserv_filetag ft "
 			"WHERE "
@@ -174,13 +174,13 @@ static char *oper_names[vo_max] = {
 
 static int sql_vt_num( char *buf, size_t len, valtest *vt, char *row )
 {
-	return snprintf( buf, len, "%s %s %d", 
+	return snprintf( buf, len, "%s %s %d",
 			row, oper_names[vt->op], vt->val->val.num );
 }
 
 static int sql_vt_year( char *buf, size_t len, valtest *vt, char *row )
 {
-	return snprintf( buf, len, "%s %s '%04d'", 
+	return snprintf( buf, len, "%s %s '%04d'",
 				  row, oper_names[vt->op], vt->val->val.num );
 }
 
@@ -224,7 +224,7 @@ static int sql_vt_string( char *buf, size_t len, valtest *vt, char *row )
 	int used;
 
 	esc = db_escape(vt->val->val.string); // TODO: lower?
-	used = snprintf( buf, len, "%s %s '%s'", 
+	used = snprintf( buf, len, "%s %s '%s'",
 			row, oper_names[vt->op], esc );
 	free(esc);
 	return used;
@@ -291,7 +291,7 @@ static int sql_valtest( char *buf, size_t len, valtest *vt )
 	int found = 0;
 
 	for( fmt = sql_valtestfmt; fmt->field != vf_none; ++fmt ){
-		if( fmt->field == vt->field 
+		if( fmt->field == vt->field
 				&& fmt->op == vt->op
 				&& fmt->type == vt->val->type ){
 

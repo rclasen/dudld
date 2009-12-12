@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -78,7 +78,7 @@ static int db_conn( void )
 	syslog( LOG_DEBUG, "DB Version: %d", pgint(res,0,0));
 
 	if( pgint(res, 0, 0 ) != DBVER ){
-		syslog( LOG_ERR, "db_conn: invalid DB Version %d - need %d", 
+		syslog( LOG_ERR, "db_conn: invalid DB Version %d - need %d",
 				pgint(res,0,0), DBVER);
 		goto clean2;
 	}

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -125,7 +125,7 @@ int tag_id( const char *name )
 
 it_tag *tags_list( void )
 {
-	return db_iterate( (db_convert)tag_convert, 
+	return db_iterate( (db_convert)tag_convert,
 			"SELECT id, name, cmnt "
 			"FROM mserv_tag "
 			"ORDER BY LOWER(name)" );
@@ -133,7 +133,7 @@ it_tag *tags_list( void )
 
 it_tag *tags_artist( int aid )
 {
-	return db_iterate( (db_convert)tag_convert, 
+	return db_iterate( (db_convert)tag_convert,
 			"SELECT id, name, cmnt "
 			"FROM mserv_tag t "
 			"WHERE t.id IN ( "
@@ -279,7 +279,7 @@ int tag_setdesc( int id, const char *desc )
 
 it_tag *track_tags( int tid )
 {
-	return db_iterate( (db_convert)tag_convert, 
+	return db_iterate( (db_convert)tag_convert,
 			"SELECT tg.id, tg.name, tg.cmnt "
 			"FROM mserv_tag tg "
 				"INNER JOIN mserv_filetag tt "

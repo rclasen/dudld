@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -60,7 +60,7 @@ t_replaygain val_replaygain( char *in, char **end )
 {
 	char *tend = NULL;
 	unsigned int r = rg_none;
-	
+
 	r = strtoul(in, &tend, 10 );
 	if( in != tend ){
 		switch(r){

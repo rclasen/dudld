@@ -11,7 +11,7 @@ gstreamer documentation for details ;-)
 .SH DESCRIPTION
 .B dcast-client
 is a sample listener for the multicast streams produced by the mp3 Jukebox
-daemon 
+daemon
 .B dudld.
 
 .SH "SEE ALSO"

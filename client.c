@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -54,7 +54,7 @@ static int it_client_add( it_client *it, t_client *c )
 	if( ! it )
 		return -1;
 
-	if( NULL == (tmp = realloc(it->clients, 
+	if( NULL == (tmp = realloc(it->clients,
 					(it->num+1) * sizeof(t_client*))))
 		return -1;
 
@@ -169,7 +169,7 @@ void it_client_done( it_client *it )
 /*
  * get new input
  */
-static gboolean client_read( GIOChannel *source, 
+static gboolean client_read( GIOChannel *source,
 		GIOCondition cond, gpointer data)
 {
 	t_client *c = (t_client*)data;
@@ -182,7 +182,7 @@ static gboolean client_read( GIOChannel *source,
 	if( cond & G_IO_IN ){
 		sock = g_io_channel_unix_get_fd(source);
 		/* TODO: use g_io_channel_foo instead of recv() */
-		if( 0 >= (len = recv( sock, 
+		if( 0 >= (len = recv( sock,
 				c->ibuf + c->ilen,
 				CLIENT_BUFLEN - c->ilen, 0))){
 			goto err;
@@ -205,7 +205,7 @@ err:
 }
 
 
-static gboolean client_accept( GIOChannel *source, 
+static gboolean client_accept( GIOChannel *source,
 		GIOCondition cond, gpointer data)
 {
 	int lsocket;
@@ -254,12 +254,12 @@ static gboolean client_accept( GIOChannel *source,
 		syslog(LOG_ERR, "g_io_chan: %m");
 		return TRUE;
 	}
-	g_io_add_watch(cchan, G_IO_IN | G_IO_HUP | G_IO_ERR, 
+	g_io_add_watch(cchan, G_IO_IN | G_IO_HUP | G_IO_ERR,
 			client_read, c );
 
 
-	syslog(LOG_DEBUG, "client(%d): accepted fd(%d) from %s:%d", 
-			c->id, 
+	syslog(LOG_DEBUG, "client(%d): accepted fd(%d) from %s:%d",
+			c->id,
 			c->sock,
 			inet_ntoa(c->sin.sin_addr),
 			c->sin.sin_port);
@@ -343,7 +343,7 @@ int client_send( t_client *c, const char *buf )
 	return 0;
 }
 
-/* 
+/*
  * find first complete line and return a newly allocated copy
  * removes this line from the clients buffer
  *
@@ -369,7 +369,7 @@ char *client_getline( t_client *c )
 	if( NULL == (n = strpbrk( s, "\n\r" ))){
 		// TODO: handle too long lines more gracefully
 		if( c->ilen >= CLIENT_BUFLEN ){
-			syslog( LOG_WARNING, 
+			syslog( LOG_WARNING,
 					"line too long, disconnecting client");
 			client_send(c, "ERROR: line too long\n");
 			client_close(c);
@@ -432,8 +432,8 @@ int clients_init( int port )
 		return -1;
 
 	/* re-use a previos socket */
-	reuse = 1; 
-	if( 0 > setsockopt( lsocket, SOL_SOCKET, SO_REUSEADDR, 
+	reuse = 1;
+	if( 0 > setsockopt( lsocket, SOL_SOCKET, SO_REUSEADDR,
 			(void *) &reuse, sizeof(reuse)) ){
 		return -1;
 	}
@@ -457,7 +457,7 @@ int clients_init( int port )
 		return -1;
 	}
 
-	g_io_add_watch(lchan, G_IO_IN | G_IO_HUP | G_IO_ERR, 
+	g_io_add_watch(lchan, G_IO_IN | G_IO_HUP | G_IO_ERR,
 		client_accept, clients );
 
 	return 0;

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -184,7 +184,7 @@ int track_id( int album_id, int num )
 	int id;
 
 	res = db_query( "SELECT id FROM stor_file "
-			"WHERE album_id = %d AND album_pos = %d", 
+			"WHERE album_id = %d AND album_pos = %d",
 			album_id, num );
 	if( NULL == res ||  PGRES_TUPLES_OK != PQresultStatus(res)){
 		syslog( LOG_ERR, "track_id: %s", db_errstr());
@@ -252,7 +252,7 @@ it_track *tracks_search( const char *substr )
 	it = db_iterate( (db_convert)track_convert, "SELECT * "
 			"FROM mserv_track "
 			"WHERE LOWER(title) LIKE LOWER('%%%s%%') "
-			"ORDER BY LOWER(album_artist_name), LOWER(album_name), album_pos", 
+			"ORDER BY LOWER(album_artist_name), LOWER(album_name), album_pos",
 			str );
 	free(str);
 	return it;
@@ -273,7 +273,7 @@ it_track *tracks_searchf( expr *filter )
 	return db_iterate( (db_convert)track_convert, "SELECT * "
 			"FROM mserv_track t "
 			"WHERE %s "
-			"ORDER BY LOWER(album_artist_name), LOWER(album_name), album_pos", 
+			"ORDER BY LOWER(album_artist_name), LOWER(album_name), album_pos",
 			where );
 }
 
@@ -323,7 +323,7 @@ int track_exists( t_track *t )
 		PQclear(res);
 		return 0;
 	}
-	
+
 	close(fd);
 	return 1;
 }

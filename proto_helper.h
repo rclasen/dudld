@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -44,12 +44,12 @@ typedef struct _t_cmd {
 	t_cmd_arg *args;
 } t_cmd;
 
-int proto_rline( t_client *client, const char *code, 
+int proto_rline( t_client *client, const char *code,
 		const char *fmt, ... );
-int proto_rlast( t_client *client, const char *code, 
+int proto_rlast( t_client *client, const char *code,
 		const char *fmt, ... );
 
-void proto_bcast( t_rights right, const char *code, 
+void proto_bcast( t_rights right, const char *code,
 		const char *fmt, ... );
 
 void proto_player_reply( t_client *client, t_playstatus r, char *code, char *reply );

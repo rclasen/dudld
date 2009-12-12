@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -100,7 +100,7 @@ static t_track *db_getnext( void )
 		if( track_exists(curtrack) )
 			return curtrack;
 
-		syslog( LOG_INFO, "skipping nonexisting track: %d", 
+		syslog( LOG_INFO, "skipping nonexisting track: %d",
 				curtrack->id);
 		track_free(curtrack);
 	}
@@ -205,7 +205,7 @@ static int bp_volume( void )
 	if( ! curtrack )
 		return PE_OK;
 
-	volume = rgtype 
+	volume = rgtype
 		? pow( 10, ( (track_rgval( curtrack, rgtype ) + rgpreamp)/20 ) )
 		: 1;
 	g_object_set( G_OBJECT(p_vol), "volume", volume, NULL );
@@ -220,13 +220,13 @@ static int bp_seek( gint64 to )
 	syslog(LOG_DEBUG, "bp_seek to %d", (int)( to / GST_SECOND ));
 
 	if( cut && curtrack->seg_to && to < (gint64)curtrack->seg_to ){
-		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME, 
-			GST_SEEK_FLAG_FLUSH, 
+		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME,
+			GST_SEEK_FLAG_FLUSH,
 			GST_SEEK_TYPE_SET, to,
 			GST_SEEK_TYPE_SET, (gint64)curtrack->seg_to);
 	} else {
-		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME, 
-			GST_SEEK_FLAG_FLUSH, 
+		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME,
+			GST_SEEK_FLAG_FLUSH,
 			GST_SEEK_TYPE_SET, to,
 			GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE );
 	}
@@ -269,7 +269,7 @@ static int bp_start(void)
 		bp_seek( curtrack->seg_from ); /* ignore failure */
 	}
 
-	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
+	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING )
 		== GST_STATE_CHANGE_FAILURE ){
 
 		syslog(LOG_ERR, "play_gst: failed to play" );
@@ -299,9 +299,9 @@ static void bp_finish( int complete )
 		gap_finish();
 
 	// stop the pipe completely
-	if( gst_element_set_state( p_pipe, GST_STATE_NULL ) 
+	if( gst_element_set_state( p_pipe, GST_STATE_NULL )
 		== GST_STATE_CHANGE_FAILURE ){
-		
+
 		syslog(LOG_ERR, "play_gst: failed to finish");
 		db_finish(0);
 		return;
@@ -317,9 +317,9 @@ static int bp_resume( void )
 	if( GST_STATE(p_pipe) != GST_STATE_PAUSED )
 		return -1;
 
-	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING ) 
+	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING )
 		== GST_STATE_CHANGE_FAILURE ){
-		
+
 		syslog(LOG_ERR, "play_gst: failed to resume");
 		bp_finish(0);
 		if( player_func_stop )
@@ -344,17 +344,17 @@ static int bp_pause( void )
 
 		if( player_func_stop )
 			(*player_func_stop)();
-	
+
 		return 0;
-	} 
-	
+	}
+
 	if( GST_STATE(p_pipe) != GST_STATE_PLAYING )
 		return -1;
 
 
-	if( gst_element_set_state( p_pipe, GST_STATE_PAUSED ) 
+	if( gst_element_set_state( p_pipe, GST_STATE_PAUSED )
 		== GST_STATE_CHANGE_FAILURE ){
-		
+
 		syslog(LOG_ERR, "play_gst: failed to finish");
 		bp_finish(0);
 		if( player_func_stop )
@@ -405,7 +405,7 @@ static gboolean cb_bus( GstBus *bus, GstMessage *msg, gpointer data)
 		gst_message_parse_error (msg, &err, &debug);
 		g_free (debug);
 
-		syslog( LOG_WARNING, "play_gst warning: %s %d %d %s", 
+		syslog( LOG_WARNING, "play_gst warning: %s %d %d %s",
 			GST_ELEMENT_NAME(msg->src),
 			err->domain, err->code, err->message );
 
@@ -420,13 +420,13 @@ static gboolean cb_bus( GstBus *bus, GstMessage *msg, gpointer data)
 		gst_message_parse_error (msg, &err, &debug);
 		g_free (debug);
 
-		syslog( LOG_ERR, "play_gst: %s %d %d %s", 
+		syslog( LOG_ERR, "play_gst: %s %d %d %s",
 			GST_ELEMENT_NAME(msg->src),
 			err->domain, err->code, err->message );
 
 		if( curtrack )
-			syslog(LOG_ERR, "play_gst: failed track id=%d %d/%d", 
-					curtrack->id, curtrack->album->id, 
+			syslog(LOG_ERR, "play_gst: failed track id=%d %d/%d",
+					curtrack->id, curtrack->album->id,
 					curtrack->albumnr );
 
 		bp_finish(0);
@@ -565,7 +565,7 @@ t_playerror player_jump( int to_sec )
  * interface functions that affect mode
  */
 
-/* 
+/*
  * always ensure
  * - current playing track: db_getnext/db_finish
  * - set/del gap callback
@@ -630,7 +630,7 @@ t_playerror player_prev( void )
 t_playerror player_stop( void )
 {
 	t_playstatus mode = bp_status();
-	
+
 	if( mode == pl_stop )
 		return PE_NOTHING;
 
@@ -659,7 +659,7 @@ void player_init( GMainLoop *loop )
 	GstElement *p_conv = NULL;
 	GstElement *p_out = NULL;
 	GError *err = NULL;
-	
+
 	/* TODO: autoplug input to support non-mp3 */
 
 	if( NULL == (p_src = gst_element_factory_make ("filesrc", "p_src"))){
@@ -707,10 +707,10 @@ void player_init( GMainLoop *loop )
 	gst_bus_add_watch (bus, cb_bus, loop);
 	gst_object_unref (bus);
 
-	gst_bin_add_many( GST_BIN(p_pipe), 
+	gst_bin_add_many( GST_BIN(p_pipe),
 		p_src, p_dec, p_scale, p_conv, p_vol, p_out, NULL);
 
-	if( !gst_element_link_many( 
+	if( !gst_element_link_many(
 		p_src, p_dec, p_scale, p_conv, p_vol, p_out, NULL) )
 
 		syslog( LOG_ERR, "player: failed to link pipeline 1" );
@@ -718,7 +718,7 @@ void player_init( GMainLoop *loop )
 
 	if( gst_element_set_state (p_pipe, GST_STATE_READY)
 		== GST_STATE_CHANGE_FAILURE )
-		
+
 		syslog( LOG_ERR, "play_gst: failed to init pipeline" );
 }
 

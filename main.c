@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -206,7 +206,7 @@ int main( int argc, char **argv )
 	player_setgap( opt_gap );
 	player_setrandom( opt_random );
 	proto_init();
-	
+
 	load_filter();
 	if( opt_start ){
 		player_start();
@@ -217,7 +217,7 @@ int main( int argc, char **argv )
 	g_main_loop_run(gmain);
 
 	syslog(LOG_INFO, "terminating" );
-	
+
 	save_filter();
 	player_done();
 	clients_done();

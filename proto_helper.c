@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -18,7 +18,7 @@
 
 #define BUFLENLINE	4096
 
-static char *proto_fmtline( int last, const char *code, 
+static char *proto_fmtline( int last, const char *code,
 		const char *fmt, va_list ap )
 {
 	char buffer[BUFLENLINE];
@@ -36,7 +36,7 @@ static char *proto_fmtline( int last, const char *code,
 	return strdup(buffer);
 }
 
-static int proto_vline( t_client *client, int last, const char *code, 
+static int proto_vline( t_client *client, int last, const char *code,
 		const char *fmt, va_list ap )
 {
 	char *line;
@@ -54,7 +54,7 @@ static int proto_vline( t_client *client, int last, const char *code,
 /*
  * send non-last line
  */
-int proto_rline( t_client *client, const char *code, 
+int proto_rline( t_client *client, const char *code,
 		const char *fmt, ... )
 {
 	va_list ap;
@@ -70,7 +70,7 @@ int proto_rline( t_client *client, const char *code,
 /*
  * send single line reply or last line of a multi-line reply
  */
-int proto_rlast( t_client *client, const char *code, 
+int proto_rlast( t_client *client, const char *code,
 		const char *fmt, ... )
 {
 	va_list ap;
@@ -86,7 +86,7 @@ int proto_rlast( t_client *client, const char *code,
 /*
  * broadcast a reply to all clients with at least "right" rights.
  */
-void proto_bcast( t_rights right, const char *code, 
+void proto_bcast( t_rights right, const char *code,
 		const char *fmt, ... )
 {
 	char *line;
@@ -102,10 +102,10 @@ void proto_bcast( t_rights right, const char *code,
 
 void proto_player_reply( t_client *client, t_playstatus r, char *code, char *reply )
 {
-	switch(r){ 
-		case PE_OK: 
+	switch(r){
+		case PE_OK:
 			proto_rlast(client, code, "%s", reply );
-			break; 
+			break;
 
 		case PE_NOTHING:
 			proto_rlast(client,"541", "nothing to do" );
@@ -120,7 +120,7 @@ void proto_player_reply( t_client *client, t_playstatus r, char *code, char *rep
 			return;
 
 		case PE_SYS:
-			proto_rlast(client,"540", "player error: %s", 
+			proto_rlast(client,"540", "player error: %s",
 					strerror(errno));
 			return;
 

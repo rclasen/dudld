@@ -14,8 +14,8 @@ void db_done( void );
  */
 typedef void t_db;
 
-/* 
- * it_db: standard DB iterator 
+/*
+ * it_db: standard DB iterator
  *
  * owns the PQResult and frees it in it_db_done().
  *

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -86,7 +86,7 @@ void queue_free( t_queue *q )
 {
 	if( ! q )
 		return;
-	
+
 	if( -- q->_refs > 0 )
 		return;
 
@@ -233,10 +233,10 @@ int queue_del( int queueid, int uid )
 
 	if( uid ){
 		res = db_query( "DELETE FROM mserv_queue "
-				"WHERE id = %d and user_id = %d", 
+				"WHERE id = %d and user_id = %d",
 				queueid, uid );
 	} else {
-		res = db_query( "DELETE FROM mserv_queue WHERE id = %d", 
+		res = db_query( "DELETE FROM mserv_queue WHERE id = %d",
 				queueid );
 	}
 	if( !res || PQresultStatus(res) != PGRES_COMMAND_OK ){

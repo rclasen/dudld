@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -162,7 +162,7 @@ expr *random_filter( void )
 
 it_track *random_top( int num )
 {
-	return db_iterate( (db_convert)track_convert, 
+	return db_iterate( (db_convert)track_convert,
 			"SELECT t.*, "
 				"c.lplay "
 			"FROM "
@@ -176,7 +176,7 @@ it_track *random_top( int num )
 			"ORDER BY "
 				"c.lplay, "
 				"LOWER(album_artist_name), "
-				"LOWER(album_name), album_pos", 
+				"LOWER(album_name), album_pos",
 				num );
 }
 
@@ -204,7 +204,7 @@ t_track *random_fetch( void )
 		return NULL;
 	}
 
-	/* 
+	/*
 	 * randomly pick a track while trying to avoid recently played
 	 * tracks. See test_random.c on how the resulting distribution of
 	 * random numbers looks like.
@@ -212,17 +212,17 @@ t_track *random_fetch( void )
 	 */
 #if 1
 	/* 'abs': folded and shifted gaussian distribution */
-	num = (double)abs( (double)random() + random() - RAND_MAX )  
+	num = (double)abs( (double)random() + random() - RAND_MAX )
 		/ RAND_MAX * PQntuples(res);
 #else
 
 	/* 'div': more drastic */
-	num = ((double)random() * random()) 
-		/ ( (double)RAND_MAX * RAND_MAX) 
+	num = ((double)random() * random())
+		/ ( (double)RAND_MAX * RAND_MAX)
 		* PQntuples(res);
 #endif
 
-	syslog( LOG_DEBUG, "random: picking %d from top %d", num, 
+	syslog( LOG_DEBUG, "random: picking %d from top %d", num,
 			PQntuples(res));
 
 	id = pgint( res, num, 0 );

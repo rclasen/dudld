@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -116,7 +116,7 @@ int user_add( const char *name, t_rights right, const char *pass )
 	PQclear(res);
 
 	res = db_query( "INSERT INTO mserv_user( id, name, lev, pass ) "
-			"VALUES( %d, '%s', %d, '%s' )", 
+			"VALUES( %d, '%s', %d, '%s' )",
 			uid, name, right, pass_gen(pass) );
 	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "user_add: %s", db_errstr() );
@@ -134,7 +134,7 @@ int user_ok( t_user *u, const char *pass )
 	if( ! pass_ok(u->_pass, pass )){
 		return 0;
 	}
-		
+
 	return 1;
 }
 

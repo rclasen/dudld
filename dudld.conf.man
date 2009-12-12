@@ -47,12 +47,12 @@ default replaygain type to use: 0=off, 1=track, 2=track_peak, 3=album,
 4=album_peak
 .TP
 \fBrgpreamp\fR
-replaygain preamplification. 
+replaygain preamplification.
 .TP
 \fBpipeline\fR
-gstreamer pipeline specification to use as output. See 
-.BR gst-launch 
-for details. The full pipeline is going to look like 
+gstreamer pipeline specification to use as output. See
+.BR gst-launch
+for details. The full pipeline is going to look like
 
  filesrc ! decodebin ! $pipeline
 

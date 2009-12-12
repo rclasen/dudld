@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -84,7 +84,7 @@ static char *mkvtab( const char *fmt, va_list ap )
 			EADD(BLEN, used, buffer, c );
 
 		} else if( *fmt == 'd' ) {
-			l = snprintf( buffer, BLEN -used, "%d", 
+			l = snprintf( buffer, BLEN -used, "%d",
 					va_arg(ap, int));
 			if( l < 0 )
 				l = 0;
@@ -150,7 +150,7 @@ char *mkartist( t_artist *a )
 char *mkalbum( t_album *a )
 {
 	char *sub, *tmp;
-	
+
 	if( NULL == (sub = mkartist( a->artist )))
 		return NULL;
 
@@ -163,7 +163,7 @@ char *mkalbum( t_album *a )
 char *mktrack( t_track *t )
 {
 	char *sub1, *sub2, *tmp;
-	
+
 	if( NULL == (sub1 = mkartist( t->artist )))
 		return NULL;
 
@@ -230,7 +230,7 @@ void dump_client( t_client *client, const char *code, t_client *t)
 	if( NULL == (fmt = mkclient(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -243,7 +243,7 @@ void dump_user( t_client *client, const char *code, t_user *t)
 	if( NULL == (fmt = mkuser(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -256,7 +256,7 @@ void dump_track( t_client *client, const char *code, t_track *t)
 	if( NULL == (fmt = mktrack(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -269,7 +269,7 @@ void dump_tag( t_client *client, const char *code, t_tag *t)
 	if( NULL == (fmt = mktag(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -282,7 +282,7 @@ void dump_album( t_client *client, const char *code, t_album *t)
 	if( NULL == (fmt = mkalbum(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -295,7 +295,7 @@ void dump_artist( t_client *client, const char *code, t_artist *t)
 	if( NULL == (fmt = mkartist(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -308,7 +308,7 @@ void dump_queue( t_client *client, const char *code, t_queue *t)
 	if( NULL == (fmt = mkqueue(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -321,7 +321,7 @@ void dump_sfilter( t_client *client, const char *code, t_sfilter *t)
 	if( NULL == (fmt = mksfilter(t))){
 		proto_rlast(client, "501", "failed to format" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%s", fmt );
 	free(fmt);
@@ -338,7 +338,7 @@ void dump_users( t_client *client, const char *code, it_user *it )
 
 	for( t = it_user_begin(it); t; t = it_user_next(it) ){
 		if( r >= 0 && NULL != (buf = mkuser(t))){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		user_free(t);
@@ -358,7 +358,7 @@ void dump_clients( t_client *client, const char *code, it_client *it )
 
 	for( t = it_client_begin(it); t; t = it_client_next(it) ){
 		if( r >= 0 && NULL != (buf = mkclient(t))){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		client_delref(t);
@@ -378,7 +378,7 @@ void dump_tracks( t_client *client, const char *code, it_track *it )
 
 	for( t = it_track_begin(it); t; t = it_track_next(it) ){
 		if( r >= 0 && NULL != (buf = mktrack(t))){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		track_free(t);
@@ -398,7 +398,7 @@ void dump_history( t_client *client, const char *code, it_history *it )
 
 	for( t = it_history_begin(it); t; t = it_history_next(it) ){
 		if( r >= 0 && NULL != (buf = mkhistory(t))){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		history_free(t);
@@ -418,7 +418,7 @@ void dump_tags( t_client *client, const char *code, it_tag *it )
 
 	for( t = it_tag_begin(it); t; t = it_tag_next(it) ){
 		if( r >= 0 && NULL != (buf = mktag(t) )){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		tag_free(t);
@@ -438,7 +438,7 @@ void dump_albums( t_client *client, const char *code, it_album *it )
 
 	for( t = it_album_begin(it); t; t = it_album_next(it) ){
 		if( r >= 0 && NULL != (buf = mkalbum(t) )){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		album_free(t);
@@ -458,7 +458,7 @@ void dump_artists( t_client *client, const char *code, it_artist *it )
 
 	for( t = it_artist_begin(it); t; t = it_artist_next(it) ){
 		if( r >= 0 && NULL != (buf = mkartist(t) )){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		artist_free(t);
@@ -478,7 +478,7 @@ void dump_queues( t_client *client, const char *code, it_queue *it )
 
 	for( t = it_queue_begin(it); t; t = it_queue_next(it) ){
 		if( r >= 0 && NULL != (buf = mkqueue(t) )){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		queue_free(t);
@@ -498,7 +498,7 @@ void dump_sfilters( t_client *client, const char *code, it_sfilter *it )
 
 	for( t = it_sfilter_begin(it); t; t = it_sfilter_next(it) ){
 		if( r >= 0 && NULL != (buf = mksfilter(t) )){
-			r = proto_rline(client, code,"%s", buf ); 
+			r = proto_rline(client, code,"%s", buf );
 			free(buf);
 		}
 		sfilter_free(t);

@@ -39,7 +39,7 @@ get rid of cache table
 
 get rid of lastplay column for files, use "last" record from history table
 
-change lastplay evaluation for random 
+change lastplay evaluation for random
 - to be more random for anything but the last played xx tracks
 - to take score into account
 - only look at lastplay for tracks picked by random play. (non-queued)

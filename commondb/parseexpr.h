@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -89,7 +89,7 @@ typedef struct s_expr {
 	} data;
 	int _refs;
 } expr;
-	
+
 expr *expr_parse( int *line, int *col, char **msg, parser_input *i );
 expr *expr_parse_str( int *col, char **msg, char *i );
 

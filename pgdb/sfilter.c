@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -121,7 +121,7 @@ int sfilter_id( const char *name )
 
 it_sfilter *sfilters_list( void )
 {
-	return db_iterate( (db_convert)sfilter_convert, 
+	return db_iterate( (db_convert)sfilter_convert,
 			"SELECT id, name, filter "
 			"FROM juke_sfilter "
 			"ORDER BY LOWER(name)" );

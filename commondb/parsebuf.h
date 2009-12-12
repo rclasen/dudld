@@ -4,7 +4,7 @@
 
 /************************************************************
  *
- * abstraction of an input buffer for the parser. 
+ * abstraction of an input buffer for the parser.
  *
  * - for input files or strings
  * - allows to go back in input (even in non-seekable files)

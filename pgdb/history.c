@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -27,7 +27,7 @@ int history_add( t_track *track, int uid, int completed )
 	now = time(NULL);
 	res = db_query( "INSERT INTO mserv_hist("
 			"file_id, user_id, added, completed) "
-			"VALUES( %d, %d, unix2time(%d), %s )", 
+			"VALUES( %d, %d, unix2time(%d), %s )",
 			track->id, uid, now, completed ? "true" : "false" );
 	if( res == NULL || PQresultStatus(res) != PGRES_COMMAND_OK ){
 		syslog( LOG_ERR, "history_add: %s", db_errstr() );
@@ -104,7 +104,7 @@ t_track *history_track( t_history *h)
 // TODO: use view
 it_history *history_list( int num )
 {
-	return db_iterate( (db_convert)history_convert, 
+	return db_iterate( (db_convert)history_convert,
 			"SELECT "
 				"t.*,"
         			"time2unix(h.added) AS played,"
@@ -116,7 +116,7 @@ it_history *history_list( int num )
 				") AS h "
 					"INNER JOIN mserv_track t "
 					"ON t.id = h.file_id "
-			"ORDER BY h.added ", 
+			"ORDER BY h.added ",
 			num );
 }
 
@@ -137,7 +137,7 @@ it_history *history_tracklist( int trackid, int num )
 					"INNER JOIN mserv_track t "
 					"ON t.id = h.file_id "
 			"ORDER BY h.added DESC ",
-					
+
 			trackid, num );
 }
 

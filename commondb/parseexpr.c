@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -65,8 +65,8 @@ static int parse_nonspace( parse_stat *i )
 	return c;
 }
 
-static char *_parse_alloc( 
-		parse_stat *i, 
+static char *_parse_alloc(
+		parse_stat *i,
 		int (*filter)( parse_stat * ))
 {
 	int c;
@@ -74,12 +74,12 @@ static char *_parse_alloc(
 	int avail = 5;
 	int used = 0;
 
-	if( NULL == (str = malloc(5))){ 
+	if( NULL == (str = malloc(5))){
 		parse_error(i, strerror(errno));
 		return NULL;
 	}
 	*str = 0;
-	
+
 	while( EOF != (c = (*filter)(i) )){
 		if( used >= avail ){
 			char *new;
@@ -132,7 +132,7 @@ static int parse_num( parse_stat *i )
 	while( isdigit( c = parse_nonspace(i))){
 		PI_DONE(i->in);
 		num *= 10;
-		num += c - '0'; 
+		num += c - '0';
 	}
 	PI_UNDO(i->in);
 
@@ -236,7 +236,7 @@ static void value_free( value *v )
 	  case vt_list:
 		  vallist_free(v->val.list);
 		  break;
-	
+
 	}
 	free(v);
 }
@@ -565,7 +565,7 @@ static valtest *parse_valtest( parse_stat *i )
 	DMSG( "found valtest: %d %d %d", vt->field, vt->op, vt->val->type );
 	/* check field,op,valtype combination is allowed */
 	for( vtt = vttypes; vtt->field != vf_none; ++vtt ){
-		if( vtt->field == vt->field 
+		if( vtt->field == vt->field
 				&& vtt->op == vt->op
 				&& vtt->type == vt->val->type ){
 
@@ -575,9 +575,9 @@ static valtest *parse_valtest( parse_stat *i )
 	}
 
 	if( ! valid ){
-		parse_error(i, "invalid match on %s %s %d", 
-				valfield_name[vt->field], 
-				valop_name[vt->op], 
+		parse_error(i, "invalid match on %s %s %d",
+				valfield_name[vt->field],
+				valop_name[vt->op],
 				valtype_name[vt->val->type] );
 		goto clean3;
 
@@ -602,14 +602,14 @@ static void valtest_free( valtest *vt )
 static int valtest_fmt( char *buf, size_t len, valtest *vt )
 {
 	size_t used = 0;
-	
-	used += snprintf( buf+used, len-used, "%s %s ", 
+
+	used += snprintf( buf+used, len-used, "%s %s ",
 			valfield_name[vt->field], valop_name[vt->op] );
 	if( used > len ) return used;
 	used += value_fmt( buf+used, len-used, vt->val );
 	return used;
 }
-	
+
 
 
 /************************************************************
@@ -741,7 +741,7 @@ expr *parse_expr( parse_stat *i )
 		return a;
 	}
 	PI_UNDO(i->in);
-	
+
 
 	if( op_none == (op = parse_operator(i))) {
 		if( ! PI_EOF(i->in)){
@@ -777,7 +777,7 @@ clean2:
 clean1:
 	return NULL;
 }
-	
+
 expr *expr_parse( int *line, int *col, char **msg, parser_input *i )
 {
 	parse_stat st;

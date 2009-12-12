@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -31,7 +31,7 @@ void proto_bcast_logout( t_client *client )
 
 	if( NULL == (buf = mkclient(client)))
 		return;
-	proto_bcast( r_user, "631", "%s", buf ); 
+	proto_bcast( r_user, "631", "%s", buf );
 	free(buf);
 }
 
@@ -44,7 +44,7 @@ void proto_bcast_player_newtrack( void )
 		return;
 
 	if( NULL != (buf = mktrack(track))){
-		proto_bcast( r_guest, "640", "%s", buf ); 
+		proto_bcast( r_guest, "640", "%s", buf );
 		free(buf);
 	}
 	track_free(track);
@@ -98,7 +98,7 @@ void proto_bcast_queue_fetch( t_queue *q )
 
 	if( NULL == (buf = mkqueue(q)))
 		return;
-	proto_bcast( r_guest, "660", "%s", buf ); 
+	proto_bcast( r_guest, "660", "%s", buf );
 	free(buf);
 }
 
@@ -108,7 +108,7 @@ void proto_bcast_queue_add( t_queue *q )
 
 	if( NULL == (buf = mkqueue(q)))
 		return;
-	proto_bcast( r_guest, "661", "%s", buf ); 
+	proto_bcast( r_guest, "661", "%s", buf );
 	free(buf);
 }
 
@@ -118,7 +118,7 @@ void proto_bcast_queue_del( t_queue *q )
 
 	if( NULL == (buf = mkqueue(q)))
 		return;
-	proto_bcast( r_guest, "662", "%s", buf ); 
+	proto_bcast( r_guest, "662", "%s", buf );
 	free(buf);
 }
 
@@ -132,7 +132,7 @@ void proto_bcast_tag_changed( t_tag *t )
 	char *buf;
 	if( NULL == (buf = mktag(t)))
 		return;
-	proto_bcast( r_guest, "670", "%s", buf ); 
+	proto_bcast( r_guest, "670", "%s", buf );
 	free(buf);
 }
 
@@ -141,7 +141,7 @@ void proto_bcast_tag_del( t_tag *t )
 	char *buf;
 	if( NULL == (buf = mktag(t)))
 		return;
-	proto_bcast( r_guest, "671", "%s", buf ); 
+	proto_bcast( r_guest, "671", "%s", buf );
 	free(buf);
 }
 

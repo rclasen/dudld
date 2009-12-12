@@ -47,7 +47,7 @@ case "$1" in
 	;;
   stop)
 	echo -n "Stopping $DESC: "
-	start-stop-daemon --oknodo --stop --quiet --pidfile $pidfile 
+	start-stop-daemon --oknodo --stop --quiet --pidfile $pidfile
 	echo "$NAME."
 	;;
   restart|force-reload)

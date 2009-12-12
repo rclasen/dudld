@@ -18,11 +18,11 @@ dudld \- a mp3 jukebox daemon
 ]
 .SH DESCRIPTION
 .B dudld
-is the mp3 Jukebox commponent of the 
+is the mp3 Jukebox commponent of the
 .B Dudl
 Music Database.
 
-It is designed to run just ontop of the music database and therefore lacks 
+It is designed to run just ontop of the music database and therefore lacks
 thorough editing capabilities for the DB.
 
 .\" TODO: extend description
@@ -35,7 +35,7 @@ Database is maintained elsewhere.
 
 Gstreamer driven.
 
-supports replaygain 
+supports replaygain
 .BR http://replaygain.org/
 
 .SH OPTIONS
@@ -46,7 +46,7 @@ command:
 \fB\-d\fR, \fB\-\-debug\fR
 Enable debug logging.
 .TP
-\fB\-f\fR, \fB\-\-foreground\fR 
+\fB\-f\fR, \fB\-\-foreground\fR
 Do not detach - stay in foreground.
 .TP
 \fB\-?\fR, \fB\-\-help\fR
@@ -54,7 +54,7 @@ A brief message.
 .TP
 \fB\-i\fR, \fB\-\-pidfile \fR\fIpid-file\fR
 When dudld starts its process idenifier is written to
-\fB\fIpid-file\fR. The likely default is 
+\fB\fIpid-file\fR. The likely default is
 \fB\fI/var/run/dudld/dudld.pid\fR.
 .TP
 \fB\-p\fR, \fB\-\-port=\fR\fIport\fR
@@ -62,7 +62,7 @@ Set the TCP port that dudld will listen to client connections. Default is
 4445.
 .TP
 \fB\-c\fR, \fB\-\-config \fR\fIconfig\fR
-Specify the config file to use. Default is 
+Specify the config file to use. Default is
 \fB\fI/etc/dudld.conf\fR.
 .SH FILES
 .TP

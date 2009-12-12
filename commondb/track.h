@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -24,7 +24,7 @@ typedef enum {
 	rg_album,
 	rg_album_peak,
 } t_replaygain;
-	
+
 typedef struct _t_track {
 	int id;
 	t_album *album;

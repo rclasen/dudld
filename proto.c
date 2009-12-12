@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -122,8 +122,8 @@ static int cmd_parse( t_client *client, t_cmd *cmd, char *line )
 
 		data = (*arg->parse)( next, &end );
 		if( end == next || ( *end && !isspace(*end) )){
-			proto_rlast( client, "501", 
-					"invalid data for argument %s", 
+			proto_rlast( client, "501",
+					"invalid data for argument %s",
 					arg->name );
 			goto clean1;
 		}
@@ -155,7 +155,7 @@ static int cmd_parse( t_client *client, t_cmd *cmd, char *line )
 
 	cmd_arg_free(cmd, argv);
 	return 0;
-	
+
 clean1:
 	cmd_arg_free(cmd, argv);
 	return -1;
@@ -203,7 +203,7 @@ static void proto_input( t_client *client )
 	while( NULL != (line = client_getline( client) )){
 		proto_line( client, line );
 		free(line);
-	} 
+	}
 }
 
 /*
@@ -212,7 +212,7 @@ static void proto_input( t_client *client )
 static void proto_newclient( t_client *client )
 {
 	client->ifunc = (void*)proto_input;
-	proto_rlast( client, "220", "dudld %d %d", 
+	proto_rlast( client, "220", "dudld %d %d",
 			PROTO_MAJOR_VERSION, PROTO_MINOR_VERSION );
 	syslog( LOG_DEBUG, "con #%d: new connection from %s", client->id,
 			inet_ntoa(client->sin.sin_addr ));

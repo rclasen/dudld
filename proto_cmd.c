@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 Rainer Clasen
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms described in the file LICENSE included in this
  * distribution.
@@ -54,7 +54,7 @@ void cmd_pass( t_client *client, char *code, void **argv )
 			client->id, client->user->name );
 	proto_rlast( client, code, "successfully logged in" );
 	proto_bcast_login( client );
-	
+
 	goto final;
 
 clean2:
@@ -90,7 +90,7 @@ void cmd_clientclose( t_client *client, char *code, void **argv )
 		proto_rlast( client, "501", "session not found");
 		return;
 	}
-	proto_rlast( c, "632", "disconnected" ); 
+	proto_rlast( c, "632", "disconnected" );
 	client_close( c );
 	client_delref( c );
 
@@ -144,7 +144,7 @@ void cmd_userget( t_client *client, char *code, void **argv )
 		proto_rlast(client, "501", "user not found" );
 		return;
 	}
-	
+
 	dump_user(client, code, u);
 	user_free(u);
 }
@@ -170,7 +170,7 @@ void cmd_useradd( t_client *client, char *code, void **argv )
 	if( 0 > ( uid = user_add(user, 1, ""))){
 		proto_rlast(client, "530", "failed" );
 		return;
-	} 
+	}
 
 	proto_rlast(client, code, "%d", uid );
 }
@@ -989,7 +989,7 @@ void cmd_sfilterget( t_client *client, char *code, void **argv )
 		return;
 	}
 
-	dump_sfilter(client,code, t); 
+	dump_sfilter(client,code, t);
 	sfilter_free(t);
 }
 

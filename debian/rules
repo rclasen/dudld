@@ -23,7 +23,7 @@ endif
 
 configure: configure.ac
 	autoreconf
-	
+
 config.status: configure
 	dh_testdir
 	# Add here commands to configure the package.
@@ -44,7 +44,7 @@ build-stamp:  config.status
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp 
+	rm -f build-stamp
 
 	# Add here commands to clean up after the build process.
 	-$(MAKE) distclean
@@ -75,7 +75,7 @@ binary-indep: build install
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-#	dh_installdebconf	
+#	dh_installdebconf
 	dh_installdocs
 	dh_installexamples
 	dh_installmenu
@@ -88,7 +88,7 @@ binary-arch: build install
 #	dh_installman
 	dh_installinfo
 #	dh_undocumented
-	dh_installchangelogs 
+	dh_installchangelogs
 	dh_link
 	dh_strip
 	dh_compress
@@ -102,4 +102,4 @@ binary-arch: build install
 	dh_builddeb
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install 
+.PHONY: build clean binary-indep binary-arch binary install
