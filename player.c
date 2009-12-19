@@ -396,7 +396,20 @@ static gboolean cb_bus( GstBus *bus, GstMessage *msg, gpointer data)
 
 	switch (GST_MESSAGE_TYPE (msg)) {
 
-	  case GST_MESSAGE_EOS:
+	  case GST_MESSAGE_EOS: {
+		gint64 pos;
+		GstFormat fmt = GST_FORMAT_TIME;
+
+		if( ! gst_element_query_position( p_pipe, &fmt, &pos))
+			pos = 0;
+
+		if( curtrack && pos + 1000000000 < curtrack->seg_to ){
+			syslog( LOG_WARNING, "play_gst %d/%d unexpected end %d/%d",
+					curtrack->album->id, curtrack->albumnr,
+					(int)( pos / GST_SECOND),
+					(int)( curtrack->seg_to / GST_SECOND) );
+		}
+
 		bp_finish(1);
 
 		if( gap ){
@@ -407,6 +420,7 @@ static gboolean cb_bus( GstBus *bus, GstMessage *msg, gpointer data)
 		}
 
 		break;
+	  }
 
 	  case GST_MESSAGE_WARNING: {
 		gchar  *debug;
