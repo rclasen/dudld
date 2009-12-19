@@ -403,7 +403,7 @@ static gboolean cb_bus( GstBus *bus, GstMessage *msg, gpointer data)
 		if( ! gst_element_query_position( p_pipe, &fmt, &pos))
 			pos = 0;
 
-		if( curtrack && pos + 1000000000 < curtrack->seg_to ){
+		if( curtrack && pos + 1000000000 < (gint64)curtrack->seg_to ){
 			syslog( LOG_WARNING, "play_gst %d/%d unexpected end %d/%d",
 					curtrack->album->id, curtrack->albumnr,
 					(int)( pos / GST_SECOND),
@@ -463,7 +463,14 @@ static gboolean cb_bus( GstBus *bus, GstMessage *msg, gpointer data)
 		break;
 	  }
 
+	  case GST_MESSAGE_STATE_CHANGED:
+		// ignore
+		break;
+
 	  default:
+		syslog( LOG_DEBUG, "play_gst %s sent %s",
+			GST_ELEMENT_NAME(msg->src),
+			GST_MESSAGE_TYPE_NAME(msg));
 		break;
 	}
 
