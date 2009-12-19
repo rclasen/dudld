@@ -210,7 +210,7 @@ static gboolean client_accept( GIOChannel *source,
 {
 	int lsocket;
 	t_client *c;
-	int len = sizeof(c->sin);
+	size_t len = sizeof(c->sin);
 	GIOChannel *cchan;
 
 	(void)data;

@@ -134,7 +134,7 @@ int main( int argc, char **argv )
 			"use F as pidfile", "F" },
 		{ "config",	'c', 0, G_OPTION_ARG_STRING, &config,
 			"config file location F", "C" },
-		{ NULL }
+		{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, 0 }
 	};
 	GOptionContext *copt = NULL;
 	GError *error = NULL;
