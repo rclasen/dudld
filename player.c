@@ -217,14 +217,22 @@ static int bp_seek( gint64 to )
 {
 	gboolean ret;
 
-	syslog(LOG_DEBUG, "bp_seek to %d", (int)( to / GST_SECOND ));
 
 	if( cut && curtrack->seg_to && to < (gint64)curtrack->seg_to ){
+		syslog(LOG_DEBUG, "bp_seek (%d) %d -> %d (%d)",
+			(int)( curtrack->seg_from / GST_SECOND),
+			(int)( to / GST_SECOND),
+			(int)( curtrack->seg_to / GST_SECOND),
+			curtrack->duration );
 		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME,
 			GST_SEEK_FLAG_FLUSH,
 			GST_SEEK_TYPE_SET, to,
 			GST_SEEK_TYPE_SET, (gint64)curtrack->seg_to);
 	} else {
+		syslog(LOG_DEBUG, "bp_seek (%d) %d -> end (%d)",
+			(int)( curtrack->seg_from / GST_SECOND),
+			(int)( to / GST_SECOND),
+			curtrack->duration );
 		ret = gst_element_seek( p_pipe, 1.0, GST_FORMAT_TIME,
 			GST_SEEK_FLAG_FLUSH,
 			GST_SEEK_TYPE_SET, to,
@@ -265,8 +273,10 @@ static int bp_start(void)
 	gst_element_set_state( p_pipe, GST_STATE_PAUSED );
 	gst_element_get_state( p_pipe, NULL, NULL, GST_CLOCK_TIME_NONE );
 
-	if( cut & (curtrack->seg_from > 1* GST_SECOND) ){
+	if( cut ){
 		bp_seek( curtrack->seg_from ); /* ignore failure */
+	} else {
+		bp_seek( 0 );
 	}
 
 	if( gst_element_set_state( p_pipe, GST_STATE_PLAYING )
